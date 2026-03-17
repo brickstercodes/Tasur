@@ -9,6 +9,7 @@
  * This is a client component because it manages controlled form state and calls
  * the BetterAuth browser client. Server-side session validation happens in the
  * dashboard layout, not here.
+ * 
  */
 
 'use client';
