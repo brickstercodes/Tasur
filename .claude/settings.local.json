@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --no-git)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --no-git --import-alias \"@/*\")",
+      "Bash(npx create-next-app@latest /tmp/tasur-init --typescript --tailwind --eslint --app --src-dir --no-git --import-alias \"@/*\")",
+      "Bash(cp -r /tmp/tasur-init/. /Users/anugrahshetty/Documents/Tasur/)",
+      "Bash(rm -rf /Users/anugrahshetty/Documents/Tasur/.git)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(npx tsx:*)",
+      "Bash(supabase --version)",
+      "Bash(brew install:*)",
+      "Bash(supabase init:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx prettier:*)",
+      "Bash(supabase link:*)",
+      "Bash(supabase projects:*)",
+      "Bash(docker info:*)",
+      "Bash(supabase start:*)",
+      "Bash(open -a Docker)",
+      "Read(//var/run/**)",
+      "Read(//Users/anugrahshetty/.docker/run/**)",
+      "Read(//Users/anugrahshetty/.colima/default/**)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_a1570892ffe920b2ba1650bd04747807c1a237b4 supabase migration repair --status reverted 20240001000000)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_a1570892ffe920b2ba1650bd04747807c1a237b4 supabase db push)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_a1570892ffe920b2ba1650bd04747807c1a237b4 supabase gen types typescript --linked)",
+      "Bash(cat:*)",
+      "Bash(node /tmp/verify_schema.mjs)"
+    ]
+  }
+}
