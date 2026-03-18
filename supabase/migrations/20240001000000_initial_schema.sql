@@ -2,6 +2,15 @@
 -- Tasur — Initial Schema
 -- Module 3: Database Schema & Migrations
 -- ============================================================
+--
+-- WHY this migration exists:
+-- Creates the complete Supabase/PostgreSQL schema for v0.1 of Tasur.
+-- All tables, enums, indexes, and RLS policies live here so the schema
+-- can be reproduced from scratch with `supabase db reset`. A single
+-- migration (rather than many small ones) was chosen for the initial
+-- schema because nothing existed before — splitting it would only add
+-- ordering complexity with no rollback benefit at this stage.
+-- ============================================================
 
 -- gen_random_uuid() is built into PostgreSQL 13+ (Supabase default).
 -- No extension needed.

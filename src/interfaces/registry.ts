@@ -10,7 +10,7 @@
 
 import type { ExplainerOutput } from '@/lib/schemas/explainer-output';
 import type { FlashcardOutput } from '@/lib/schemas/flashcard-output';
-import type { MindmapOutput } from '@/lib/schemas/mindmap-output';
+import type { MindmapTreeOutput } from '@/lib/schemas/mindmap-tree-output';
 import type { OrchestratorOutputSchema } from '@/lib/schemas/orchestrator-output';
 import type { DocumentParserOutput } from '@/lib/schemas/parser-output';
 import type { TasurAgent, TasurStreamingAgent } from './agents';
@@ -64,7 +64,7 @@ export interface WebSearchInput {
 type AgentMap = {
   'document-parser': TasurAgent<DocumentParserInput, DocumentParserOutput>;
   'web-search': TasurAgent<WebSearchInput, unknown>;
-  'mindmap-generator': TasurAgent<MindmapInput, MindmapOutput>;
+  'mindmap-generator': TasurAgent<MindmapInput, MindmapTreeOutput>;
   'concept-explainer': TasurStreamingAgent<ConceptExplainerInput, ExplainerOutput>;
   'flashcard-generator': TasurAgent<FlashcardGeneratorInput, FlashcardOutput>;
   orchestrator: TasurAgent<OrchestratorInput, OrchestratorOutputSchema>;

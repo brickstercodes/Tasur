@@ -13,7 +13,12 @@ import type { Database } from '@/types/database';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// Validated at call-time in createServerClient rather than here because this
+// module is imported by both server and browser bundles, and the service role
+// key is intentionally absent from the browser bundle (NEXT_PUBLIC_ prefix
+// omitted). Validating here would crash the browser build.
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
  * Server client — use in API routes and server components.
@@ -21,6 +26,12 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
  * Never expose this to the browser.
  */
 export function createServerClient() {
+  if (!supabaseServiceRoleKey) {
+    throw new Error(
+      'SUPABASE_SERVICE_ROLE_KEY is not set. ' +
+        'Add it to .env.local for local dev or to your deployment environment variables.',
+    );
+  }
   return createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
       autoRefreshToken: false,
@@ -38,8 +49,11 @@ export function createBrowserClient() {
 }
 
 /**
- * Singleton browser client for use outside React components
- * (e.g., utility functions, non-component modules).
+ * Singleton browser client for utility functions and non-component modules.
+ *
+ * Each createClient call opens a Supabase Realtime WebSocket connection.
+ * Outside React, there's no hook-based memoisation to prevent repeated calls,
+ * so we keep one instance here to avoid exhausting connection limits.
  */
 let browserClientInstance: ReturnType<typeof createBrowserClient> | null = null;
 

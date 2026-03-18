@@ -6,7 +6,7 @@
 
 import { explainerOutputSchema } from '@/lib/schemas/explainer-output';
 import { flashcardOutputSchema } from '@/lib/schemas/flashcard-output';
-import { mindmapOutputSchema } from '@/lib/schemas/mindmap-output';
+import { mindmapTreeOutputSchema } from '@/lib/schemas/mindmap-tree-output';
 import { orchestratorOutputSchema } from '@/lib/schemas/orchestrator-output';
 import { documentParserOutputSchema } from '@/lib/schemas/parser-output';
 
@@ -60,39 +60,90 @@ verify('parser-output', () => {
   });
 });
 
-// ── 2. Mindmap Output ──────────────────────────────────────────────────────
+// ── 2. Mindmap Tree Output (hierarchical) ──────────────────────────────────
 
-verify('mindmap-output', () => {
-  mindmapOutputSchema.parse({
-    nodes: [
+verify('mindmap-tree-output (hierarchical with 3-level nesting)', () => {
+  mindmapTreeOutputSchema.parse({
+    title: 'Database Normalization',
+    subject: 'DBMS',
+    children: [
       {
-        id: 'normalization_1NF',
-        label: 'First Normal Form (1NF)',
-        description: 'Atomic values, no repeating groups',
-        visual_cue: 'Think: one value per cell in a spreadsheet',
-        depth: 1,
-        importance: 'foundational',
+        id: 'functional_dependencies',
+        label: 'Functional Dependencies',
+        concept_id: 'functional_dep',
+        children: [
+          {
+            label: 'Definition',
+            content: 'X → Y means values of X uniquely determine values of Y',
+            children: [
+              { label: 'Full FD: removal of any attribute from X breaks the dependency' },
+              { label: 'Partial FD: proper subset of X can determine Y (violates 2NF)' },
+              { label: 'Transitive FD: X → Y → Z implies X → Z (violates 3NF)' },
+            ],
+          },
+          {
+            label: "Armstrong's Axioms",
+            content: 'Rules for deriving new FDs from existing ones',
+            children: [
+              { label: 'Reflexivity: if Y ⊆ X, then X → Y' },
+              { label: 'Augmentation: if X → Y, then XZ → YZ' },
+              { label: 'Transitivity: if X → Y and Y → Z, then X → Z' },
+            ],
+          },
+        ],
       },
       {
-        id: 'normalization_2NF',
-        label: 'Second Normal Form (2NF)',
-        description: 'No partial dependency on candidate key',
-        depth: 2,
-        importance: 'intermediate',
+        id: 'normal_forms',
+        label: 'Normal Forms',
+        concept_id: 'normalization_overview',
+        children: [
+          {
+            id: '1nf',
+            label: 'First Normal Form (1NF)',
+            concept_id: 'normalization_1NF',
+            content: 'Atomic values, no repeating groups, unique rows',
+            study_cue: 'Think: one value per cell in a spreadsheet',
+            children: [
+              { label: 'All attributes contain only atomic (indivisible) values' },
+              { label: 'No repeating groups or arrays' },
+              { label: 'Each row identified by a primary key' },
+            ],
+          },
+          {
+            id: '2nf',
+            label: 'Second Normal Form (2NF)',
+            concept_id: 'normalization_2NF',
+            content: '1NF + no partial dependencies on composite key',
+            children: [
+              { label: 'Only relevant when primary key is composite' },
+              { label: 'Every non-prime attribute fully depends on entire candidate key' },
+              { label: 'Fix: decompose table to remove partial dependencies' },
+            ],
+          },
+        ],
       },
     ],
-    edges: [
-      {
-        from: 'normalization_1NF',
-        to: 'normalization_2NF',
-        label: 'builds on',
-        type: 'prerequisite',
-      },
+    metadata: {
+      total_nodes: 14,
+      max_depth: 3,
+      concept_ids_covered: [
+        'functional_dep',
+        'normalization_overview',
+        'normalization_1NF',
+        'normalization_2NF',
+      ],
+    },
+  });
+});
+
+verify('mindmap-tree-output (minimal leaf-only tree)', () => {
+  mindmapTreeOutputSchema.parse({
+    title: 'Quick Overview',
+    subject: 'OS',
+    children: [
+      { label: 'Processes', children: [{ label: 'PCB' }, { label: 'Context Switch' }] },
     ],
-    layout_hint: 'hierarchical_top_down',
-    suggested_clusters: [
-      { name: 'Normal Forms', nodes: ['normalization_1NF', 'normalization_2NF'] },
-    ],
+    metadata: { total_nodes: 3, max_depth: 2, concept_ids_covered: [] },
   });
 });
 

@@ -1,0 +1,140 @@
+Database Normalization: From Unnormalized Data to BCNF
+
+1. Introduction to Normalization
+
+Normalization is the process of organizing data in a relational database to reduce redundancy and improve data integrity. The technique was first proposed by Edgar F. Codd in 1970 as part of his relational model for database management. The goal is to decompose relations (tables) so that each table represents a single theme or entity, and dependencies between attributes are properly managed.
+
+Without normalization, databases suffer from three types of anomalies:
+- Insertion anomaly: inability to add data without the existence of other data
+- Update anomaly: inconsistency caused by updating data in one place but not another
+- Deletion anomaly: unintended loss of data when deleting a row
+
+2. Functional Dependencies
+
+A functional dependency (FD) is a constraint between two sets of attributes. We write X -> Y to mean that the values of attribute set X uniquely determine the values of attribute set Y. For example, in a student table, StudentID -> StudentName means that knowing the StudentID is sufficient to determine the StudentName.
+
+Types of functional dependencies:
+- Full functional dependency: Y is fully functionally dependent on X if removal of any attribute from X means the FD no longer holds.
+- Partial dependency: Y is partially dependent on X if some proper subset of X can determine Y. This violates Second Normal Form.
+- Transitive dependency: If X -> Y and Y -> Z, then X -> Z is a transitive dependency. This violates Third Normal Form.
+
+Armstrong's Axioms govern how functional dependencies can be derived:
+- Reflexivity: if Y is a subset of X, then X -> Y
+- Augmentation: if X -> Y, then XZ -> YZ
+- Transitivity: if X -> Y and Y -> Z, then X -> Z
+
+3. First Normal Form (1NF)
+
+A relation is in First Normal Form if:
+- All attributes contain only atomic (indivisible) values
+- There are no repeating groups or arrays
+- Each row is unique (identified by a primary key)
+
+Example of a table NOT in 1NF:
+
+StudentID | Name      | Courses
+101       | Ahmed     | DBMS, OS, CN
+102       | Priya     | SE, SQA
+
+The Courses column contains multiple values. To convert to 1NF:
+
+StudentID | Name      | Course
+101       | Ahmed     | DBMS
+101       | Ahmed     | OS
+101       | Ahmed     | CN
+102       | Priya     | SE
+102       | Priya     | SQA
+
+4. Second Normal Form (2NF)
+
+A relation is in 2NF if:
+- It is in 1NF
+- Every non-prime attribute is fully functionally dependent on the entire candidate key (no partial dependencies)
+
+This is only relevant when the primary key is composite (has multiple attributes).
+
+Example violating 2NF:
+
+StudentID | CourseID | CourseName    | Grade
+101       | CS301   | DBMS          | A
+101       | CS302   | OS            | B+
+
+Here the candidate key is {StudentID, CourseID}. But CourseName depends only on CourseID, not on the full key. This is a partial dependency.
+
+Fix: decompose into two tables:
+- Enrollments(StudentID, CourseID, Grade)
+- Courses(CourseID, CourseName)
+
+5. Third Normal Form (3NF)
+
+A relation is in 3NF if:
+- It is in 2NF
+- No non-prime attribute is transitively dependent on the candidate key
+
+In other words, non-key attributes must depend directly on the key, not through another non-key attribute.
+
+Example violating 3NF:
+
+StudentID | Department | DeptHead
+101       | CS         | Dr. Khan
+102       | EE         | Dr. Patel
+103       | CS         | Dr. Khan
+
+Here: StudentID -> Department and Department -> DeptHead, so StudentID -> DeptHead is transitive.
+
+Fix: decompose into:
+- Students(StudentID, Department)
+- Departments(Department, DeptHead)
+
+Formal definition (Zaniolo's definition): A relation R is in 3NF if for every FD X -> A in R, at least one of the following holds:
+- X is a superkey of R
+- A is a prime attribute (part of some candidate key)
+
+6. Boyce-Codd Normal Form (BCNF)
+
+BCNF is a stricter version of 3NF. A relation is in BCNF if:
+- For every non-trivial FD X -> Y, X is a superkey
+
+The difference from 3NF: BCNF does not make the exception for prime attributes. Every determinant must be a candidate key.
+
+Example where 3NF holds but BCNF does not:
+
+Student | Subject   | Professor
+Ahmed   | DBMS      | Dr. Khan
+Priya   | DBMS      | Dr. Singh
+Ahmed   | OS        | Dr. Patel
+
+FDs: {Student, Subject} -> Professor and Professor -> Subject
+
+The candidate key is {Student, Subject}. Professor -> Subject violates BCNF because Professor is not a superkey.
+
+Fix: decompose into:
+- TeachingAssignment(Professor, Subject)
+- StudentProfessor(Student, Professor)
+
+Note: BCNF decomposition may not always preserve all functional dependencies, which is a tradeoff compared to 3NF.
+
+7. Decomposition Properties
+
+When decomposing a relation, two properties are desirable:
+
+Lossless-join decomposition: The original relation can be reconstructed by joining the decomposed relations without spurious tuples. This is mandatory — lossy decomposition leads to incorrect data.
+
+Test: A decomposition of R into R1 and R2 is lossless if:
+R1 ∩ R2 -> R1, or
+R1 ∩ R2 -> R2
+(The common attributes must be a superkey of at least one decomposed relation)
+
+Dependency preservation: All original functional dependencies can be enforced using the decomposed relations alone, without needing to join tables. This is desirable but not always achievable with BCNF.
+
+8. Summary Comparison
+
+Normal Form | Eliminates                | Requirement
+1NF         | Repeating groups          | Atomic values, unique rows
+2NF         | Partial dependencies      | Full dependency on entire key
+3NF         | Transitive dependencies   | Direct dependency on key
+BCNF        | All non-superkey FDs      | Every determinant is a superkey
+
+Each higher normal form is strictly stronger: BCNF ⊂ 3NF ⊂ 2NF ⊂ 1NF.
+
+In practice, most database designs aim for 3NF or BCNF. The choice depends on whether dependency preservation is critical for the application.

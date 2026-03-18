@@ -27,7 +27,9 @@
       "Bash(SUPABASE_ACCESS_TOKEN=sbp_a1570892ffe920b2ba1650bd04747807c1a237b4 supabase db push)",
       "Bash(SUPABASE_ACCESS_TOKEN=sbp_a1570892ffe920b2ba1650bd04747807c1a237b4 supabase gen types typescript --linked)",
       "Bash(cat:*)",
-      "Bash(node /tmp/verify_schema.mjs)"
+      "Bash(node /tmp/verify_schema.mjs)",
+      "Bash(npm list:*)",
+      "Bash(npx vitest:*)"
     ]
   }
 }

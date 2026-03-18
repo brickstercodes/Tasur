@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { AuthInput } from '@/components/auth-input';
 import { signIn } from '@/lib/auth-client';
 
 export default function LoginPage() {
@@ -78,43 +79,24 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleEmailSignIn} className="space-y-4">
-          <div className="space-y-1">
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-black placeholder-zinc-400 focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder-zinc-600 dark:focus:border-white"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-black placeholder-zinc-400 focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder-zinc-600 dark:focus:border-white"
-            />
-          </div>
+          <AuthInput
+            id="email"
+            label="Email"
+            type="email"
+            value={email}
+            placeholder="you@example.com"
+            autoComplete="email"
+            onChange={(event) => setEmail(event.target.value)}
+          />
+          <AuthInput
+            id="password"
+            label="Password"
+            type="password"
+            value={password}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            onChange={(event) => setPassword(event.target.value)}
+          />
 
           <button
             type="submit"
