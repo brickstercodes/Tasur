@@ -6,20 +6,28 @@
  * of jsdom and makes Buffer / fs available without polyfills. Timeout is raised
  * to 15 s to accommodate Tesseract.js worker initialisation in OCR tests, which
  * downloads language data on first run.
+ *
+ * loadEnv() from vite picks up .env.local (and .env) so GOOGLE_GENERATIVE_AI_API_KEY
+ * is available in integration tests without manually exporting env vars.
  */
 
 import { defineConfig } from 'vitest/config';
+import { loadEnv } from 'vite';
 import path from 'path';
 
-export default defineConfig({
-  test: {
-    environment: 'node',
-    testTimeout: 15_000,
-    include: ['test/**/*.test.ts'],
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode ?? 'test', process.cwd(), '');
+  return {
+    test: {
+      environment: 'node',
+      testTimeout: 15_000,
+      include: ['test/**/*.test.ts'],
+      env,
     },
-  },
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+  };
 });

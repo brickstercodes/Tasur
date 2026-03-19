@@ -6,7 +6,56 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased]
+## [Unreleased] — Module 7: Agent Implementations Dual-Path
+
+### Added
+
+- **Dual-path agent architecture**: every agent now has two implementations — `src/mastra/` (production path) and `src/manual/` (reference path) — both satisfying the same `TasurAgent<TInput, TOutput>` interface
+- **Mastra agents** (`src/mastra/agents/`):
+  - `document-parser.ts` — parses uploaded documents into structured concept lists
+  - `flashcard-generator.ts` — generates spaced-repetition flashcards from parsed concepts
+  - `concept-explainer.ts` — Socratic tutor with streaming support via `TasurStreamingAgent`
+  - `mindmap-generator.ts` — builds hierarchical mindmap tree from concept list
+  - `web-search.ts` — fills knowledge gaps via Tavily Search API + LLM structuring
+- **Manual agents** (`src/manual/agents/`): mirror implementations calling AI SDK directly (no Mastra layer)
+- **`scripts/demo-agents.ts`**: end-to-end demo running Document Parser → Flashcard Generator → Concept Explainer (streaming) on sample DBMS text; run with `npx tsx scripts/demo-agents.ts`
+
+### Fixed
+
+- **Mastra 0.24.9 + AI SDK v6 incompatibility**: `Agent.generate()` and `Agent.stream()` both internally route through Mastra's streaming layer which rejects AI SDK v6 models (`specificationVersion: 'v3'`). Resolved by bypassing the `Agent` class entirely — all agents now call `generateObject()` / `streamText()` from `ai` directly
+- **AI SDK v6 usage field rename**: `promptTokens`/`completionTokens` → `inputTokens`/`outputTokens` fixed across all agents in both paths
+- **`gemini-2.0-flash` deprecation**: switched `ORCHESTRATOR_MODEL` and `SPECIALIST_MODEL` to `gemini-2.5-flash` for compatibility with new Google AI Studio accounts
+- **Vitest env loading**: rewrote `vitest.config.mts` to function form using `vite.loadEnv` so integration tests correctly pick up vars from `.env`
+- **`.env.local` override bug**: removed blank/stale LLM-related entries from `.env.local` that were silently shadowing real values in `.env`
+
+### Tests
+
+- 109/109 tests passing (unit + integration)
+
+---
+
+## [0.6.0] — Module 6: In-Memory Student Graph
+
+### Added
+
+- In-memory student knowledge graph tracking which concepts a student has seen, understood, and needs review
+- Graph edges represent prerequisite relationships between concepts
+- Traversal utilities: find learning path, identify gaps, suggest next concept
+
+---
+
+## [0.5.0] — Module 5: Parsing Pipeline
+
+### Added
+
+- End-to-end document parsing pipeline: file upload → text extraction → concept detection → gap analysis
+- Support for PDF, DOCX, and plain-text inputs via `mammoth` and `pdf-parse`
+- `DocumentParserOutput` schema: title, subject detection, concepts (id, name, complexity, prerequisites), concept relationships, detected gaps
+- `.mm` mindmap file format changes
+
+---
+
+## [0.4.0] — Module 1.5: Retroactive Standards & Tooling
 
 ### Added
 
