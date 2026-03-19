@@ -10,7 +10,13 @@
  * Zero LLM dependency — pure file processing.
  */
 
-import mammoth from 'mammoth';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mammoth = require('mammoth') as {
+  convertToMarkdown: (input: { buffer: Buffer }) => Promise<{
+    value: string;
+    messages: Array<{ type: string; message: string }>;
+  }>;
+};
 
 import type { ParseResult } from './types';
 

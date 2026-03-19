@@ -1,0 +1,362 @@
+{
+  "_comment": "Golden test data for all mock agents. 8-concept DBMS normalization graph matching the test/graph fixtures. Used by document-parser, mindmap-generator, and flashcard-generator mock agents.",
+  "document_parser_output": {
+    "title": "Database Normalization: 1NF to BCNF",
+    "subject_detection": {
+      "primary": "DBMS",
+      "confidence": 0.97,
+      "domain_template": "dbms_v1"
+    },
+    "concepts": [
+      {
+        "id": "functional_dep",
+        "name": "Functional Dependency",
+        "raw_content": "A functional dependency X → Y means that for any two tuples in a relation, if they have the same value for attribute set X, they must also have the same value for attribute set Y. Functional dependencies are the foundation of normalization theory.",
+        "prerequisites": [],
+        "complexity": "foundational",
+        "keywords": ["functional dependency", "attribute", "tuple", "determinant"]
+      },
+      {
+        "id": "normalization_1NF",
+        "name": "First Normal Form (1NF)",
+        "raw_content": "A relation is in 1NF if every attribute contains only atomic (indivisible) values and there are no repeating groups. Each column must have a single value per row. 1NF eliminates multi-valued attributes and nested relations.",
+        "prerequisites": ["functional_dep"],
+        "complexity": "foundational",
+        "keywords": ["1NF", "atomic", "repeating groups", "first normal form"]
+      },
+      {
+        "id": "normalization_2NF",
+        "name": "Second Normal Form (2NF)",
+        "raw_content": "A relation is in 2NF if it is in 1NF and every non-key attribute is fully functionally dependent on the entire primary key (no partial dependencies). Partial dependency occurs when a non-key attribute depends on only part of a composite primary key.",
+        "prerequisites": ["normalization_1NF"],
+        "complexity": "intermediate",
+        "keywords": ["2NF", "partial dependency", "second normal form", "composite key"]
+      },
+      {
+        "id": "normalization_3NF",
+        "name": "Third Normal Form (3NF)",
+        "raw_content": "A relation is in 3NF if it is in 2NF and no non-key attribute is transitively dependent on the primary key. Transitive dependency occurs when a non-key attribute depends on another non-key attribute. 3NF allows candidate-key dependencies.",
+        "prerequisites": ["normalization_2NF"],
+        "complexity": "intermediate",
+        "keywords": ["3NF", "transitive dependency", "third normal form", "candidate key"]
+      },
+      {
+        "id": "normalization_BCNF",
+        "name": "Boyce-Codd Normal Form (BCNF)",
+        "raw_content": "BCNF (also called 3.5NF) is a stronger version of 3NF. A relation is in BCNF if for every non-trivial functional dependency X → Y, X must be a superkey. BCNF eliminates all anomalies caused by functional dependencies but may not always preserve all dependencies.",
+        "prerequisites": ["normalization_3NF"],
+        "complexity": "advanced",
+        "keywords": ["BCNF", "Boyce-Codd", "superkey", "3.5NF"]
+      },
+      {
+        "id": "lossless_join",
+        "name": "Lossless-Join Decomposition",
+        "raw_content": "A decomposition of a relation R into R1 and R2 is lossless if the natural join of R1 and R2 recovers the original relation R exactly (no spurious tuples). The lossless-join property is essential for any normalization decomposition to be correct.",
+        "prerequisites": ["normalization_2NF"],
+        "complexity": "intermediate",
+        "keywords": ["lossless join", "decomposition", "natural join", "spurious tuples"]
+      },
+      {
+        "id": "dependency_preservation",
+        "name": "Dependency Preservation",
+        "raw_content": "A decomposition preserves dependencies if every functional dependency in the original schema can be derived from the dependencies in the decomposed relations without performing joins. BCNF decomposition does not always preserve all dependencies, while 3NF decomposition always does.",
+        "prerequisites": ["normalization_2NF"],
+        "complexity": "advanced",
+        "keywords": ["dependency preservation", "decomposition", "functional dependency", "BCNF vs 3NF"]
+      },
+      {
+        "id": "decomposition",
+        "name": "Schema Decomposition",
+        "raw_content": "Schema decomposition splits a relation into two or more smaller relations to eliminate redundancy. A good decomposition must satisfy both the lossless-join property and, where possible, dependency preservation. Not every decomposition is both lossless and dependency-preserving.",
+        "prerequisites": ["normalization_1NF"],
+        "complexity": "intermediate",
+        "keywords": ["decomposition", "schema", "redundancy elimination", "relation splitting"]
+      }
+    ],
+    "concept_relationships": [
+      { "from": "functional_dep", "to": "normalization_1NF", "type": "prerequisite" },
+      { "from": "normalization_1NF", "to": "normalization_2NF", "type": "prerequisite" },
+      { "from": "normalization_2NF", "to": "normalization_3NF", "type": "prerequisite" },
+      { "from": "normalization_3NF", "to": "normalization_BCNF", "type": "prerequisite" },
+      { "from": "normalization_2NF", "to": "lossless_join", "type": "prerequisite" },
+      { "from": "normalization_2NF", "to": "dependency_preservation", "type": "prerequisite" },
+      { "from": "normalization_1NF", "to": "decomposition", "type": "prerequisite" },
+      { "from": "lossless_join", "to": "decomposition", "type": "related" },
+      { "from": "dependency_preservation", "to": "decomposition", "type": "related" },
+      { "from": "normalization_BCNF", "to": "dependency_preservation", "type": "contrasts_with" }
+    ],
+    "gaps_detected": [
+      "Multivalued dependencies (4NF) mentioned in examples but not covered in the document — web augmentation recommended",
+      "Join dependencies (5NF) referenced without explanation"
+    ]
+  },
+  "mindmap_tree_output": {
+    "title": "Database Normalization: 1NF to BCNF",
+    "subject": "DBMS",
+    "children": [
+      {
+        "id": "branch_foundations",
+        "label": "Foundations",
+        "concept_id": "functional_dep",
+        "content": "The mathematical basis for all normalization theory",
+        "study_cue": "Think of X→Y as: knowing X always tells you Y — like knowing a student ID always gives you their name",
+        "children": [
+          {
+            "id": "node_fd",
+            "label": "Functional Dependency (X → Y)",
+            "concept_id": "functional_dep",
+            "content": "If two tuples match on X, they must match on Y",
+            "study_cue": "Arrow means 'determines': StudentID → StudentName",
+            "children": [
+              { "label": "Determinant: the left side (X)", "children": [] },
+              { "label": "Dependent: the right side (Y)", "children": [] },
+              { "label": "Trivial FD: Y is a subset of X", "children": [] }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "branch_normal_forms",
+        "label": "Normal Forms",
+        "content": "Progressive constraints that eliminate specific types of redundancy",
+        "study_cue": "Each normal form adds one new rule on top of the previous",
+        "children": [
+          {
+            "id": "node_1nf",
+            "label": "1NF — Atomic Values",
+            "concept_id": "normalization_1NF",
+            "content": "No repeating groups; every cell holds exactly one value",
+            "study_cue": "1NF = no lists in cells. Phone column must not hold '555-1234, 555-5678'",
+            "children": [
+              { "label": "Atomic: indivisible single value per cell", "children": [] },
+              { "label": "Eliminates: multi-valued attributes", "children": [] },
+              { "label": "Eliminates: nested/repeating groups", "children": [] }
+            ]
+          },
+          {
+            "id": "node_2nf",
+            "label": "2NF — No Partial Dependencies",
+            "concept_id": "normalization_2NF",
+            "content": "Every non-key attribute depends on the whole primary key, not just part of it",
+            "study_cue": "Only applies when PK is composite. If PK=(A,B) and C depends only on A → partial dependency",
+            "children": [
+              { "label": "Requires 1NF first", "children": [] },
+              { "label": "Partial dependency: non-key → part of PK", "children": [] },
+              { "label": "Fix: decompose into separate tables", "children": [] }
+            ]
+          },
+          {
+            "id": "node_3nf",
+            "label": "3NF — No Transitive Dependencies",
+            "concept_id": "normalization_3NF",
+            "content": "Non-key attributes must depend directly on the primary key, not on other non-key attributes",
+            "study_cue": "A→B→C where B is non-key is transitive. City depends on ZipCode depends on StudentID",
+            "children": [
+              { "label": "Requires 2NF first", "children": [] },
+              { "label": "Transitive: non-key → non-key → PK", "children": [] },
+              { "label": "Always dependency-preserving", "children": [] }
+            ]
+          },
+          {
+            "id": "node_bcnf",
+            "label": "BCNF — Every Determinant is a Superkey",
+            "concept_id": "normalization_BCNF",
+            "content": "For every FD X→Y, X must be a superkey. Stronger than 3NF.",
+            "study_cue": "If something determines something else, it must be a superkey. No exceptions.",
+            "children": [
+              { "label": "Requires 3NF first", "children": [] },
+              { "label": "Also called 3.5NF", "children": [] },
+              { "label": "May lose dependency preservation", "children": [] }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "branch_decomposition",
+        "label": "Decomposition Properties",
+        "content": "Criteria for evaluating whether a decomposition is correct",
+        "study_cue": "A split that loses information or breaks rules is worse than the original",
+        "children": [
+          {
+            "id": "node_lossless",
+            "label": "Lossless-Join",
+            "concept_id": "lossless_join",
+            "content": "Joining decomposed tables recovers the original — no spurious tuples",
+            "study_cue": "Lossless = safe to split. Natural join gets you back exactly what you started with",
+            "children": [
+              { "label": "Test: R1 ∩ R2 → R1 or R1 ∩ R2 → R2", "children": [] },
+              { "label": "Spurious tuples: fake rows from a bad join", "children": [] }
+            ]
+          },
+          {
+            "id": "node_dep_pres",
+            "label": "Dependency Preservation",
+            "concept_id": "dependency_preservation",
+            "content": "All original FDs can be checked in the decomposed schema without joining",
+            "study_cue": "If you have to JOIN just to check a constraint, dependency preservation is violated",
+            "children": [
+              { "label": "3NF: always achievable with both properties", "children": [] },
+              { "label": "BCNF: may sacrifice this for stricter normalization", "children": [] }
+            ]
+          },
+          {
+            "id": "node_decomp",
+            "label": "Schema Decomposition",
+            "concept_id": "decomposition",
+            "content": "Splitting relations to eliminate redundancy — must be lossless and ideally dependency-preserving",
+            "study_cue": "Good decomposition = lossless + dependency-preserving. Bad decomposition = data loss or harder constraint checking",
+            "children": [
+              { "label": "Goal: eliminate update/insert/delete anomalies", "children": [] },
+              { "label": "Trade-off: BCNF vs 3NF decomposition strategies", "children": [] }
+            ]
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "total_nodes": 22,
+      "max_depth": 4,
+      "concept_ids_covered": [
+        "functional_dep",
+        "normalization_1NF",
+        "normalization_2NF",
+        "normalization_3NF",
+        "normalization_BCNF",
+        "lossless_join",
+        "dependency_preservation",
+        "decomposition"
+      ]
+    }
+  },
+  "flashcard_output": {
+    "cards": [
+      {
+        "id": "card_001",
+        "concept_id": "functional_dep",
+        "type": "recall",
+        "front": "Define functional dependency. What does X → Y mean?",
+        "back": "X → Y means: for any two tuples in a relation, if they agree on attribute set X, they must agree on attribute set Y. X is called the determinant; Y is the dependent.",
+        "difficulty": "easy",
+        "tags": ["functional dependency", "foundations", "normalization"],
+        "hints": ["Think about what 'determines' means", "Consider StudentID → StudentName as an example"]
+      },
+      {
+        "id": "card_002",
+        "concept_id": "normalization_1NF",
+        "type": "recall",
+        "front": "What are the requirements for a relation to be in First Normal Form (1NF)?",
+        "back": "A relation is in 1NF if: (1) all attributes contain only atomic (indivisible) values, and (2) there are no repeating groups or multi-valued attributes. Every column must hold a single value per row.",
+        "difficulty": "easy",
+        "tags": ["1NF", "atomic values", "normal forms"],
+        "hints": ["What does 'atomic' mean?", "Can a cell hold a list in 1NF?"]
+      },
+      {
+        "id": "card_003",
+        "concept_id": "normalization_2NF",
+        "type": "application",
+        "front": "A relation R(StudentID, CourseID, Grade, StudentName) has primary key (StudentID, CourseID). Is it in 2NF? Why or why not?",
+        "back": "No, R is NOT in 2NF. StudentName depends only on StudentID (part of the composite PK), not on the full key (StudentID, CourseID). This is a partial dependency. Fix: decompose into R1(StudentID, CourseID, Grade) and R2(StudentID, StudentName).",
+        "difficulty": "intermediate",
+        "tags": ["2NF", "partial dependency", "composite key"],
+        "hints": ["Check if any non-key attribute depends on only part of the primary key", "What is a partial dependency?"]
+      },
+      {
+        "id": "card_004",
+        "concept_id": "normalization_2NF",
+        "type": "explain_simply",
+        "front": "Explain 2NF to someone who has never studied databases.",
+        "back": "Imagine a spreadsheet where each row needs two IDs to be unique (like StudentID + CourseID). 2NF says: every other column in that row must depend on BOTH IDs together, not just one of them. If a column only cares about the student (not the course), it belongs in a separate 'students' table.",
+        "difficulty": "easy",
+        "tags": ["2NF", "explanation", "analogy"],
+        "hints": ["Think of it in terms of a spreadsheet example"]
+      },
+      {
+        "id": "card_005",
+        "concept_id": "normalization_3NF",
+        "type": "recall",
+        "front": "What is a transitive dependency? Give an example.",
+        "back": "A transitive dependency occurs when a non-key attribute A determines another non-key attribute B, which in turn is what you really want to track. Example: in R(StudentID, ZipCode, City), StudentID → ZipCode and ZipCode → City, so City is transitively dependent on StudentID via ZipCode.",
+        "difficulty": "intermediate",
+        "tags": ["3NF", "transitive dependency"],
+        "hints": ["What does 'transitive' mean in logic?", "A→B→C — what's transitive here?"]
+      },
+      {
+        "id": "card_006",
+        "concept_id": "normalization_BCNF",
+        "type": "compare_contrast",
+        "front": "What is the difference between 3NF and BCNF? When does a relation satisfy 3NF but not BCNF?",
+        "back": "3NF allows a non-superkey to determine an attribute IF that attribute is part of a candidate key. BCNF requires ALL determinants to be superkeys — no exceptions. A relation satisfies 3NF but not BCNF when a non-superkey attribute determines a prime attribute (an attribute that is part of some candidate key).",
+        "difficulty": "hard",
+        "tags": ["BCNF", "3NF", "comparison", "superkey"],
+        "hints": ["What is the 3NF exception that BCNF removes?", "What does 'superkey' mean?"]
+      },
+      {
+        "id": "card_007",
+        "concept_id": "lossless_join",
+        "type": "application",
+        "front": "R(A, B, C) is decomposed into R1(A, B) and R2(B, C). Under what condition is this a lossless-join decomposition?",
+        "back": "The decomposition is lossless if B → A (so R1 ∩ R2 = {B} functionally determines R1's key) or B → C (so B is a key of R2). In general: R1 ∩ R2 must be a superkey of R1 or R2. The condition here is B → A or B → C.",
+        "difficulty": "hard",
+        "tags": ["lossless join", "decomposition", "formal test"],
+        "hints": ["What is the formal lossless-join test?", "What role does the intersection attribute play?"]
+      },
+      {
+        "id": "card_008",
+        "concept_id": "dependency_preservation",
+        "type": "recall",
+        "front": "Which normal form always guarantees both lossless-join AND dependency-preserving decomposition?",
+        "back": "3NF. Every relation can be decomposed into 3NF with both the lossless-join property and dependency preservation guaranteed. BCNF guarantees lossless-join but may sacrifice dependency preservation.",
+        "difficulty": "intermediate",
+        "tags": ["3NF", "BCNF", "dependency preservation", "lossless join"],
+        "hints": ["Think about the trade-off between BCNF and 3NF", "Which is the 'safer' normal form?"]
+      },
+      {
+        "id": "card_009",
+        "concept_id": "decomposition",
+        "type": "explain_simply",
+        "front": "Why do we decompose schemas at all? What problem does decomposition solve?",
+        "back": "Decomposition eliminates redundancy, which causes three types of anomalies: (1) Update anomaly — changing one fact requires updating multiple rows; (2) Insert anomaly — you can't store some data without storing other data; (3) Delete anomaly — deleting one fact accidentally deletes another. Decomposition separates concerns so each fact is stored exactly once.",
+        "difficulty": "easy",
+        "tags": ["decomposition", "redundancy", "anomalies"],
+        "hints": ["What happens when the same data is repeated across rows?", "Name the three anomaly types"]
+      },
+      {
+        "id": "card_010",
+        "concept_id": "normalization_BCNF",
+        "type": "application",
+        "front": "R(Course, Teacher, Room) with FDs: {Course, Teacher} → Room, Room → Course. Is R in BCNF?",
+        "back": "No. Room → Course is a non-trivial FD where Room is not a superkey (Room alone doesn't uniquely identify each row). Candidate keys are {Course, Teacher} and {Room, Teacher}. Since Room is not a superkey but determines Course, BCNF is violated. A 3NF decomposition would be: R1(Room, Course) and R2(Room, Teacher).",
+        "difficulty": "hard",
+        "tags": ["BCNF", "candidate key", "application"],
+        "hints": ["Check every FD: is the left side always a superkey?", "What are the candidate keys?"]
+      }
+    ]
+  },
+  "sample_explanations": {
+    "normalization_2NF": {
+      "turn_1": {
+        "message_type": "explanation",
+        "content": "Second Normal Form (2NF) builds on 1NF by eliminating **partial dependencies**. A partial dependency exists when a non-key attribute depends on only *part* of a composite primary key — not the whole key.\n\nFor example, suppose we have a table `Enrollment(StudentID, CourseID, Grade, StudentName)` with primary key `(StudentID, CourseID)`. Notice that `StudentName` only depends on `StudentID` — it doesn't care about `CourseID` at all. That's a partial dependency, and it violates 2NF.\n\n**Fix:** Split the table. Move `StudentName` into its own `Students(StudentID, StudentName)` table. The original table becomes `Enrollment(StudentID, CourseID, Grade)` — now every non-key attribute (`Grade`) depends on the full composite key.",
+        "conversation_complete": false,
+        "handoff_signal": null
+      },
+      "turn_2": {
+        "message_type": "micro_assessment",
+        "content": "Let me check your understanding with a quick question.",
+        "micro_assessment": {
+          "question": "A table has primary key (OrderID, ProductID) and attributes: Quantity, ProductName, UnitPrice. ProductName and UnitPrice depend only on ProductID. Is this table in 2NF? What change would fix it?",
+          "expected_understanding": "Student should identify that ProductName and UnitPrice are partial dependencies (they depend only on ProductID, not the full composite key). Fix: decompose into Orders(OrderID, ProductID, Quantity) and Products(ProductID, ProductName, UnitPrice).",
+          "difficulty": "intermediate"
+        },
+        "conversation_complete": false,
+        "handoff_signal": null
+      },
+      "turn_3": {
+        "message_type": "explanation",
+        "content": "Exactly right. The key insight is: **2NF only matters when the primary key is composite**. If your table has a single-column primary key, it's automatically in 2NF (there's no 'part' of the key to partially depend on).\n\nThe real-world consequence of violating 2NF: if StudentName depends on StudentID but lives in the Enrollment table, and a student changes their name, you'd have to update every row in Enrollment for that student — rather than just one row in a Students table. That's the update anomaly 2NF prevents.",
+        "conversation_complete": true,
+        "handoff_signal": "ready_for_flashcards"
+      }
+    }
+  }
+}
