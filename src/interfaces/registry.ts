@@ -18,14 +18,25 @@ import type { AgentName, OrchestratorInput, OrchestratorOutput } from './types';
 
 // ── Per-agent input types ───────────────────────────────────────────────────
 
-/** Raw file buffer + metadata sent to the Document Parser Agent. */
+/**
+ * Input to the .mm Generator Agent — the primary extraction agent in the
+ * .mm-first pipeline. Receives raw text already extracted from the source file
+ * (the session layer handles file parsing before calling this agent).
+ */
+export interface MmGeneratorInput {
+  rawText: string;
+  fileType: string;          // e.g. "pdf", "docx", "txt" — for context in the prompt
+  subjectHint?: string;      // e.g. "dbms" — helps the model use domain terminology
+}
+
+/** Raw file buffer + metadata sent to the Document Parser Agent (DEPRECATED). */
 export interface DocumentParserInput {
   fileBuffer: Buffer;
   mimeType: string;
   filename: string;
 }
 
-/** Parsed concept structure + domain sent to the Mindmap Generator. */
+/** Parsed concept structure + domain sent to the Mindmap Generator (DEPRECATED). */
 export interface MindmapInput {
   parsedContent: DocumentParserOutput;
   domain: string;
@@ -62,12 +73,15 @@ export interface WebSearchInput {
 // `AnyTasurAgent` is the value union — used when the specific agent is unknown.
 
 type AgentMap = {
-  'document-parser': TasurAgent<DocumentParserInput, DocumentParserOutput>;
+  // Active pipeline agents:
+  'mm-generator': TasurAgent<MmGeneratorInput, string>;
   'web-search': TasurAgent<WebSearchInput, unknown>;
-  'mindmap-generator': TasurAgent<MindmapInput, MindmapTreeOutput>;
   'concept-explainer': TasurStreamingAgent<ConceptExplainerInput, ExplainerOutput>;
   'flashcard-generator': TasurAgent<FlashcardGeneratorInput, FlashcardOutput>;
   orchestrator: TasurAgent<OrchestratorInput, OrchestratorOutputSchema>;
+  // Deprecated — retained for comparison testing, not in the active pipeline:
+  'document-parser': TasurAgent<DocumentParserInput, DocumentParserOutput>;
+  'mindmap-generator': TasurAgent<MindmapInput, MindmapTreeOutput>;
 };
 
 export type AnyTasurAgent = AgentMap[AgentName];

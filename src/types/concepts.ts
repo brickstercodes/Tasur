@@ -12,6 +12,7 @@ export type ConceptComplexity = 'foundational' | 'intermediate' | 'advanced';
 
 export type RelationshipType =
   | 'prerequisite'
+  | 'sequential'    // sibling ordering derived from .mm tree position
   | 'related'
   | 'contrasts_with'
   | 'part_of'

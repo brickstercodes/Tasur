@@ -1,4 +1,9 @@
 /**
+ * DEPRECATED — Module 8.5 (.mm-First Architecture Refactor)
+ * This agent is no longer in the active pipeline. The mindmap is now derived
+ * deterministically by toMindmapTreeOutput() from the .mm XML. No LLM call needed.
+ * Retained for comparison testing only.
+ *
  * WHY: Mastra-backed Mindmap Generator Agent implementation.
  *
  * Transforms the flat concept list from DocumentParserOutput into a

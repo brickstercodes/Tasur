@@ -1,3 +1,8 @@
+> **DEPRECATED** — Module 8.5 (.mm-First Architecture Refactor)
+> This agent is no longer in the active pipeline. The mindmap is now derived
+> deterministically by `src/lib/mm-parser/tree-converter.ts` from the .mm XML
+> produced by the .mm Generator agent. Retained for comparison testing only.
+
 # Mindmap Generator Agent
 
 ## Role

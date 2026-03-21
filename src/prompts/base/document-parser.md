@@ -1,3 +1,8 @@
+> **DEPRECATED** — Module 8.5 (.mm-First Architecture Refactor)
+> This prompt is no longer in the active pipeline. It has been replaced by
+> `base/mm-generator.md`. Retained for comparison testing only.
+> Do not use this for new sessions.
+
 # Document Parser Agent
 
 ## Role

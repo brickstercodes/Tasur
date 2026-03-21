@@ -1,4 +1,13 @@
 /**
+ * DEPRECATED — Module 8.5 (.mm-First Architecture Refactor)
+ * DocumentParserOutput is no longer the primary extraction format. The .mm-first
+ * pipeline uses DerivedConcept[] (derived by src/lib/mm-parser/concept-extractor.ts)
+ * instead. This schema is retained because:
+ *   1. Deprecated Document Parser and Mindmap Generator agents still reference it
+ *   2. buildParserOutputFromDerivedConcepts() returns a DocumentParserOutput-shaped
+ *      object for backward compatibility with the Flashcard Generator agent
+ *   3. Comparison testing between old and new pipelines
+ *
  * WHY: Zod schema for the Document Parser Agent output.
  *
  * Parsing is the entry point for every Tasur session — every downstream agent

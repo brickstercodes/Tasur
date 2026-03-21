@@ -8,13 +8,18 @@
  * Set AGENT_PROVIDER=mock in .env.local to activate this registry.
  * The agent-provider.ts config routes to this factory automatically.
  *
- * All six agents are instantiated fresh on every `createMockRegistry()` call
- * (stateless — no shared mutable state between registry instances).
+ * Active pipeline agents (4 + orchestrator):
+ *   mm-generator, web-search, concept-explainer, flashcard-generator, orchestrator
+ *
+ * Deprecated agents (retained for comparison testing):
+ *   document-parser, mindmap-generator — still registered so legacy test code
+ *   that calls registry.get('document-parser') doesn't throw.
  */
 
 import type { AgentName } from '@/interfaces/types';
 import type { AgentRegistry } from '@/interfaces/registry';
 
+import { MockMmGeneratorAgent } from './agents/mm-generator';
 import { MockDocumentParserAgent } from './agents/document-parser';
 import { MockFlashcardGeneratorAgent } from './agents/flashcard-generator';
 import { MockMindmapGeneratorAgent } from './agents/mindmap-generator';
@@ -22,31 +27,22 @@ import { MockConceptExplainerAgent } from './agents/concept-explainer';
 import { MockWebSearchAgent } from './agents/web-search';
 import { MockOrchestratorAgent } from './agents/orchestrator';
 
-/**
- * Returns a fully-wired AgentRegistry backed by deterministic mock agents.
- *
- * Implemented as an object-literal factory rather than a class so we can
- * return `AgentRegistry` directly. The `as unknown as AgentRegistry` cast on
- * the `get` return is intentional: TypeScript cannot statically verify that a
- * heterogeneous Map lookup satisfies `AgentMap[N]` (a conditional/mapped type
- * narrowed by the generic parameter), even though the runtime mapping is
- * correct. This is a known limitation when bridging heterogeneous maps to
- * generic interfaces — the cast is safe because the Map is fully keyed by
- * `AgentName` with matching agent types.
- */
 export function createMockRegistry(): AgentRegistry {
   const agents = {
+    // Active .mm-first pipeline agents:
+    'mm-generator': new MockMmGeneratorAgent(),
+    'web-search': new MockWebSearchAgent(),
+    'concept-explainer': new MockConceptExplainerAgent(),
+    'flashcard-generator': new MockFlashcardGeneratorAgent(),
+    'orchestrator': new MockOrchestratorAgent(),
+    // Deprecated — retained for comparison testing:
     'document-parser': new MockDocumentParserAgent(),
     'mindmap-generator': new MockMindmapGeneratorAgent(),
-    'flashcard-generator': new MockFlashcardGeneratorAgent(),
-    'concept-explainer': new MockConceptExplainerAgent(),
-    'web-search': new MockWebSearchAgent(),
-    'orchestrator': new MockOrchestratorAgent(),
   } as const;
 
   return {
     get<N extends AgentName>(name: N) {
-      const agent = agents[name];
+      const agent = agents[name as keyof typeof agents];
       if (!agent) {
         const allKeys = Object.keys(agents).join(', ');
         throw new Error(

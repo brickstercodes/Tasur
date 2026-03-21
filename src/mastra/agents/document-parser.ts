@@ -1,4 +1,9 @@
 /**
+ * DEPRECATED — Module 8.5 (.mm-First Architecture Refactor)
+ * This agent is no longer in the active pipeline. It has been replaced by
+ * MastraMmGeneratorAgent (src/mastra/agents/mm-generator.ts).
+ * Retained for comparison testing only. Do not use in new sessions.
+ *
  * WHY: Mastra-backed Document Parser Agent implementation.
  *
  * Receives a raw file buffer, extracts text via the Module 5 parsing pipeline,

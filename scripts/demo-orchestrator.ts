@@ -244,7 +244,7 @@ async function demoMockSessionLoop() {
   console.log('  Running Mastra session (fast mode) with mock agents...');
   const mastraResult = await mastraSession.run(sessionInput);
 
-  console.log(`  Parsed concepts:    ${mastraResult.parsed.concepts.length}`);
+  console.log(`  Derived concepts:   ${mastraResult.derivedConcepts.length}`);
   console.log(`  Mindmap nodes:      ${mastraResult.mindmap.metadata.total_nodes}`);
   console.log(`  Flashcards:         ${mastraResult.flashcards.cards.length}`);
   console.log(`  Orchestrator calls: ${mastraResult.totalOrchestratorCalls}`);

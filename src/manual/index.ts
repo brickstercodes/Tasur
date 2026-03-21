@@ -4,12 +4,19 @@
  * When AGENT_PROVIDER=manual, all agent calls go through direct Vercel AI SDK
  * calls instead of Mastra. Useful during development, for environments where
  * Mastra is unavailable, or when Mastra infra adds unwanted overhead for quick
- * LLM testing. Each agent is instantiated once and reused across requests.
+ * LLM testing.
+ *
+ * Active pipeline agents (4 + orchestrator):
+ *   mm-generator, web-search, concept-explainer, flashcard-generator, orchestrator
+ *
+ * Deprecated agents (retained for comparison testing):
+ *   document-parser, mindmap-generator
  */
 
 import type { AgentRegistry } from '@/interfaces/registry';
 import type { AgentName } from '@/interfaces/types';
 
+import { ManualMmGeneratorAgent } from './agents/mm-generator';
 import { ManualConceptExplainerAgent } from './agents/concept-explainer';
 import { ManualDocumentParserAgent } from './agents/document-parser';
 import { ManualFlashcardGeneratorAgent } from './agents/flashcard-generator';
@@ -19,12 +26,15 @@ import { ManualWebSearchAgent } from './agents/web-search';
 
 export function createManualRegistry(): AgentRegistry {
   const agents = {
-    'document-parser': new ManualDocumentParserAgent(),
+    // Active .mm-first pipeline agents:
+    'mm-generator': new ManualMmGeneratorAgent(),
     'web-search': new ManualWebSearchAgent(),
-    'mindmap-generator': new ManualMindmapGeneratorAgent(),
     'concept-explainer': new ManualConceptExplainerAgent(),
     'flashcard-generator': new ManualFlashcardGeneratorAgent(),
     'orchestrator': new ManualOrchestratorAgent(),
+    // Deprecated — retained for comparison testing:
+    'document-parser': new ManualDocumentParserAgent(),
+    'mindmap-generator': new ManualMindmapGeneratorAgent(),
   };
 
   return {

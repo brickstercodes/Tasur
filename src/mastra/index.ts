@@ -3,13 +3,20 @@
  *
  * When AGENT_PROVIDER=mastra, getAgentRegistry() delegates here. Each agent
  * is instantiated once and reused across calls (agents hold no mutable state —
- * they rebuild per-request context inside execute/stream). Adding a new agent
- * means registering it in the map below and nowhere else.
+ * they rebuild per-request context inside execute/stream).
+ *
+ * Active pipeline agents (4 + orchestrator):
+ *   mm-generator, web-search, concept-explainer, flashcard-generator, orchestrator
+ *
+ * Deprecated agents (retained for comparison testing):
+ *   document-parser, mindmap-generator — adding a new agent means registering
+ *   it in the map below and nowhere else.
  */
 
 import type { AgentRegistry } from '@/interfaces/registry';
 import type { AgentName } from '@/interfaces/types';
 
+import { MastraMmGeneratorAgent } from './agents/mm-generator';
 import { MastraConceptExplainerAgent } from './agents/concept-explainer';
 import { MastraDocumentParserAgent } from './agents/document-parser';
 import { MastraFlashcardGeneratorAgent } from './agents/flashcard-generator';
@@ -19,12 +26,15 @@ import { MastraWebSearchAgent } from './agents/web-search';
 
 export function createMastraRegistry(): AgentRegistry {
   const agents = {
-    'document-parser': new MastraDocumentParserAgent(),
+    // Active .mm-first pipeline agents:
+    'mm-generator': new MastraMmGeneratorAgent(),
     'web-search': new MastraWebSearchAgent(),
-    'mindmap-generator': new MastraMindmapGeneratorAgent(),
     'concept-explainer': new MastraConceptExplainerAgent(),
     'flashcard-generator': new MastraFlashcardGeneratorAgent(),
     'orchestrator': new MastraOrchestratorAgent(),
+    // Deprecated — retained for comparison testing:
+    'document-parser': new MastraDocumentParserAgent(),
+    'mindmap-generator': new MastraMindmapGeneratorAgent(),
   };
 
   return {

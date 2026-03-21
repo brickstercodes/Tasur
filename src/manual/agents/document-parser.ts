@@ -1,4 +1,9 @@
 /**
+ * DEPRECATED — Module 8.5 (.mm-First Architecture Refactor)
+ * This agent is no longer in the active pipeline. It has been replaced by
+ * ManualMmGeneratorAgent (src/manual/agents/mm-generator.ts).
+ * Retained for comparison testing only. Do not use in new sessions.
+ *
  * WHY: Vercel AI SDK fallback Document Parser Agent implementation.
  *
  * Implements the same TasurAgent contract as the Mastra version but uses

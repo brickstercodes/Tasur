@@ -16,12 +16,14 @@ import type { LearningMode } from '@/types/sessions';
 // Defined here so both registry.ts and NextAction can use it without circular deps.
 
 export type AgentName =
-  | 'document-parser'
+  | 'mm-generator'
   | 'web-search'
-  | 'mindmap-generator'
   | 'concept-explainer'
   | 'flashcard-generator'
-  | 'orchestrator';
+  | 'orchestrator'
+  // Deprecated — retained for comparison testing, not in the active pipeline:
+  | 'document-parser'
+  | 'mindmap-generator';
 
 // ── Orchestrator I/O ────────────────────────────────────────────────────────
 
