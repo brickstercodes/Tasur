@@ -14,6 +14,7 @@ import { MastraConceptExplainerAgent } from './agents/concept-explainer';
 import { MastraDocumentParserAgent } from './agents/document-parser';
 import { MastraFlashcardGeneratorAgent } from './agents/flashcard-generator';
 import { MastraMindmapGeneratorAgent } from './agents/mindmap-generator';
+import { MastraOrchestratorAgent } from './agents/orchestrator';
 import { MastraWebSearchAgent } from './agents/web-search';
 
 export function createMastraRegistry(): AgentRegistry {
@@ -23,6 +24,7 @@ export function createMastraRegistry(): AgentRegistry {
     'mindmap-generator': new MastraMindmapGeneratorAgent(),
     'concept-explainer': new MastraConceptExplainerAgent(),
     'flashcard-generator': new MastraFlashcardGeneratorAgent(),
+    'orchestrator': new MastraOrchestratorAgent(),
   };
 
   return {

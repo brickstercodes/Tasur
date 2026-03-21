@@ -14,6 +14,7 @@ import { ManualConceptExplainerAgent } from './agents/concept-explainer';
 import { ManualDocumentParserAgent } from './agents/document-parser';
 import { ManualFlashcardGeneratorAgent } from './agents/flashcard-generator';
 import { ManualMindmapGeneratorAgent } from './agents/mindmap-generator';
+import { ManualOrchestratorAgent } from './agents/orchestrator';
 import { ManualWebSearchAgent } from './agents/web-search';
 
 export function createManualRegistry(): AgentRegistry {
@@ -23,6 +24,7 @@ export function createManualRegistry(): AgentRegistry {
     'mindmap-generator': new ManualMindmapGeneratorAgent(),
     'concept-explainer': new ManualConceptExplainerAgent(),
     'flashcard-generator': new ManualFlashcardGeneratorAgent(),
+    'orchestrator': new ManualOrchestratorAgent(),
   };
 
   return {

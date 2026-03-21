@@ -29,7 +29,10 @@
       "Bash(cat:*)",
       "Bash(node /tmp/verify_schema.mjs)",
       "Bash(npm list:*)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(wc -l /Users/anugrahshetty/Documents/Tasur/src/mastra/agents/*.ts)",
+      "Bash(grep -r \"\\\\.mm\\\\|freeplane\\\\|markmap\" /Users/anugrahshetty/Documents/Tasur/src --include=*.ts --include=*.md)",
+      "Bash(wc -l /Users/anugrahshetty/Documents/Tasur/src/mock/agents/*.ts)"
     ]
   }
 }
