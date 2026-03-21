@@ -30,8 +30,17 @@ const googleOAuthProviders =
     : {};
 
 export const auth = betterAuth({
+  // BetterAuth defaults to nanoid IDs. Override to UUID so user_id columns
+  // (typed as uuid in Postgres) accept the value without a cast error.
+  advanced: {
+    generateId: () => crypto.randomUUID(),
+  },
+
   database: new Pool({
     connectionString: process.env.DATABASE_URL,
+    // Supabase's pooler uses a self-signed cert in the chain. Disabling
+    // rejectUnauthorized lets pg connect without verifying the CA.
+    ssl: { rejectUnauthorized: false, checkServerIdentity: () => undefined },
   }),
 
   emailAndPassword: {

@@ -105,10 +105,17 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
 
   return (
     <div style={{ opacity, transition: 'opacity 0.2s ease' }}>
-      {/* Left handle — used when this node is a left-side child or a left-side parent. */}
+      {/* Left handles — source for left-side parent outgoing edges; target for right-side child incoming edges. */}
       <Handle
         id="left"
         type="source"
+        position={Position.Left}
+        isConnectable={false}
+        style={HIDDEN_HANDLE_STYLE}
+      />
+      <Handle
+        id="left"
+        type="target"
         position={Position.Left}
         isConnectable={false}
         style={HIDDEN_HANDLE_STYLE}
@@ -181,10 +188,17 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
         )}
       </div>
 
-      {/* Right handle — used when this node is a right-side child or a right-side parent. */}
+      {/* Right handles — source for right-side parent outgoing edges; target for left-side child incoming edges. */}
       <Handle
         id="right"
         type="source"
+        position={Position.Right}
+        isConnectable={false}
+        style={HIDDEN_HANDLE_STYLE}
+      />
+      <Handle
+        id="right"
+        type="target"
         position={Position.Right}
         isConnectable={false}
         style={HIDDEN_HANDLE_STYLE}

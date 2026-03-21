@@ -34,7 +34,8 @@
       "Bash(grep -r \"\\\\.mm\\\\|freeplane\\\\|markmap\" /Users/anugrahshetty/Documents/Tasur/src --include=*.ts --include=*.md)",
       "Bash(wc -l /Users/anugrahshetty/Documents/Tasur/src/mock/agents/*.ts)",
       "Bash(wc -l /Users/anugrahshetty/Documents/Tasur/src/prompts/domains/*.md)",
-      "Bash(ls -la /Users/anugrahshetty/Documents/Tasur/src/app/\\\\\\(dashboard\\\\\\)/)"
+      "Bash(ls -la /Users/anugrahshetty/Documents/Tasur/src/app/\\\\\\(dashboard\\\\\\)/)",
+      "Bash(ls -la /Users/anugrahshetty/Documents/Tasur/src/app/\\\\\\(dashboard\\\\\\)/study/)"
     ]
   }
 }

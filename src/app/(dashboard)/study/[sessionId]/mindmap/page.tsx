@@ -82,8 +82,11 @@ export default async function MindmapPage({ params }: PageProps) {
      */
     <div
       style={{
-        height: 'calc(100vh - 52px)',
-        marginTop: '-40px',
+        // Viewport minus: dashboard header (52px) + session nav layout (48px) = 100px.
+        // The session layout's nav occupies 48px above this div; no marginTop needed
+        // to escape main's padding-top because the session nav fills that space.
+        height: 'calc(100vh - 100px)',
+        marginTop: 0,
         marginBottom: '-40px',
         marginLeft: '-24px',
         marginRight: '-24px',
