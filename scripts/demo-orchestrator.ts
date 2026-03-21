@@ -1,15 +1,10 @@
 /**
  * End-to-end orchestrator demo.
  *
- * Tests the full session loop using the mock provider (AGENT_PROVIDER=mock):
- *   1. Mock document parser returns 3 DBMS concepts
- *   2. Orchestrator routes to concept-explainer for the first concept
- *   3. A simulated micro-assessment triggers another orchestrator call
- *   4. Fast mode vs steady mode produce different routing decisions
- *   5. Validation gate catches a deliberately malformed flashcard output
- *
- * Also runs a single real orchestrator call (manual path, Gemini) if
- * LLM_PROVIDER=gemini and GOOGLE_GENERATIVE_AI_API_KEY is set.
+ * Tests orchestrator correctness using real API calls (mock system retired):
+ *   1. Call frequency gate — deterministic code, no LLM needed.
+ *   2. Validation gate — deterministic code, no LLM needed.
+ *   3. Real LLM orchestrator call (manual path, Gemini) if API key is set.
  *
  * Usage: npx tsx scripts/demo-orchestrator.ts
  */
@@ -19,11 +14,7 @@ import path from 'path';
 
 config({ path: path.resolve(process.cwd(), '.env') });
 
-import { createMockRegistry } from '../src/mock/index';
 import { ManualOrchestratorAgent } from '../src/manual/agents/orchestrator';
-import { MockOrchestratorAgent } from '../src/mock/agents/orchestrator';
-import { MastraLearningSession } from '../src/mastra/workflows/learning-session';
-import { ManualLearningSession } from '../src/manual/orchestration/learning-session';
 import {
   validateMindmapCoverage,
   validateFlashcards,
@@ -173,99 +164,7 @@ function demoValidationGate() {
   console.log('\n  ✓ All validation gate assertions passed');
 }
 
-// ── Section 3: Mock orchestrator — fast vs steady mode ────────────────────────
-
-async function demoMockOrchestrator() {
-  sep('Section 3: Mock Orchestrator — fast vs steady produce different routing');
-
-  // Build a graph with one concept in-progress (2NF partially understood)
-  const mockRegistry = createMockRegistry();
-
-  // Parse a sample doc to get a real graph state
-  const parseResult = await mockRegistry.get('document-parser').execute({
-    fileBuffer: SAMPLE_DOCUMENT,
-    mimeType: 'text/plain',
-    filename: 'dbms-normalization.txt',
-  });
-
-  const graphState = buildInitialGraphState('demo-session-1', parseResult.data);
-
-  // Simulate: student just completed a micro-assessment on the first concept
-  // with a middling score (0.55 — passes fast threshold of 0.5, fails steady threshold of 0.7)
-  const graph = StudentGraph.fromState(graphState);
-  const firstConceptId = parseResult.data.concepts[0]?.id ?? 'normalization_1NF';
-  graph.updateConfidence(firstConceptId, 0.55, 'micro_assessment');
-
-  const baseInput: OrchestratorInput = {
-    studentState: graph.serialize(),
-    domain: 'dbms',
-    lastEvent: 'micro_assessment_complete',
-  } as OrchestratorInput;
-
-  const mock = new MockOrchestratorAgent();
-
-  // Fast mode
-  const fastResult = await mock.execute({ ...baseInput, mode: 'fast' });
-  printDecision('[fast mode] After micro-assessment (score 0.55):', fastResult.data);
-
-  // Steady mode — same student state, same score
-  const steadyResult = await mock.execute({ ...baseInput, mode: 'steady' });
-  printDecision('[steady] After micro-assessment (score 0.55):', steadyResult.data);
-
-  // Assert they differ in at least the routing params or agent (mode-aware threshold)
-  const fastAgent = fastResult.data.next_action.agent;
-  const steadyAgent = steadyResult.data.next_action.agent;
-  console.log(`\n  Fast routes to: ${fastAgent}`);
-  console.log(`  Steady routes to: ${steadyAgent}`);
-  console.log('\n  ✓ Both modes returned valid routing decisions');
-}
-
-// ── Section 4: Full mock session loop ────────────────────────────────────────
-
-async function demoMockSessionLoop() {
-  sep('Section 4: Full Mock Session — upload → orient → explain → route');
-
-  const mockRegistry = createMockRegistry();
-
-  const mastraSession = new MastraLearningSession(mockRegistry);
-  const manualSession = new ManualLearningSession(mockRegistry);
-
-  const sessionInput = {
-    sessionId: 'demo-session-mock',
-    documentInput: {
-      fileBuffer: SAMPLE_DOCUMENT,
-      mimeType: 'text/plain' as const,
-      filename: 'dbms-normalization.txt',
-    },
-    domain: 'dbms',
-    mode: 'fast' as const,
-  };
-
-  console.log('  Running Mastra session (fast mode) with mock agents...');
-  const mastraResult = await mastraSession.run(sessionInput);
-
-  console.log(`  Derived concepts:   ${mastraResult.derivedConcepts.length}`);
-  console.log(`  Mindmap nodes:      ${mastraResult.mindmap.metadata.total_nodes}`);
-  console.log(`  Flashcards:         ${mastraResult.flashcards.cards.length}`);
-  console.log(`  Orchestrator calls: ${mastraResult.totalOrchestratorCalls}`);
-  console.log(`  Final routing log:`);
-  for (const entry of mastraResult.routingLog) {
-    console.log(`    [${entry.step}] ${entry.lastEvent.padEnd(30)} → ${entry.decision.next_action.agent}`);
-  }
-
-  console.log('\n  Running Manual session (steady mode) with mock agents...');
-  const manualResult = await manualSession.run({ ...sessionInput, mode: 'steady', sessionId: 'demo-session-manual' });
-
-  console.log(`  Orchestrator calls: ${manualResult.totalOrchestratorCalls}`);
-  console.log(`  Final routing log:`);
-  for (const entry of manualResult.routingLog) {
-    console.log(`    [${entry.step}] ${entry.lastEvent.padEnd(30)} → ${entry.decision.next_action.agent}`);
-  }
-
-  console.log('\n  ✓ Both Mastra and manual sessions completed successfully');
-}
-
-// ── Section 5: Real LLM orchestrator (if API key is present) ──────────────────
+// ── Section 3: Real LLM orchestrator (if API key is present) ──────────────────
 
 async function demoRealOrchestrator() {
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
@@ -274,16 +173,23 @@ async function demoRealOrchestrator() {
     return;
   }
 
-  sep('Section 5: Real LLM Orchestrator (Gemini) — manual path');
+  sep('Section 3: Real LLM Orchestrator (Gemini) — manual path');
 
-  const mockRegistry = createMockRegistry();
-  const parseResult = await mockRegistry.get('document-parser').execute({
-    fileBuffer: SAMPLE_DOCUMENT,
-    mimeType: 'text/plain',
-    filename: 'dbms-normalization.txt',
+  // Build a minimal graph state for the real orchestrator call.
+  const graphState = buildInitialGraphState('demo-real-session', {
+    title: 'Database Normalization',
+    subject_detection: { primary: 'dbms', confidence: 0.95, domain_template: 'dbms_v1' },
+    concepts: MOCK_CONCEPT_IDS.map((id, i) => ({
+      id,
+      name: id.replace(/_/g, ' '),
+      raw_content: `Content for ${id}`,
+      prerequisites: i > 0 ? [MOCK_CONCEPT_IDS[i - 1]] : [],
+      complexity: 'foundational' as const,
+      keywords: [],
+    })),
+    concept_relationships: [],
+    gaps_detected: [],
   });
-
-  const graphState = buildInitialGraphState('demo-real-session', parseResult.data);
 
   const orchestratorInput: OrchestratorInput = {
     studentState: graphState,
@@ -311,8 +217,6 @@ async function main() {
 
   demoCallFrequency();
   demoValidationGate();
-  await demoMockOrchestrator();
-  await demoMockSessionLoop();
   await demoRealOrchestrator();
 
   console.log('\n═══════════════════════════════════════════════════════════════');
