@@ -23,6 +23,13 @@ interface MicroAssessmentProps {
   question: string;
   difficulty: 'easy' | 'intermediate' | 'hard';
   learningMode: 'fast' | 'steady';
+  /**
+   * Determined by the LLM, not the learning mode.
+   * self_check → Yes/No confidence buttons (fast mode only, no specific correct answer).
+   * open       → free-text input (any question with a specific correct answer).
+   * Defaults to 'open' so old messages without this field render correctly.
+   */
+  questionType?: 'self_check' | 'open';
   onSubmit: (answer: string) => void;
 }
 
@@ -48,6 +55,7 @@ export function MicroAssessment({
   question,
   difficulty,
   learningMode,
+  questionType = 'open',
   onSubmit,
 }: MicroAssessmentProps) {
   const [answer, setAnswer] = useState('');
@@ -124,9 +132,11 @@ export function MicroAssessment({
         >
           Answer submitted — waiting for response…
         </p>
-      ) : learningMode === 'fast' ? (
+      ) : learningMode === 'fast' && questionType === 'self_check' ? (
+        // Self-check buttons only when the question has no specific correct answer.
         <FastModeButtons onSelect={handleFastSubmit} />
       ) : (
+        // All open questions — and all steady mode questions — use the text input.
         <SteadyModeInput
           answer={answer}
           onChange={setAnswer}

@@ -28,7 +28,7 @@ import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
 import { createServerClient } from '@/lib/supabase';
 import { getAgentRegistry } from '@/config/agent-provider';
-import { loadFromSupabase } from '@/lib/graph/sync';
+import { loadFromSupabase, syncToSupabase } from '@/lib/graph/sync';
 import type { ConceptExplainerInput } from '@/interfaces/registry';
 import type { ExplainerOutput } from '@/lib/schemas/explainer-output';
 
@@ -202,7 +202,7 @@ export async function POST(
           if (graph) {
             const orchestrator = registry.get('orchestrator');
             const lastEvent = isAssessmentSubmit
-              ? `micro_assessment_submitted: ${message}`
+              ? `micro_assessment_complete: ${message}`
               : 'concept_entry';
 
             try {
@@ -211,19 +211,30 @@ export async function POST(
                 mode: learningMode,
                 lastEvent,
                 domain,
+                currentConceptId: conceptId,
               });
 
               const orchestratorData = orchestratorResult.data;
 
               // Persist the understanding update when the orchestrator evaluates an answer.
               if (isAssessmentSubmit && orchestratorData.understanding_update) {
+                const { concept_id: updatedConceptId, new_confidence: newConfidence } =
+                  orchestratorData.understanding_update;
+
                 await updateUnderstandingState(
                   supabase,
                   sessionId,
                   appUserId,
-                  orchestratorData.understanding_update.concept_id,
-                  orchestratorData.understanding_update.new_confidence,
+                  updatedConceptId,
+                  newConfidence,
                 );
+
+                // Mirror the confidence update into the StudentGraph snapshot so the
+                // orchestrator sees fresh scores on its next call. The `graph` object
+                // was loaded above and is still in scope — reuse it to avoid a second
+                // Supabase round-trip.
+                graph.updateConfidence(updatedConceptId, newConfidence, 'explanation');
+                await syncToSupabase(graph);
               }
 
               // Inject orchestrator reasoning into context so explainer knows the approach.

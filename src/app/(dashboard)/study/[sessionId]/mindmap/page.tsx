@@ -21,6 +21,7 @@
 import { notFound } from 'next/navigation';
 
 import { createServerClient } from '@/lib/supabase';
+import { loadFromSupabase } from '@/lib/graph/sync';
 import type { MindmapTreeOutput } from '@/lib/schemas/mindmap-tree-output';
 import { MindmapViewer } from '@/components/mindmap/MindmapViewer';
 
@@ -73,6 +74,19 @@ export default async function MindmapPage({ params }: PageProps) {
   const learningMode = sessionResult.data?.learning_mode ?? 'steady';
   const sessionTitle = sessionResult.data?.title ?? '';
 
+  // Determine the recommended next concept without an LLM call — the StudentGraph
+  // already encodes all the logic needed (priority, prerequisites, confidence).
+  // Non-fatal: if the graph doesn't exist yet (race condition on new session) or
+  // the query fails, we simply show no resume indicator.
+  let resumeConceptId: string | null = null;
+  try {
+    const graph = await loadFromSupabase(sessionId);
+    const nextNode = graph?.getNextRecommended(learningMode) ?? null;
+    resumeConceptId = nextNode?.id ?? null;
+  } catch {
+    // Non-fatal — mindmap renders normally without the resume indicator.
+  }
+
   return (
     /*
      * The dashboard layout applies max-w-5xl + px-6 py-10 to <main>.
@@ -99,6 +113,7 @@ export default async function MindmapPage({ params }: PageProps) {
         sessionId={sessionId}
         learningMode={learningMode}
         sessionTitle={sessionTitle}
+        resumeConceptId={resumeConceptId}
       />
     </div>
   );

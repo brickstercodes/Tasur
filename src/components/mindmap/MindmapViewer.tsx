@@ -58,6 +58,12 @@ export type MindmapViewerProps = {
   sessionId: string;
   learningMode: 'fast' | 'steady';
   sessionTitle: string;
+  /**
+   * The concept_id the graph recommends the student work on next.
+   * Null when all concepts are mastered or the graph hasn't been built yet.
+   * The corresponding node is highlighted with a pulsing ring.
+   */
+  resumeConceptId?: string | null;
 };
 
 // ── Top-level export: wraps content in ReactFlowProvider ──────────────────────
@@ -77,6 +83,7 @@ function MindmapViewerContent({
   confidenceData,
   sessionId,
   learningMode,
+  resumeConceptId,
 }: MindmapViewerProps) {
   const router = useRouter();
   const { fitView, zoomIn, zoomOut } = useReactFlow();
@@ -108,7 +115,7 @@ function MindmapViewerContent({
   );
 
   // Re-run layout when collapsed state changes so the tree recenters correctly.
-  const { nodes: layoutNodes, edges: layoutEdges } = useMemo(
+  const { nodes: rawLayoutNodes, edges: layoutEdges } = useMemo(
     () =>
       buildBalancedTreeLayout(
         tree,
@@ -119,6 +126,17 @@ function MindmapViewerContent({
       ),
     [tree, confidenceMap, collapsedNodes, handleToggleCollapse, handleConceptClick],
   );
+
+  // Flag the single node the graph recommends next. Done as a post-process so
+  // balanced-tree.ts stays free of resume-specific concerns.
+  const layoutNodes = useMemo<Node<FlowNodeData>[]>(() => {
+    if (!resumeConceptId) return rawLayoutNodes;
+    return rawLayoutNodes.map((node) =>
+      node.data.concept_id === resumeConceptId
+        ? { ...node, data: { ...node.data, isResumeTarget: true } }
+        : node,
+    );
+  }, [rawLayoutNodes, resumeConceptId]);
 
   // Apply search dim: nodes not matching query fade to 30% opacity (handled in MindmapNode).
   const searchedNodes = useMemo<Node<FlowNodeData>[]>(() => {
@@ -149,6 +167,13 @@ function MindmapViewerContent({
     fitView({ padding: 0.12, duration: 450 });
   }, [fitView]);
 
+  // Jump viewport to the resume target node.
+  const handleJumpToResume = useCallback(() => {
+    const resumeNode = layoutNodes.find((n) => n.data.isResumeTarget);
+    if (!resumeNode) return;
+    fitView({ nodes: [{ id: resumeNode.id }], padding: 0.5, duration: 550 });
+  }, [fitView, layoutNodes]);
+
   const handleZoomIn = useCallback(() => {
     zoomIn({ duration: 200 });
   }, [zoomIn]);
@@ -161,6 +186,15 @@ function MindmapViewerContent({
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      {/* Keyframe for resume-target pulse ring — injected once at the container level. */}
+      <style>{`
+        @keyframes resumePulse {
+          0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0.55); }
+          65%  { box-shadow: 0 0 0 7px rgba(99,102,241,0); }
+          100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+        }
+      `}</style>
+
       {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
       <div
         style={{
@@ -233,6 +267,42 @@ function MindmapViewerContent({
           </ToolbarButton>
         )}
         <ToolbarDivider />
+
+        {/* Resume target jump button — only shown when a target exists. */}
+        {resumeConceptId && (
+          <>
+            <ToolbarDivider />
+            <button
+              onClick={handleJumpToResume}
+              title="Jump to recommended next concept"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '3px 8px',
+                border: 'none',
+                borderRadius: 5,
+                background: '#6366f1',
+                color: '#fff',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                letterSpacing: '0.02em',
+                whiteSpace: 'nowrap',
+                transition: 'background 0.1s ease',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = '#4f46e5';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = '#6366f1';
+              }}
+            >
+              ▶ Continue
+            </button>
+          </>
+        )}
 
         {/* Learning mode indicator */}
         <span

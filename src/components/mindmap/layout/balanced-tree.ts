@@ -66,6 +66,8 @@ export type FlowNodeData = {
   visibleChildCount: number;
   /** Undefined = no active search. True = matches query. False = does not match. */
   searchMatch?: boolean;
+  /** True on the single node the graph recommends the student work on next. */
+  isResumeTarget?: boolean;
   onToggleCollapse: (nodeId: string) => void;
   onConceptClick: (conceptId: string) => void;
 };

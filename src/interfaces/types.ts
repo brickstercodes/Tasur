@@ -36,6 +36,13 @@ export interface OrchestratorInput {
   mode: LearningMode;
   lastEvent: string; // e.g. "micro_assessment_complete", "session_start"
   domain: string; // e.g. "dbms"
+  /**
+   * The concept_id currently being discussed or assessed.
+   * When present and lastEvent is micro_assessment_complete, the orchestrator
+   * MUST use this as understanding_update.concept_id — never infer it from the
+   * student's answer text or graph state.
+   */
+  currentConceptId?: string;
 }
 
 /**

@@ -249,6 +249,7 @@ export function buildOrchestratorUserMessage(
   mode: string,
   domain: string,
   nextTeachingTarget?: string | null,
+  currentConceptId?: string,
 ): string {
   const nodeLines = state.nodes
     .map((node) => {
@@ -266,9 +267,23 @@ export function buildOrchestratorUserMessage(
   const lines = [
     `Event: ${lastEvent}`,
     `Mode: ${mode} | Domain: ${domain}`,
+  ];
+
+  // When a concept is being actively assessed, surface it explicitly so the
+  // orchestrator never has to guess concept_id from the student's answer text.
+  if (currentConceptId) {
+    const conceptNode = state.nodes.find((n) => n.id === currentConceptId);
+    const conceptName = conceptNode ? ` ("${conceptNode.name}")` : '';
+    lines.push(`Currently assessed concept: ${currentConceptId}${conceptName}`);
+    lines.push(
+      `IMPORTANT: If emitting understanding_update, you MUST set concept_id to "${currentConceptId}" — do not infer it from the student answer.`,
+    );
+  }
+
+  lines.push(
     '',
     `Progress: ${progress.mastered}/${progress.total} mastered | avg confidence: ${progress.averageConfidence.toFixed(2)}`,
-  ];
+  );
 
   if (nextTeachingTarget !== undefined) {
     lines.push(

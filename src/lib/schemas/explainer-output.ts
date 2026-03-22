@@ -43,6 +43,18 @@ export const explainerOutputSchema = z.object({
       question: z.string(),
       expected_understanding: z.string(), // grading rubric (not shown to student)
       difficulty: difficultySchema,
+      /**
+       * Controls the input widget the frontend renders:
+       *   self_check — a comprehension check the student grades themselves ("Got it / Not yet").
+       *                Only appropriate when the question is a yes/no confidence check.
+       *   open       — a specific-answer question requiring a typed response
+       *                (factual recall, fill-in-the-blank, scenario analysis, etc.).
+       *
+       * Fast mode: use self_check for quick comprehension checks; use open for any
+       *            question that has a specific correct answer the student must state.
+       * Steady mode: always use open — self_check is too coarse for deep understanding.
+       */
+      question_type: z.enum(['self_check', 'open']),
     })
     .nullable()
     .optional(),

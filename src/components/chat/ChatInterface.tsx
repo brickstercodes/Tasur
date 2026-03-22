@@ -21,6 +21,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { MicroAssessment } from './MicroAssessment';
 import { VisualSuggestion } from './VisualSuggestion';
@@ -36,12 +37,14 @@ interface ChatMessage {
     question: string;
     expected_understanding: string;
     difficulty: 'easy' | 'intermediate' | 'hard';
+    question_type?: 'self_check' | 'open';
   };
   visualSuggestion?: {
     type: 'diagram' | 'table' | 'comparison';
     data: Record<string, unknown>;
   };
   isStreaming?: boolean;
+  conversationComplete?: boolean;
 }
 
 interface HistoryRow {
@@ -79,10 +82,17 @@ export function ChatInterface({
   domain,
   learningMode,
 }: ChatInterfaceProps) {
+  const router = useRouter();
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // True when the latest assistant message signals the concept is fully covered.
+  const isConversationComplete = messages
+    .filter((m) => m.role === 'assistant' && !m.isStreaming)
+    .some((m) => m.conversationComplete === true);
 
   // Tracks whether the next send is the first for this concept (triggers orchestrator).
   const isNewConceptRef = useRef(true);
@@ -240,7 +250,15 @@ export function ChatInterface({
             ? {
                 ...m,
                 messageType: data.message_type,
-                microAssessment: data.micro_assessment ?? undefined,
+                conversationComplete: data.conversation_complete ?? false,
+                microAssessment: data.micro_assessment
+                  ? {
+                      question: data.micro_assessment.question,
+                      expected_understanding: data.micro_assessment.expected_understanding,
+                      difficulty: data.micro_assessment.difficulty,
+                      question_type: data.micro_assessment.question_type,
+                    }
+                  : undefined,
                 visualSuggestion:
                   data.visual_suggestion
                     ? {
@@ -346,6 +364,50 @@ export function ChatInterface({
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Move-on CTA — shown when the explainer signals the concept is complete. */}
+      {isConversationComplete && (
+        <div
+          style={{
+            padding: '12px 0 4px',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
+          <button
+            onClick={() => router.push(`/study/${sessionId}/mindmap`)}
+            style={{
+              width: '100%',
+              padding: '13px 24px',
+              border: 'none',
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+              color: '#fff',
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              letterSpacing: '0.01em',
+              boxShadow: '0 2px 12px rgba(99,102,241,0.35)',
+              transition: 'opacity 0.15s ease, transform 0.1s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.opacity = '0.92';
+              (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.opacity = '1';
+              (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
+            }}
+          >
+            Move on to the next concept →
+          </button>
+        </div>
+      )}
 
       {/* Input area */}
       <div
@@ -507,6 +569,7 @@ function MessageBubble({
             question={message.microAssessment.question}
             difficulty={message.microAssessment.difficulty}
             learningMode={learningMode}
+            questionType={message.microAssessment.question_type}
             onSubmit={onAssessmentSubmit}
           />
         </div>
@@ -559,10 +622,12 @@ function isErrorData(data: unknown): data is { message: string } {
 
 interface MetadataPayload {
   message_type: string;
+  conversation_complete?: boolean;
   micro_assessment?: {
     question: string;
     expected_understanding: string;
     difficulty: 'easy' | 'intermediate' | 'hard';
+    question_type?: 'self_check' | 'open';
   } | null;
   visual_suggestion?: {
     type: 'diagram' | 'table' | 'comparison';

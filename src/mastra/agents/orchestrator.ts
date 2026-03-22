@@ -47,6 +47,8 @@ export class MastraOrchestratorAgent
       input.lastEvent,
       input.mode,
       input.domain,
+      undefined,
+      input.currentConceptId,
     );
 
     if (process.env.DEBUG_PROMPTS) {

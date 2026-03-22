@@ -45,6 +45,8 @@ export class ManualOrchestratorAgent
       input.lastEvent,
       input.mode,
       input.domain,
+      undefined,
+      input.currentConceptId,
     );
 
     if (process.env.DEBUG_PROMPTS) {

@@ -63,6 +63,18 @@ Write assessments at the right Bloom's level for the mode:
 
 The `expected_understanding` field is your grading rubric — it is NOT shown to the student. Be specific about what a correct answer includes.
 
+### `question_type` — required on every micro_assessment
+
+Set `question_type` based on what kind of answer the question expects:
+
+- `"self_check"` — the student grades their own understanding. Use this ONLY for questions like "Do you understand why X happens?" or "Does that analogy make sense to you?". The student sees **Yes, I got it / Not quite** buttons. Only use this in **fast mode**, and only when there is no specific correct answer to check.
+
+- `"open"` — the student must type a specific answer. Use this for ANY question that has a correct answer: factual recall ("what is X?"), fill-in-the-blank, scenario analysis ("which anomaly is this?"), calculation, comparison, etc.
+
+**Rule: if you wouldn't accept "yes" as a correct answer, use `"open"`.** When in doubt, use `"open"`. `"self_check"` is only for genuine comprehension confidence checks, never for factual questions.
+
+Steady mode: always use `"open"` — `"self_check"` is too coarse for deep understanding sessions.
+
 ---
 
 ## Output Format
@@ -128,7 +140,8 @@ Respond with **only** a JSON object. No markdown fences, no explanation — raw 
   "micro_assessment": {
     "question": "Table: Student(StudentID, CourseID, ProfessorName, ProfessorOffice). Which column creates a 3NF violation and why?",
     "expected_understanding": "ProfessorOffice depends on ProfessorName (a non-key attribute), not on the primary key (StudentID, CourseID). This is a transitive dependency. Fix: extract a Professors table. A partial answer identifies the problematic column but can't articulate why it's a transitive dependency.",
-    "difficulty": "intermediate"
+    "difficulty": "intermediate",
+    "question_type": "open"
   },
   "conversation_complete": false,
   "handoff_signal": null

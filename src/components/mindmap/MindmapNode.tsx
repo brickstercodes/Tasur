@@ -65,6 +65,7 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
     isCollapsed,
     visibleChildCount,
     searchMatch,
+    isResumeTarget,
     onToggleCollapse,
     onConceptClick,
   } = data;
@@ -77,13 +78,20 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
 
   const backgroundColor = isRoot ? '#2C3E50' : pastelColor;
   const textColor = isRoot ? '#FFFFFF' : '#1A1A2E';
-  const baseBorderColor = isRoot ? '#2C3E50' : branchColor;
+  // Resume target nodes use an indigo border so they stand out regardless of branch color.
+  const baseBorderColor = isRoot ? '#2C3E50' : isResumeTarget ? '#6366f1' : branchColor;
   const fontSize = getFontSize(depth);
   const fontWeight = depth <= 1 ? 700 : 400;
 
   // Hover adds a shadow and thicker border on concept nodes.
-  const borderWidth = isHovered && isConcept ? 2 : 1.5;
-  const boxShadow = isHovered && isConcept ? '0 2px 8px rgba(0,0,0,0.18)' : undefined;
+  // Resume target pulsing ring is driven by the CSS animation injected in MindmapViewer.
+  const borderWidth = isHovered && isConcept ? 2 : isResumeTarget ? 2 : 1.5;
+  const boxShadow = isHovered && isConcept
+    ? '0 2px 8px rgba(0,0,0,0.18)'
+    : undefined;
+  const animation = isResumeTarget && !isHovered
+    ? 'resumePulse 2s ease-out infinite'
+    : undefined;
 
   // Search: non-matching nodes fade to 30% opacity.
   const opacity = searchMatch === false ? 0.3 : 1;
@@ -144,6 +152,7 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
           boxSizing: 'border-box',
           userSelect: 'none',
           boxShadow,
+          animation,
           transition: 'box-shadow 0.15s ease, border-width 0.1s ease',
         }}
       >
