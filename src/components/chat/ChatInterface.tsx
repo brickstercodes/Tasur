@@ -61,16 +61,26 @@ export interface ChatInterfaceProps {
   conceptName: string;
   domain: string;
   learningMode: 'fast' | 'steady';
+  userInitial?: string;
 }
 
-// ── Colour map for message types ──────────────────────────────────────────────
+// ── Avatar helpers ─────────────────────────────────────────────────────────────
+
+// Consistent warm palette — pick by char code so the same initial always maps to same colour
+const AVATAR_COLORS = ['#C2692A', '#3B5E8C', '#3D7A5E', '#7A6C2A', '#6B4E8A', '#9B5C4A', '#944604', '#2E6B8A'];
+
+function avatarColorForInitial(initial: string): string {
+  return AVATAR_COLORS[initial.charCodeAt(0) % AVATAR_COLORS.length];
+}
+
+// ── Colour map for message types (warm earthy palette) ────────────────────────
 
 const MESSAGE_TYPE_ACCENT: Record<string, string> = {
-  explanation: '#2563eb',
-  analogy: '#7c3aed',
-  example: '#059669',
-  micro_assessment: '#6366f1',
-  clarification: '#d97706',
+  explanation: '#3B5E8C',   // warm blue
+  analogy:     '#6B4E8A',   // warm plum
+  example:     '#3D7A5E',   // warm forest green
+  micro_assessment: '#7A6C2A', // warm gold
+  clarification:   '#944604',  // amber
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -81,6 +91,7 @@ export function ChatInterface({
   conceptName,
   domain,
   learningMode,
+  userInitial = 'U',
 }: ChatInterfaceProps) {
   const router = useRouter();
 
@@ -305,234 +316,326 @@ export function ChatInterface({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
-      }}
-    >
-      {/* Message list */}
+    <>
+      <style>{`
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes cursor-fade { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .chat-scroll::-webkit-scrollbar { width: 4px; }
+        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: #DDD8CC; border-radius: 10px; }
+        .send-btn:hover:not(:disabled) { background: #7A3803 !important; }
+        .moveon-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+      `}</style>
+
       <div
         style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '16px 0',
           display: 'flex',
           flexDirection: 'column',
-          gap: 4,
+          height: '100%',
+          fontFamily: "'Georgia', 'Times New Roman', serif",
         }}
       >
-        {messages.length === 0 && !isStreaming && (
-          <p
-            style={{
-              textAlign: 'center',
-              color: '#94a3b8',
-              fontSize: 14,
-              marginTop: 40,
-            }}
-          >
-            Ask anything about <strong>{conceptName}</strong>
-          </p>
-        )}
+        {/* Message list */}
+        <div
+          className="chat-scroll"
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '24px 0 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0,
+          }}
+        >
+          {messages.length === 0 && !isStreaming && (
+            <div
+              style={{
+                textAlign: 'center',
+                marginTop: 48,
+                padding: '0 24px',
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: "'Instrument Serif', Georgia, serif",
+                  fontStyle: 'italic',
+                  fontSize: 18,
+                  color: '#887367',
+                  margin: 0,
+                }}
+              >
+                Ask anything about {conceptName}
+              </p>
+            </div>
+          )}
 
-        {messages.map((message) => (
-          <MessageBubble
-            key={message.id}
-            message={message}
-            learningMode={learningMode}
-            onAssessmentSubmit={handleAssessmentSubmit}
-          />
-        ))}
+          {messages.map((message) => (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              learningMode={learningMode}
+              userInitial={userInitial}
+              onAssessmentSubmit={handleAssessmentSubmit}
+            />
+          ))}
 
-        {error && (
-          <div
-            style={{
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: 8,
-              padding: '8px 14px',
-              color: '#dc2626',
-              fontSize: 13,
-              margin: '4px 0',
-            }}
-          >
-            {error}
+          {error && (
+            <div
+              style={{
+                background: '#fef6f0',
+                border: '1px solid #F5C4A0',
+                borderLeft: '3px solid #944604',
+                borderRadius: 8,
+                padding: '10px 14px',
+                color: '#7A3803',
+                fontSize: 13,
+                margin: '8px 0',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Move-on CTA */}
+        {isConversationComplete && (
+          <div style={{ padding: '12px 0 4px' }}>
+            <button
+              className="moveon-btn"
+              onClick={() => router.push(`/study/${sessionId}/mindmap`)}
+              style={{
+                width: '100%',
+                padding: '13px 24px',
+                border: 'none',
+                borderRadius: 10,
+                background: '#944604',
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                letterSpacing: '0.02em',
+                boxShadow: '0 2px 12px rgba(148,70,4,0.28)',
+                transition: 'opacity 0.15s ease, transform 0.12s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              Move on to the next concept →
+            </button>
           </div>
         )}
 
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Move-on CTA — shown when the explainer signals the concept is complete. */}
-      {isConversationComplete && (
+        {/* Input area */}
         <div
           style={{
-            padding: '12px 0 4px',
+            borderTop: '1px solid #ECEAE2',
+            padding: '14px 0 4px',
             display: 'flex',
-            justifyContent: 'center',
+            gap: 10,
+            alignItems: 'flex-end',
           }}
         >
-          <button
-            onClick={() => router.push(`/study/${sessionId}/mindmap`)}
+          <textarea
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isStreaming}
+            placeholder={
+              isStreaming
+                ? 'Thinking…'
+                : 'Ask a question… (Enter to send, Shift+Enter for newline)'
+            }
+            rows={2}
             style={{
-              width: '100%',
-              padding: '13px 24px',
+              flex: 1,
+              padding: '10px 14px',
+              border: '1px solid #ECEAE2',
+              borderRadius: 10,
+              fontSize: 13.5,
+              color: '#2D2318',
+              background: isStreaming ? '#FAF8F4' : '#FDFAF6',
+              resize: 'none',
+              outline: 'none',
+              fontFamily: "'Georgia', serif",
+              lineHeight: 1.55,
+              transition: 'border-color 0.15s ease',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#C2892A';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#ECEAE2';
+            }}
+          />
+          <button
+            className="send-btn"
+            onClick={() => sendMessage(inputText)}
+            disabled={!inputText.trim() || isStreaming}
+            style={{
+              width: 40,
+              height: 40,
               border: 'none',
               borderRadius: 10,
-              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-              color: '#fff',
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              letterSpacing: '0.01em',
-              boxShadow: '0 2px 12px rgba(99,102,241,0.35)',
-              transition: 'opacity 0.15s ease, transform 0.1s ease',
+              background: inputText.trim() && !isStreaming ? '#944604' : '#ECEAE2',
+              color: inputText.trim() && !isStreaming ? '#fff' : '#B8AFA6',
+              fontSize: 16,
+              cursor: inputText.trim() && !isStreaming ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 8,
+              alignSelf: 'flex-end',
+              flexShrink: 0,
+              transition: 'background 0.12s ease',
             }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.opacity = '0.92';
-              (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.opacity = '1';
-              (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
-            }}
+            title="Send"
           >
-            Move on to the next concept →
+            ↑
           </button>
         </div>
-      )}
-
-      {/* Input area */}
-      <div
-        style={{
-          borderTop: '1px solid #e2e8f0',
-          padding: '12px 0 4px',
-          display: 'flex',
-          gap: 8,
-          alignItems: 'flex-end',
-        }}
-      >
-        <textarea
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isStreaming}
-          placeholder={
-            isStreaming
-              ? 'Thinking…'
-              : 'Ask a question… (Enter to send, Shift+Enter for newline)'
-          }
-          rows={2}
-          style={{
-            flex: 1,
-            padding: '8px 12px',
-            border: '1px solid #e2e8f0',
-            borderRadius: 8,
-            fontSize: 14,
-            color: '#1e293b',
-            background: isStreaming ? '#f8fafc' : '#fff',
-            resize: 'none',
-            outline: 'none',
-            fontFamily: 'inherit',
-            lineHeight: 1.5,
-            transition: 'border-color 0.15s ease',
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = '#6366f1';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = '#e2e8f0';
-          }}
-        />
-        <button
-          onClick={() => sendMessage(inputText)}
-          disabled={!inputText.trim() || isStreaming}
-          style={{
-            padding: '8px 18px',
-            border: 'none',
-            borderRadius: 8,
-            background: inputText.trim() && !isStreaming ? '#6366f1' : '#e2e8f0',
-            color: inputText.trim() && !isStreaming ? '#fff' : '#94a3b8',
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: inputText.trim() && !isStreaming ? 'pointer' : 'not-allowed',
-            fontFamily: 'inherit',
-            whiteSpace: 'nowrap',
-            transition: 'background 0.1s ease',
-            alignSelf: 'flex-end',
-            height: 40,
-          }}
-        >
-          Send
-        </button>
       </div>
-    </div>
+    </>
   );
 }
 
 // ── Message bubble ────────────────────────────────────────────────────────────
 
+const AVATAR_SIZE = 30;
+
 function MessageBubble({
   message,
   learningMode,
+  userInitial,
   onAssessmentSubmit,
 }: {
   message: ChatMessage;
   learningMode: 'fast' | 'steady';
+  userInitial: string;
   onAssessmentSubmit: (answer: string) => void;
 }) {
   const isUser = message.role === 'user';
   const accent = message.messageType
-    ? MESSAGE_TYPE_ACCENT[message.messageType] ?? '#475569'
-    : '#475569';
+    ? MESSAGE_TYPE_ACCENT[message.messageType] ?? '#887367'
+    : '#887367';
+  const userAvatarColor = avatarColorForInitial(userInitial);
 
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: isUser ? 'flex-end' : 'flex-start',
-        margin: '6px 0',
-      }}
-    >
-      {/* Role label + message type tag for assistant messages */}
-      {!isUser && message.messageType && (
-        <span
+  if (isUser) {
+    // ── User bubble: parchment float, right-aligned with avatar ──────────────
+    return (
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 10, margin: '10px 0' }}>
+        <div
           style={{
-            fontSize: 10,
-            fontWeight: 600,
-            color: accent,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: 3,
-            paddingLeft: 2,
+            maxWidth: '72%',
+            padding: '11px 16px',
+            borderRadius: '16px 16px 4px 16px',
+            background: 'linear-gradient(145deg, #EDE5D5 0%, #E6DCC8 100%)',
+            border: '1px solid #D4C4A8',
+            boxShadow: '0 2px 8px rgba(61,43,31,0.10), inset 0 1px 0 rgba(255,250,240,0.6)',
+            color: '#2D1F0E',
+            fontSize: 13.5,
+            lineHeight: 1.65,
+            fontFamily: "'Georgia', serif",
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
           }}
         >
-          {message.messageType.replace('_', ' ')}
-        </span>
-      )}
+          {message.content}
+        </div>
+        {/* User avatar */}
+        <div
+          style={{
+            width: AVATAR_SIZE,
+            height: AVATAR_SIZE,
+            borderRadius: '50%',
+            background: userAvatarColor,
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 700,
+            fontSize: 12,
+            color: '#fff',
+            letterSpacing: '0.02em',
+            marginTop: 2,
+          }}
+        >
+          {userInitial}
+        </div>
+      </div>
+    );
+  }
 
-      {/* Bubble */}
+  // ── Assistant message: manuscript block with Tasur logo avatar ────────────
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, margin: '14px 0' }}>
+      {/* Tasur logo avatar */}
       <div
         style={{
-          maxWidth: '80%',
-          padding: '10px 14px',
-          borderRadius: isUser ? '12px 12px 2px 12px' : '2px 12px 12px 12px',
-          background: isUser ? '#6366f1' : '#f8fafc',
-          color: isUser ? '#fff' : '#1e293b',
-          border: isUser ? 'none' : `1px solid ${accent}22`,
-          borderLeft: isUser ? 'none' : `3px solid ${accent}`,
-          fontSize: 14,
-          lineHeight: 1.6,
+          width: AVATAR_SIZE,
+          height: AVATAR_SIZE,
+          borderRadius: '50%',
+          background: '#F4F0E8',
+          border: '1px solid #E8DFC8',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: 2,
+          overflow: 'hidden',
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.svg" alt="Tasur" width={18} height={18} style={{ objectFit: 'contain' }} />
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Message type label */}
+        {message.messageType && (
+          <div
+            style={{
+              fontSize: 9,
+              fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+              fontWeight: 700,
+              color: accent,
+              textTransform: 'uppercase',
+              letterSpacing: '0.14em',
+              marginBottom: 8,
+            }}
+          >
+            {message.messageType.replace('_', ' ')}
+          </div>
+        )}
+
+      {/* Parchment manuscript block */}
+      <div
+        style={{
+          width: '100%',
+          padding: '18px 20px 18px 20px',
+          // Old paper: warm cream gradient, slightly yellowed edges
+          background: 'linear-gradient(180deg, #FDFAF2 0%, #FAF5E8 60%, #F7F0E0 100%)',
+          border: '1px solid #E8DFC8',
+          borderLeft: `3px solid ${accent}`,
+          borderRadius: '0 8px 8px 0',
+          // Subtle aged shadow — deeper on bottom/right like held paper
+          boxShadow: `
+            0 2px 12px rgba(61,43,31,0.07),
+            0 1px 3px rgba(61,43,31,0.05),
+            inset 0 1px 0 rgba(255,252,240,0.8),
+            inset 0 -1px 0 rgba(180,160,120,0.12)
+          `,
+          fontSize: 13.5,
+          lineHeight: 1.78,
+          color: '#2D1F0E',
+          fontFamily: "'Georgia', serif",
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
+          position: 'relative',
         }}
       >
         {message.content}
@@ -540,21 +643,22 @@ function MessageBubble({
           <span
             style={{
               display: 'inline-block',
-              width: 8,
-              height: 14,
-              background: '#94a3b8',
+              width: 2,
+              height: 16,
+              background: accent,
               borderRadius: 1,
-              marginLeft: 2,
+              marginLeft: 3,
               verticalAlign: 'text-bottom',
-              animation: 'blink 0.8s step-start infinite',
+              opacity: 0.7,
+              animation: 'cursor-fade 0.9s ease-in-out infinite',
             }}
           />
         )}
       </div>
 
       {/* Inline visual suggestion */}
-      {!isUser && message.visualSuggestion && (
-        <div style={{ maxWidth: '80%', width: '100%', marginTop: 6 }}>
+      {message.visualSuggestion && (
+        <div style={{ width: '100%', marginTop: 8 }}>
           <VisualSuggestion
             type={message.visualSuggestion.type}
             data={message.visualSuggestion.data}
@@ -563,8 +667,8 @@ function MessageBubble({
       )}
 
       {/* Inline micro assessment */}
-      {!isUser && message.microAssessment && !message.isStreaming && (
-        <div style={{ maxWidth: '80%', width: '100%', marginTop: 6 }}>
+      {message.microAssessment && !message.isStreaming && (
+        <div style={{ width: '100%', marginTop: 8 }}>
           <MicroAssessment
             question={message.microAssessment.question}
             difficulty={message.microAssessment.difficulty}
@@ -574,6 +678,7 @@ function MessageBubble({
           />
         </div>
       )}
+      </div>
     </div>
   );
 }

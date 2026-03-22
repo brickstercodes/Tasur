@@ -24,7 +24,8 @@ export function SignOutButton() {
   return (
     <button
       onClick={handleSignOut}
-      className="text-sm text-zinc-500 hover:text-black dark:hover:text-white transition-colors"
+      className="sign-out-btn"
+      style={{ fontFamily: 'inherit' }}
     >
       Sign out
     </button>

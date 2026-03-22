@@ -57,10 +57,10 @@ const RATING_BUTTONS: Array<{
   hoverBg: string;
   text: string;
 }> = [
-  { rating: 'again', label: 'Again',  sublabel: '< 1d',   bg: '#fee2e2', hoverBg: '#fecaca', text: '#dc2626' },
-  { rating: 'hard',  label: 'Hard',   sublabel: '~1d',    bg: '#fef3c7', hoverBg: '#fde68a', text: '#d97706' },
-  { rating: 'good',  label: 'Good',   sublabel: '~6d',    bg: '#dcfce7', hoverBg: '#bbf7d0', text: '#16a34a' },
-  { rating: 'easy',  label: 'Easy',   sublabel: 'longer', bg: '#dbeafe', hoverBg: '#bfdbfe', text: '#2563eb' },
+  { rating: 'again', label: 'Again',  sublabel: '< 1d',   bg: 'white', hoverBg: '#FEF0F0', text: '#9B5C4A' },
+  { rating: 'hard',  label: 'Hard',   sublabel: '~1d',    bg: 'white', hoverBg: '#F5F0E8', text: '#887367' },
+  { rating: 'good',  label: 'Good',   sublabel: '~6d',    bg: 'white', hoverBg: '#EEF4F0', text: '#3D7A5E' },
+  { rating: 'easy',  label: 'Easy',   sublabel: 'longer', bg: 'white', hoverBg: '#EFF3F8', text: '#3B6FA0' },
 ];
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -132,44 +132,59 @@ export function FlashcardDeck({ cards, sessionId, learningMode }: FlashcardDeckP
         display: 'flex',
         flexDirection: 'column',
         gap: 20,
-        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+        fontFamily: 'Inter, sans-serif',
       }}
     >
-      {/* Progress bar */}
-      <div>
-        <div
+      {/* Header: title + card counter */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+        }}
+      >
+        <h2
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 6,
+            margin: 0,
+            fontSize: 28,
+            fontWeight: 400,
+            color: '#1a1c1b',
+            fontFamily: "'Instrument Serif', Georgia, serif",
           }}
         >
-          <span style={{ fontSize: 12, color: '#64748b' }}>
-            Card {currentIndex + 1} of {cards.length}
-          </span>
-          <span style={{ fontSize: 12, color: '#64748b' }}>
-            {learningMode === 'fast' ? '⚡ Fast' : '◎ Steady'}
-          </span>
-        </div>
-        <div
+          Flashcards
+        </h2>
+        <span
           style={{
-            height: 4,
-            background: '#e2e8f0',
-            borderRadius: 2,
-            overflow: 'hidden',
+            fontSize: 10,
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            color: '#887367',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
           }}
         >
-          <div
-            style={{
-              height: '100%',
-              width: `${progress * 100}%`,
-              background: '#6366f1',
-              borderRadius: 2,
-              transition: 'width 0.3s ease',
-            }}
-          />
-        </div>
+          {currentIndex + 1} / {cards.length} CARDS
+        </span>
+      </div>
+
+      {/* Progress bar — thin 2px line */}
+      <div
+        style={{
+          height: 2,
+          background: '#ECEAE2',
+          borderRadius: 99,
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            width: `${progress * 100}%`,
+            background: '#C2892A',
+            borderRadius: 99,
+            transition: 'width 0.3s ease',
+          }}
+        />
       </div>
 
       {/* Card */}
@@ -245,19 +260,21 @@ function RatingButton({
         alignItems: 'center',
         gap: 2,
         padding: '8px 16px',
-        border: 'none',
-        borderRadius: 8,
-        background: disabled ? '#f1f5f9' : hovered ? hoverBg : bg,
-        color: disabled ? '#94a3b8' : text,
+        border: '1px solid #ECEAE2',
+        borderRadius: 6,
+        background: disabled ? '#f4f4f1' : hovered ? hoverBg : bg,
+        color: disabled ? '#887367' : text,
         cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'inherit',
         transition: 'background 0.1s ease',
         minWidth: 64,
+        fontSize: 12,
+        fontWeight: 600,
       }}
       aria-label={`Rate as ${label}`}
     >
-      <span style={{ fontSize: 14, fontWeight: 600 }}>{label}</span>
-      <span style={{ fontSize: 10, opacity: 0.8 }}>{sublabel}</span>
+      <span style={{ fontSize: 12, fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: 10, opacity: 0.7 }}>{sublabel}</span>
     </button>
   );
 }
@@ -292,40 +309,40 @@ function SessionSummary({
     <div
       style={{
         textAlign: 'center',
-        padding: '32px 24px',
-        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+        padding: '40px 24px',
+        background: '#f9f9f6',
+        borderRadius: 12,
+        fontFamily: 'Inter, sans-serif',
       }}
     >
-      <div style={{ fontSize: 40, marginBottom: 8 }}>
-        {accuracy >= 80 ? '🎯' : accuracy >= 50 ? '📈' : '🔁'}
-      </div>
-
       <h2
         style={{
           margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 700,
-          color: '#0f172a',
+          fontSize: 28,
+          fontWeight: 400,
+          color: '#1a1c1b',
+          fontFamily: "'Instrument Serif', Georgia, serif",
         }}
       >
         Session complete
       </h2>
-      <p style={{ margin: '0 0 24px', fontSize: 13, color: '#64748b' }}>
+      <p style={{ margin: '0 0 28px', fontSize: 13, color: '#887367' }}>
         {minutes > 0 ? `${minutes}m ` : ''}{seconds}s · {learningMode} mode
       </p>
 
-      {/* Accuracy ring */}
+      {/* Accuracy */}
       <div
         style={{
-          fontSize: 42,
-          fontWeight: 700,
-          color: accuracy >= 80 ? '#16a34a' : accuracy >= 50 ? '#d97706' : '#dc2626',
+          fontSize: 48,
+          fontWeight: 400,
+          fontFamily: "'Instrument Serif', Georgia, serif",
+          color: accuracy >= 80 ? '#3D7A5E' : accuracy >= 50 ? '#C2692A' : '#9B5C4A',
           marginBottom: 4,
         }}
       >
         {accuracy}%
       </div>
-      <p style={{ margin: '0 0 24px', fontSize: 13, color: '#64748b' }}>
+      <p style={{ margin: '0 0 28px', fontSize: 13, color: '#887367' }}>
         accuracy ({correct} / {totalCards} correct)
       </p>
 
@@ -334,7 +351,7 @@ function SessionSummary({
         style={{
           display: 'flex',
           justifyContent: 'center',
-          gap: 12,
+          gap: 10,
           flexWrap: 'wrap',
         }}
       >
@@ -346,16 +363,17 @@ function SessionSummary({
               flexDirection: 'column',
               alignItems: 'center',
               gap: 2,
-              padding: '8px 14px',
-              background: btn.bg,
+              padding: '10px 16px',
+              background: 'white',
+              border: '1px solid #ECEAE2',
               borderRadius: 8,
-              minWidth: 52,
+              minWidth: 56,
             }}
           >
-            <span style={{ fontSize: 18, fontWeight: 700, color: btn.text }}>
+            <span style={{ fontSize: 20, fontWeight: 600, color: btn.text }}>
               {counts[btn.rating] ?? 0}
             </span>
-            <span style={{ fontSize: 11, color: btn.text, fontWeight: 500 }}>
+            <span style={{ fontSize: 11, color: '#887367', fontWeight: 500 }}>
               {btn.label}
             </span>
           </div>

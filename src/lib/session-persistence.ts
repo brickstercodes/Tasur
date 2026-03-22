@@ -45,6 +45,8 @@ export interface PipelinePersistenceInput {
   rawText: string;
   filename: string;
   fileType: FileType;
+  fileBuffer?: Buffer;   // Original file bytes for Supabase Storage upload
+  mimeType?: string;     // MIME type for storage
 }
 
 export interface SessionListItem {
@@ -100,6 +102,24 @@ export async function persistPipelineResults(input: PipelinePersistenceInput): P
   const supabase = createServerClient();
   const conceptIdMap = buildConceptIdMap(input.derivedConcepts);
 
+  // Upload original file to Supabase Storage (non-fatal if it fails)
+  let storagePath: string | undefined;
+  if (input.fileBuffer && input.mimeType) {
+    try {
+      const storageClient = supabase.storage.from('tasur-documents');
+      // Create bucket if missing (idempotent — ignore "already exists" errors)
+      await supabase.storage.createBucket('tasur-documents', { public: false }).catch(() => {});
+      const path = `${input.sessionId}/${input.filename}`;
+      const { data: uploadData } = await storageClient.upload(path, input.fileBuffer, {
+        contentType: input.mimeType,
+        upsert: true,
+      });
+      storagePath = uploadData?.path;
+    } catch {
+      // Storage upload failure is non-fatal — FocusZone falls back to raw text
+    }
+  }
+
   // Step 1: Concepts must exist before any FK reference
   await insertConcepts(supabase, input.sessionId, input.derivedConcepts, conceptIdMap);
 
@@ -117,7 +137,7 @@ export async function persistPipelineResults(input: PipelinePersistenceInput): P
   await Promise.all([
     insertMindmap(supabase, input.sessionId, remappedMindmap),
     insertStudentGraph(supabase, input.sessionId, remappedGraph),
-    insertDocument(supabase, input.sessionId, input.filename, input.fileType, input.rawText, input.mmXml),
+    insertDocument(supabase, input.sessionId, input.filename, input.fileType, input.rawText, input.mmXml, storagePath),
   ]);
 }
 
@@ -186,9 +206,29 @@ export async function appendDocumentToSession(
   filename: string,
   fileType: FileType,
   mmXml: string,
+  fileBuffer?: Buffer,
+  mimeType?: string,
 ): Promise<void> {
   const supabase = createServerClient();
   const conceptIdMap = buildConceptIdMap(newConcepts);
+
+  // Upload original file to Supabase Storage (non-fatal if it fails)
+  let storagePath: string | undefined;
+  if (fileBuffer && mimeType) {
+    try {
+      const storageClient = supabase.storage.from('tasur-documents');
+      // Create bucket if missing (idempotent — ignore "already exists" errors)
+      await supabase.storage.createBucket('tasur-documents', { public: false }).catch(() => {});
+      const path = `${sessionId}/${filename}`;
+      const { data: uploadData } = await storageClient.upload(path, fileBuffer, {
+        contentType: mimeType,
+        upsert: true,
+      });
+      storagePath = uploadData?.path;
+    } catch {
+      // Storage upload failure is non-fatal — FocusZone falls back to raw text
+    }
+  }
 
   await insertConcepts(supabase, sessionId, newConcepts, conceptIdMap);
 
@@ -205,7 +245,7 @@ export async function appendDocumentToSession(
   await Promise.all([
     insertMindmap(supabase, sessionId, mergedMindmap),
     insertStudentGraph(supabase, sessionId, mergedGraph),
-    insertDocument(supabase, sessionId, filename, fileType, rawText, mmXml),
+    insertDocument(supabase, sessionId, filename, fileType, rawText, mmXml, storagePath),
   ]);
 }
 
@@ -381,10 +421,11 @@ async function insertDocument(
   fileType: FileType,
   rawText: string,
   mmXml: string,
+  storagePath?: string,
 ): Promise<void> {
   const { error } = await supabase.from('documents').insert({
     session_id: sessionId,
-    file_path: filename,
+    file_path: storagePath ?? filename,  // Use storage path when available
     file_type: mapFileTypeToEnum(fileType),
     raw_text: rawText,
     parsed_structure: mmXml,

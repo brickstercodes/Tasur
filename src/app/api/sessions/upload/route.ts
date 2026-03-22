@@ -172,6 +172,8 @@ export async function POST(req: Request) {
           rawText,
           filename,
           fileType,
+          fileBuffer,
+          mimeType,
         });
 
         emit({ type: 'done', sessionId, label: "Ready! Let's study." });

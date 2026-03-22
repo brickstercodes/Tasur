@@ -49,7 +49,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const isUploadMode = upload === '1';
 
   return (
-    <div>
+    <div style={{ maxWidth: 860, margin: '0 auto' }}>
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div
         style={{
@@ -63,16 +63,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           <h1
             style={{
               margin: 0,
-              fontSize: 22,
-              fontWeight: 700,
-              color: '#0f172a',
-              letterSpacing: '-0.01em',
-              fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+              fontSize: 28,
+              fontWeight: 400,
+              color: '#1a1c1b',
+              fontFamily: "'Instrument Serif', Georgia, serif",
             }}
           >
-            {isUploadMode ? (addToSessionId ? 'Add Document' : 'New Session') : 'Your Sessions'}
+            {isUploadMode ? (addToSessionId ? 'Add Document' : 'New Session') : 'Sessions'}
           </h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#887367' }}>
             {isUploadMode
               ? 'Upload your notes and let Tasur build your study experience.'
               : sessions.length === 0
@@ -88,17 +87,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              padding: '9px 16px',
-              background: '#6366f1',
+              padding: '9px 18px',
+              background: '#944604',
               color: 'white',
               textDecoration: 'none',
               borderRadius: 8,
               fontWeight: 600,
               fontSize: 13,
-              fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+              border: 'none',
+              fontFamily: 'Inter, sans-serif',
             }}
           >
-            + New session
+            New session +
           </Link>
         )}
       </div>
@@ -108,7 +108,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <div
           style={{
             background: 'white',
-            border: '1px solid #e2e8f0',
+            border: '1px solid #ECEAE2',
             borderRadius: 12,
             padding: '28px 28px',
           }}
@@ -120,7 +120,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           <div style={{ marginTop: 16, textAlign: 'center' }}>
             <Link
               href="/dashboard"
-              style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'none' }}
+              style={{ fontSize: 12, color: '#887367', textDecoration: 'none' }}
             >
               ← Back to sessions
             </Link>
@@ -130,7 +130,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
       {/* ── Session list ─────────────────────────────────────────────────── */}
       {!isUploadMode && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {sessions.length === 0 ? (
             <EmptyState />
           ) : (
@@ -156,117 +156,122 @@ function SessionCard({ session }: { session: SessionListItem }) {
 
   return (
     <div
+      className="session-card"
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        padding: '16px 20px',
-        background: 'white',
-        border: '1px solid #e2e8f0',
-        borderRadius: 12,
-        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+        position: 'relative',
+        padding: '20px 24px',
+        borderRadius: 10,
+        fontFamily: 'Inter, sans-serif',
+        overflow: 'hidden',
       }}
     >
-      {/* Left: session info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+      {/* Main content row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+        {/* Left: session info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
           <Link
             href={`/study/${session.id}/mindmap`}
             style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: '#0f172a',
+              display: 'block',
+              fontSize: 20,
+              fontWeight: 400,
+              color: '#1a1c1b',
               textDecoration: 'none',
+              fontFamily: "'Instrument Serif', Georgia, serif",
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              margin: 0,
+              marginBottom: 6,
             }}
           >
             {session.title}
           </Link>
 
-          {session.domain && (
+          {/* Domain · mode tags */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            {session.domain && (
+              <span
+                style={{
+                  fontSize: 10,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  color: '#887367',
+                }}
+              >
+                {session.domain}
+              </span>
+            )}
+            {session.domain && (
+              <span style={{ color: '#ECEAE2', fontSize: 10 }}>·</span>
+            )}
             <span
               style={{
                 fontSize: 10,
-                fontWeight: 600,
-                color: '#6366f1',
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                flexShrink: 0,
+                letterSpacing: '0.08em',
+                color: session.mode === 'fast' ? '#C2692A' : '#3D7A5E',
               }}
             >
-              {session.domain}
+              {session.mode === 'fast' ? '⚡ Fast' : '◎ Steady'}
             </span>
-          )}
+          </div>
 
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: session.mode === 'fast' ? '#E6550D' : '#1A9641',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              flexShrink: 0,
-            }}
-          >
-            {session.mode === 'fast' ? '⚡ Fast' : '◎ Steady'}
-          </span>
-        </div>
-
-        {/* Progress bar + stats */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Stats line */}
           {session.totalConcepts > 0 ? (
-            <>
-              <div
-                style={{
-                  flex: 1,
-                  height: 4,
-                  background: '#e2e8f0',
-                  borderRadius: 2,
-                  overflow: 'hidden',
-                  maxWidth: 180,
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    width: `${masteryPercent}%`,
-                    background: masteryPercent >= 80 ? '#22c55e' : masteryPercent >= 40 ? '#f59e0b' : '#6366f1',
-                    borderRadius: 2,
-                  }}
-                />
-              </div>
-              <span style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>
-                {session.masteredConcepts}/{session.totalConcepts} concepts · {lastActive}
-              </span>
-            </>
+            <span style={{ fontSize: 12, color: '#887367' }}>
+              {session.masteredConcepts} of {session.totalConcepts} concepts · {lastActive}
+            </span>
           ) : (
-            <span style={{ fontSize: 11, color: '#94a3b8' }}>
+            <span style={{ fontSize: 12, color: '#887367' }}>
               Processing… · {lastActive}
             </span>
           )}
         </div>
+
+        {/* Right: action links */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <Link
+            href={`/dashboard?upload=1&sessionId=${session.id}`}
+            style={{
+              fontSize: 12,
+              color: '#887367',
+              textDecoration: 'none',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            + doc
+          </Link>
+
+          <Link
+            href={`/study/${session.id}/mindmap`}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: '#944604',
+              textDecoration: 'none',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            Resume →
+          </Link>
+
+          <DeleteSessionButton sessionId={session.id} />
+        </div>
       </div>
 
-      {/* Right: action buttons */}
-      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-        <Link
-          href={`/dashboard?upload=1&sessionId=${session.id}`}
-          style={actionLinkStyle}
-        >
-          + Doc
-        </Link>
-
-        <Link
-          href={`/study/${session.id}/mindmap`}
-          style={{ ...actionLinkStyle, background: '#6366f1', color: 'white', border: '1px solid #6366f1' }}
-        >
-          Resume
-        </Link>
-
-        <DeleteSessionButton sessionId={session.id} />
-      </div>
+      {/* Amber accent line at very bottom of card */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: '#C2892A',
+          borderRadius: '0 0 10px 10px',
+        }}
+      />
     </div>
   );
 }
@@ -280,52 +285,44 @@ function EmptyState() {
         textAlign: 'center',
         padding: '60px 24px',
         background: 'white',
-        border: '1px dashed #e2e8f0',
+        border: '1px solid #ECEAE2',
         borderRadius: 12,
-        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+        fontFamily: 'Inter, sans-serif',
       }}
     >
-      <p style={{ fontSize: 36, margin: '0 0 12px' }}>🧠</p>
-      <p style={{ fontSize: 16, fontWeight: 600, color: '#334155', margin: '0 0 8px' }}>
-        No sessions yet
+      <p
+        style={{
+          fontFamily: "'Instrument Serif', Georgia, serif",
+          fontStyle: 'italic',
+          fontSize: 18,
+          color: '#554339',
+          margin: '0 0 10px',
+        }}
+      >
+        Your sessions will appear here.
       </p>
-      <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px' }}>
+      <p style={{ fontSize: 13, color: '#887367', margin: '0 0 24px' }}>
         Upload your first set of notes to generate an interactive study mindmap.
       </p>
       <Link
         href="/dashboard?upload=1"
         style={{
           display: 'inline-flex',
-          padding: '9px 20px',
-          background: '#6366f1',
+          padding: '9px 18px',
+          background: '#944604',
           color: 'white',
           textDecoration: 'none',
           borderRadius: 8,
           fontWeight: 600,
           fontSize: 13,
+          border: 'none',
         }}
       >
-        Upload notes
+        New session +
       </Link>
     </div>
   );
 }
-
-// ── Shared styles ─────────────────────────────────────────────────────────────
-
-const actionLinkStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  padding: '6px 12px',
-  fontSize: 12,
-  fontWeight: 600,
-  color: '#475569',
-  textDecoration: 'none',
-  border: '1px solid #e2e8f0',
-  borderRadius: 6,
-  background: 'white',
-  fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
-};
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 

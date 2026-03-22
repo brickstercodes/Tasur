@@ -20,7 +20,8 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { SignOutButton } from '@/components/sign-out-button';
+import { TasurWordmark } from '@/components/ui/TasurWordmark';
+import { ProfileMenu } from '@/components/ui/ProfileMenu';
 import { auth } from '@/lib/auth';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -35,20 +36,36 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      <header className="border-b border-zinc-200 dark:border-zinc-800 px-6 py-4">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <span className="text-sm font-semibold tracking-tight text-black dark:text-white">
-            Tasur
-          </span>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-zinc-400">{session.user.email}</span>
-            <SignOutButton />
-          </div>
+    <div style={{ minHeight: '100vh', background: '#f9f9f6' }}>
+      <header
+        style={{
+          background: '#f9f9f6',
+          borderBottom: '1px solid #ECEAE2',
+          padding: '0 24px',
+          height: 52,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1536px',
+            margin: '0 auto',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <TasurWordmark size={22} color="#1a1c1b" />
+          <ProfileMenu
+            initial={(session.user.name ?? session.user.email ?? 'U').trim().charAt(0).toUpperCase()}
+            email={session.user.email ?? ''}
+          />
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+      <main style={{ padding: '40px 24px' }}>{children}</main>
     </div>
   );
 }

@@ -18,8 +18,9 @@
 
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { SteadyIcon, FastIcon } from '@/components/ui/ModeIcons';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,8 +59,20 @@ const ACCEPTED_TYPES = '.pdf,.docx,.txt,.png,.jpg,.jpeg';
 const STEP_ORDER = ['extracting', 'generating_mm', 'analyzing', 'searching', 'flashcards', 'saving'];
 
 const MODES = [
-  { value: 'steady', label: 'Steady', description: 'Deep understanding — full concept walkthrough' },
-  { value: 'fast', label: 'Fast', description: 'Exam pressure — essentials first, rapid recall' },
+  {
+    value: 'steady',
+    label: 'Steady',
+    description: 'Deep analysis for complex manuscripts.',
+    iconBg: '#DAEEE6',
+    Icon: SteadyIcon,
+  },
+  {
+    value: 'fast',
+    label: 'Fast',
+    description: 'Swift generation for quick review sessions.',
+    iconBg: '#FDDEDE',
+    Icon: FastIcon,
+  },
 ] as const;
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -193,7 +206,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
   }
 
   return (
-    <div style={{ maxWidth: 520, margin: '0 auto' }}>
+    <div style={{ maxWidth: 520, margin: '0 auto', background: '#f9f9f6', fontFamily: 'Inter, sans-serif' }}>
       {/* ── File dropzone ──────────────────────────────────────────────────── */}
       <div
         onDrop={handleDrop}
@@ -201,12 +214,12 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         onDragLeave={() => setDragOver(false)}
         onClick={() => fileInputRef.current?.click()}
         style={{
-          border: `2px dashed ${dragOver ? '#6366f1' : selectedFile ? '#86efac' : '#cbd5e1'}`,
+          border: `2px dashed ${dragOver ? '#C2892A' : selectedFile ? '#C2892A' : '#ECEAE2'}`,
           borderRadius: 12,
-          padding: '32px 24px',
+          padding: '36px 24px',
           textAlign: 'center',
           cursor: 'pointer',
-          background: dragOver ? '#eef2ff' : selectedFile ? '#f0fdf4' : '#fafafa',
+          background: dragOver ? '#FEF3E7' : selectedFile ? '#FEF3E7' : '#f4f4f1',
           transition: 'all 0.15s ease',
           marginBottom: 20,
         }}
@@ -220,29 +233,62 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         />
         {selectedFile ? (
           <>
-            <p style={{ fontSize: 28, margin: '0 0 6px' }}>📄</p>
-            <p style={{ margin: 0, fontWeight: 600, color: '#166534', fontSize: 14 }}>
+            <p style={{ fontSize: 24, margin: '0 0 8px', color: '#C2892A' }}>↑</p>
+            <p
+              style={{
+                margin: 0,
+                fontFamily: "'Instrument Serif', Georgia, serif",
+                fontStyle: 'italic',
+                fontSize: 18,
+                color: '#554339',
+              }}
+            >
               {selectedFile.name}
             </p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
-              {formatFileSize(selectedFile.size)} · Click to change
+            <p
+              style={{
+                margin: '6px 0 0',
+                fontSize: 10,
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                color: '#887367',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {formatFileSize(selectedFile.size)} · CLICK TO CHANGE
             </p>
           </>
         ) : (
           <>
-            <p style={{ fontSize: 32, margin: '0 0 8px' }}>📂</p>
-            <p style={{ margin: 0, fontWeight: 600, color: '#334155', fontSize: 14 }}>
-              Drop your notes here or click to browse
+            <p style={{ fontSize: 28, margin: '0 0 10px', color: '#887367' }}>↑</p>
+            <p
+              style={{
+                margin: 0,
+                fontFamily: "'Instrument Serif', Georgia, serif",
+                fontStyle: 'italic',
+                fontSize: 22,
+                color: '#554339',
+              }}
+            >
+              Drop your notes here
             </p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#94a3b8' }}>
-              PDF, DOCX, TXT, or image — up to 50 MB
+            <p
+              style={{
+                margin: '8px 0 0',
+                fontSize: 10,
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                color: '#887367',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
+            >
+              PDF, DOCX, TXT, PNG, JPG
             </p>
           </>
         )}
       </div>
 
       {/* ── Subject hint ───────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 20 }}>
         <label style={labelStyle}>Subject (optional)</label>
         <input
           type="text"
@@ -251,39 +297,74 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
           placeholder="e.g. DBMS, Operating Systems, Computer Networks"
           style={inputStyle}
         />
-        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>
+        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#887367' }}>
           Helps the AI use the right terminology and examples for your subject.
         </p>
       </div>
 
       {/* ── Learning mode ──────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 28 }}>
         <label style={labelStyle}>Learning mode</label>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {MODES.map(({ value, label, description }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setMode(value)}
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                border: `2px solid ${mode === value ? '#6366f1' : '#e2e8f0'}`,
-                borderRadius: 8,
-                background: mode === value ? '#eef2ff' : 'white',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.12s ease',
-              }}
-            >
-              <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: mode === value ? '#4338ca' : '#334155' }}>
-                {value === 'fast' ? '⚡ ' : '◎ '}{label}
-              </p>
-              <p style={{ margin: '2px 0 0', fontSize: 11, color: '#64748b' }}>
-                {description}
-              </p>
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: 12 }}>
+          {MODES.map(({ value, label, description, iconBg, Icon }) => {
+            const isSelected = mode === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setMode(value)}
+                style={{
+                  flex: 1,
+                  padding: '20px 18px',
+                  border: `1px solid ${isSelected ? '#C2892A' : '#ECEAE2'}`,
+                  borderRadius: 14,
+                  background: isSelected ? 'white' : '#f4f4f1',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.14s ease',
+                  boxShadow: isSelected ? '0 2px 12px rgba(194,137,42,0.12)' : 'none',
+                }}
+              >
+                {/* Icon */}
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    background: iconBg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 14,
+                  }}
+                >
+                  <Icon size={28} />
+                </div>
+
+                {/* Label */}
+                <p style={{
+                  margin: '0 0 6px',
+                  fontWeight: 700,
+                  fontSize: 16,
+                  color: '#1a1c1b',
+                  fontFamily: 'Inter, sans-serif',
+                }}>
+                  {label}
+                </p>
+
+                {/* Description */}
+                <p style={{
+                  margin: 0,
+                  fontSize: 12,
+                  color: '#887367',
+                  fontFamily: 'Inter, sans-serif',
+                  lineHeight: 1.5,
+                }}>
+                  {description}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -295,30 +376,31 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
           onClick={handleSubmit}
           style={{
             flex: 1,
-            padding: '11px 20px',
-            background: selectedFile ? '#6366f1' : '#e2e8f0',
-            color: selectedFile ? 'white' : '#94a3b8',
+            padding: '13px 20px',
+            background: selectedFile ? '#944604' : '#D4CFC5',
+            color: 'white',
             border: 'none',
             borderRadius: 8,
             fontWeight: 600,
             fontSize: 14,
             cursor: selectedFile ? 'pointer' : 'not-allowed',
-            transition: 'background 0.12s ease',
+            transition: 'opacity 0.12s ease',
             fontFamily: 'inherit',
+            opacity: selectedFile ? 1 : 0.7,
           }}
         >
-          {existingSessionId ? 'Add Document' : 'Start Studying'}
+          {existingSessionId ? 'Add Document' : 'Generate Study Canvas'}
         </button>
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
             style={{
-              padding: '11px 16px',
+              padding: '13px 16px',
               background: 'transparent',
-              border: '1px solid #e2e8f0',
+              border: '1px solid #ECEAE2',
               borderRadius: 8,
-              color: '#64748b',
+              color: '#554339',
               fontSize: 14,
               cursor: 'pointer',
               fontFamily: 'inherit',
@@ -334,35 +416,92 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
 
 // ── Sub-views ─────────────────────────────────────────────────────────────────
 
+const BUFFER_PHRASES = [
+  'Cooking maps…',
+  'Connecting nodes…',
+  'Drawing concepts…',
+  'Establishing links…',
+  'Mapping your knowledge…',
+  'Weaving the web…',
+  'Thinking deeply…',
+  'Building your canvas…',
+  'Tracing the threads…',
+  'Lighting up pathways…',
+  'Reading between lines…',
+  'Untangling concepts…',
+  'Charting territories…',
+  'Assembling the puzzle…',
+  'Bridging ideas…',
+  'Illuminating gaps…',
+  'Sketching the mindscape…',
+  'Discovering connections…',
+  'Forging new links…',
+  'Carving out concepts…',
+  'Stitching thoughts…',
+  'Painting the picture…',
+  'Plotting the course…',
+  'Weaving your knowledge…',
+  'Extracting the essence…',
+  'Crystallising ideas…',
+  'Following the threads…',
+  'Shaping your study arc…',
+  'Laying the groundwork…',
+  'Calibrating the compass…',
+];
+
 function ProcessingView({ label, percent }: { label: string; percent: number }) {
   const activeStepIndex = STEP_ORDER.findIndex((s) => label.toLowerCase().includes(s.split('_')[0]));
 
+  // Cycle through buffer phrases independently of SSE labels
+  const [phraseIndex, setPhraseIndex] = useState(() =>
+    Math.floor(Math.random() * BUFFER_PHRASES.length)
+  );
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPhraseIndex((i) => (i + 1) % BUFFER_PHRASES.length);
+    }, 1800);
+    return () => clearInterval(id);
+  }, []);
+
   return (
-    <div style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '24px 0' }}>
+    <div style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '24px 0', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ marginBottom: 20 }}>
         <div
           style={{
-            width: 56,
-            height: 56,
+            width: 48,
+            height: 48,
             borderRadius: '50%',
-            border: '3px solid #e2e8f0',
-            borderTopColor: '#6366f1',
+            border: '2px solid #ECEAE2',
+            borderTopColor: '#C2892A',
             animation: 'spin 0.8s linear infinite',
             margin: '0 auto 16px',
           }}
         />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#0f172a' }}>
-          {label || 'Processing…'}
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes phrase-fade { 0%,100% { opacity: 1; } 40%,60% { opacity: 0; } }`}</style>
+        <p
+          key={phraseIndex}
+          style={{
+            margin: '0 0 4px',
+            fontSize: 18,
+            fontFamily: "'Instrument Serif', Georgia, serif",
+            fontStyle: 'italic',
+            color: '#1a1c1b',
+            animation: 'phrase-fade 1.8s ease-in-out',
+          }}
+        >
+          {BUFFER_PHRASES[phraseIndex]}
+        </p>
+        <p style={{ margin: 0, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#887367', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          {label || 'Starting…'}
         </p>
       </div>
 
-      {/* Progress bar */}
+      {/* Progress bar — thin 3px line */}
       <div
         style={{
-          height: 6,
-          background: '#e2e8f0',
-          borderRadius: 3,
+          height: 3,
+          background: '#ECEAE2',
+          borderRadius: 99,
           overflow: 'hidden',
           marginBottom: 20,
         }}
@@ -371,8 +510,8 @@ function ProcessingView({ label, percent }: { label: string; percent: number }) 
           style={{
             height: '100%',
             width: `${percent}%`,
-            background: '#6366f1',
-            borderRadius: 3,
+            background: '#C2892A',
+            borderRadius: 99,
             transition: 'width 0.4s ease',
           }}
         />
@@ -387,15 +526,24 @@ function ProcessingView({ label, percent }: { label: string; percent: number }) 
             <div key={key} style={{ flex: 1, textAlign: 'center' }}>
               <div
                 style={{
-                  width: 8,
-                  height: 8,
+                  width: 7,
+                  height: 7,
                   borderRadius: '50%',
-                  background: isDone ? '#22c55e' : isActive ? '#6366f1' : '#e2e8f0',
+                  background: isDone ? '#3D7A5E' : isActive ? '#944604' : '#D4CFC5',
                   margin: '0 auto 4px',
                   transition: 'background 0.2s',
                 }}
               />
-              <p style={{ margin: 0, fontSize: 10, color: isActive ? '#4338ca' : '#94a3b8', fontWeight: isActive ? 600 : 400 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 10,
+                  fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                  color: isActive ? '#944604' : '#887367',
+                  fontWeight: isActive ? 600 : 400,
+                  letterSpacing: '0.02em',
+                }}
+              >
                 {stepLabel}
               </p>
             </div>
@@ -417,23 +565,30 @@ const STEP_LABELS = [
 
 function ErrorView({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '24px 0' }}>
-      <p style={{ fontSize: 32, margin: '0 0 12px' }}>⚠️</p>
-      <p style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: '0 0 6px' }}>
-        Something went wrong
+    <div style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '24px 0', fontFamily: 'Inter, sans-serif' }}>
+      <p
+        style={{
+          fontFamily: "'Instrument Serif', Georgia, serif",
+          fontStyle: 'italic',
+          fontSize: 18,
+          color: '#554339',
+          margin: '0 0 8px',
+        }}
+      >
+        Something went wrong.
       </p>
-      <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
+      <p style={{ fontSize: 13, color: '#887367', margin: '0 0 20px', maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
         {message}
       </p>
       <button
         type="button"
         onClick={onRetry}
         style={{
-          padding: '9px 20px',
-          background: '#6366f1',
+          padding: '10px 22px',
+          background: '#944604',
           color: 'white',
           border: 'none',
-          borderRadius: 7,
+          borderRadius: 8,
           fontWeight: 600,
           fontSize: 13,
           cursor: 'pointer',
@@ -450,23 +605,26 @@ function ErrorView({ message, onRetry }: { message: string; onRetry: () => void 
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
-  fontSize: 12,
+  fontSize: 10,
   fontWeight: 600,
-  color: '#475569',
-  marginBottom: 6,
-  letterSpacing: '0.02em',
+  color: '#554339',
+  marginBottom: 8,
+  letterSpacing: '0.06em',
   textTransform: 'uppercase',
+  fontFamily: 'Inter, sans-serif',
 };
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '9px 12px',
-  border: '1px solid #e2e8f0',
-  borderRadius: 7,
-  fontSize: 13,
-  color: '#334155',
+  padding: '6px 0',
+  border: 'none',
+  borderBottom: '1px solid #ECEAE2',
+  borderRadius: 0,
+  fontSize: 14,
+  color: '#1a1c1b',
   outline: 'none',
-  fontFamily: 'inherit',
+  background: 'transparent',
+  fontFamily: 'Inter, sans-serif',
   boxSizing: 'border-box',
 };
 

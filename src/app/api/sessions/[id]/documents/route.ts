@@ -167,6 +167,7 @@ export async function POST(req: Request, { params }: RouteParams) {
           flashcardResult.data,
           existingGraphState,
           rawText, filename, fileType, mmXml,
+          fileBuffer, mimeType,
         );
 
         // Touch last_active_at on the session

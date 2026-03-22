@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
 import { createServerClient } from '@/lib/supabase';
+import { StudyTabs } from '@/components/study/StudyTabs';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -70,35 +71,50 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          background: 'white',
-          borderBottom: '1px solid #e2e8f0',
-          // Escape the dashboard layout's horizontal padding so the nav is full-width
+          background: '#f9f9f6',
+          borderBottom: '1px solid #ECEAE2',
           marginLeft: -24,
           marginRight: -24,
           paddingLeft: 24,
           paddingRight: 24,
         }}
       >
-        {/* Left: back link + session title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        {/* Left: back link + session title + domain */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
           <Link
             href="/dashboard"
-            style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'none', flexShrink: 0 }}
+            style={{
+              fontSize: 12,
+              color: '#B8AFA6',
+              textDecoration: 'none',
+              flexShrink: 0,
+              letterSpacing: '0.01em',
+              fontFamily: 'Inter, sans-serif',
+            }}
           >
-            ← Dashboard
+            ←
           </Link>
 
-          <span style={{ color: '#e2e8f0', fontSize: 12 }}>|</span>
+          <span
+            style={{
+              display: 'inline-block',
+              width: 1,
+              height: 12,
+              background: '#ECEAE2',
+              flexShrink: 0,
+            }}
+          />
 
           <span
             style={{
               fontSize: 13,
-              fontWeight: 600,
-              color: '#334155',
+              fontWeight: 500,
+              color: '#1a1c1b',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              maxWidth: 220,
+              maxWidth: 200,
+              fontFamily: 'Inter, sans-serif',
             }}
           >
             {title}
@@ -107,12 +123,13 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
           {domain && (
             <span
               style={{
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: 600,
-                color: '#6366f1',
+                color: '#A89080',
                 textTransform: 'uppercase',
-                letterSpacing: '0.06em',
+                letterSpacing: '0.1em',
                 flexShrink: 0,
+                fontFamily: "'JetBrains Mono', 'Courier New', monospace",
               }}
             >
               {domain}
@@ -120,21 +137,19 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
           )}
         </div>
 
-        {/* Centre: tab navigation */}
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-          <TabLink href={`/study/${sessionId}/mindmap`} label="Mindmap" />
-          <TabLink href={`/study/${sessionId}/flashcards`} label="Flashcards" />
-        </div>
+        {/* Centre: tab navigation — client component reads pathname for active state */}
+        <StudyTabs sessionId={sessionId} />
 
         {/* Right: mode badge */}
-        <div style={{ flexShrink: 0 }}>
+        <div style={{ flexShrink: 0, flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 9,
               fontWeight: 700,
-              color: mode === 'fast' ? '#E6550D' : '#1A9641',
+              color: mode === 'fast' ? '#C2692A' : '#3D7A5E',
               textTransform: 'uppercase',
-              letterSpacing: '0.04em',
+              letterSpacing: '0.1em',
+              fontFamily: "'JetBrains Mono', 'Courier New', monospace",
             }}
           >
             {mode === 'fast' ? '⚡ Fast' : '◎ Steady'}
@@ -147,27 +162,3 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
   );
 }
 
-// ── Tab link ──────────────────────────────────────────────────────────────────
-
-function TabLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '5px 12px',
-        fontSize: 12,
-        fontWeight: 600,
-        color: '#475569',
-        textDecoration: 'none',
-        borderRadius: 6,
-        border: '1px solid #e2e8f0',
-        background: 'white',
-        transition: 'all 0.1s ease',
-      }}
-    >
-      {label}
-    </Link>
-  );
-}

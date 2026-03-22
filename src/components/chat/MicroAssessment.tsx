@@ -7,12 +7,9 @@
  * Fast mode  → yes/no buttons for quick comprehension checks (MCQ-style).
  * Steady mode → free-text textarea so the student must articulate understanding.
  *
- * The `onSubmit` callback sends the answer back to ChatInterface, which
- * includes it in the next POST request with isAssessmentSubmit=true.
- * The orchestrator then evaluates the answer and updates confidence_score.
- *
- * The `expected_understanding` rubric is intentionally never shown to the
- * student — it is only used by the orchestrator for evaluation.
+ * Design: "Scholarly Canvas" system — forest green (#3D7A5E) tertiary accent
+ * signals an interactive checkpoint. Background uses tonal layering (no hard
+ * borders) to sit distinctly above the parchment chat blocks.
  */
 
 import React, { useState } from 'react';
@@ -23,30 +20,26 @@ interface MicroAssessmentProps {
   question: string;
   difficulty: 'easy' | 'intermediate' | 'hard';
   learningMode: 'fast' | 'steady';
-  /**
-   * Determined by the LLM, not the learning mode.
-   * self_check → Yes/No confidence buttons (fast mode only, no specific correct answer).
-   * open       → free-text input (any question with a specific correct answer).
-   * Defaults to 'open' so old messages without this field render correctly.
-   */
   questionType?: 'self_check' | 'open';
   onSubmit: (answer: string) => void;
 }
 
-// ── Fast-mode answers ─────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-// Fast mode presents two options: confident yes or uncertain no.
+const FOREST_GREEN = '#3D7A5E';
+const GREEN_SURFACE = 'rgba(61, 122, 94, 0.07)';
+const GREEN_BORDER  = 'rgba(61, 122, 94, 0.18)';
+
 const FAST_MODE_OPTIONS = [
-  { label: 'Yes, I got it', value: 'Yes, I understand.' },
-  { label: 'Not quite', value: 'Not quite sure yet.' },
+  { label: 'Got it', value: 'Yes, I understand.' },
+  { label: 'Not yet', value: 'Not quite sure yet.' },
 ] as const;
 
-// ── Difficulty colour map ─────────────────────────────────────────────────────
-
-const DIFFICULTY_COLOUR: Record<string, string> = {
-  easy: '#16a34a',
-  intermediate: '#d97706',
-  hard: '#dc2626',
+// Difficulty uses semantic palette from DESIGN.md
+const DIFFICULTY_META: Record<string, { label: string; color: string }> = {
+  easy:         { label: 'Easy',         color: '#3D7A5E' }, // forest green
+  intermediate: { label: 'Intermediate', color: '#7A6C2A' }, // warm gold
+  hard:         { label: 'Hard',         color: '#9B5C4A' }, // terracotta
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -73,115 +66,145 @@ export function MicroAssessment({
   }
 
   return (
-    <div
-      style={{
-        margin: '12px 0',
-        padding: '14px 16px',
-        border: '1px solid #e0e7ff',
-        borderLeft: '4px solid #6366f1',
-        borderRadius: 8,
-        background: '#fafafe',
-        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
-      }}
-    >
-      {/* Header */}
+    <>
+      <style>{`
+        .micro-btn-yes:hover  { background: ${FOREST_GREEN} !important; color: #fff !important; }
+        .micro-btn-not:hover  { background: rgba(61,122,94,0.1) !important; }
+        .micro-submit:hover:not(:disabled) { background: #2E5E47 !important; }
+        .micro-textarea:focus { border-bottom: 2px solid ${FOREST_GREEN} !important; outline: none; }
+      `}</style>
+
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 8,
+          margin: '4px 0 0',
+          padding: '20px 20px 18px',
+          // Tonal layering: green-tinted surface, distinct from cream parchment
+          background: GREEN_SURFACE,
+          borderLeft: `3px solid ${FOREST_GREEN}`,
+          borderRadius: '0 10px 10px 0',
+          // Ambient shadow per DESIGN.md — warm occlusion, not muddy gray
+          boxShadow: '0 4px 16px rgba(28,25,23,0.06), inset 0 1px 0 rgba(255,255,255,0.5)',
         }}
       >
-        <span
+        {/* ── Header ────────────────────────────────────────────────────────── */}
+        <div
           style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#6366f1',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            marginBottom: 14,
           }}
         >
-          Check your understanding
-        </span>
-        <DifficultyBadge difficulty={difficulty} />
-      </div>
+          {/* Icon-dot */}
+          <span
+            style={{
+              display: 'inline-block',
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: FOREST_GREEN,
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+              fontSize: 9,
+              fontWeight: 700,
+              color: FOREST_GREEN,
+              textTransform: 'uppercase' as const,
+              letterSpacing: '0.14em',
+            }}
+          >
+            Check your understanding
+          </span>
+          <DifficultyBadge difficulty={difficulty} />
+        </div>
 
-      {/* Question */}
-      <p
-        style={{
-          margin: '0 0 12px',
-          fontSize: 14,
-          color: '#1e293b',
-          lineHeight: 1.5,
-          fontWeight: 500,
-        }}
-      >
-        {question}
-      </p>
-
-      {/* Answer input */}
-      {submitted ? (
+        {/* ── Question ──────────────────────────────────────────────────────── */}
         <p
           style={{
-            margin: 0,
-            fontSize: 12,
-            color: '#6366f1',
-            fontStyle: 'italic',
+            margin: '0 0 16px',
+            fontSize: 13.5,
+            color: '#2D1F0E',
+            lineHeight: 1.65,
+            fontFamily: "'Georgia', serif",
+            fontWeight: 400,
           }}
         >
-          Answer submitted — waiting for response…
+          {question}
         </p>
-      ) : learningMode === 'fast' && questionType === 'self_check' ? (
-        // Self-check buttons only when the question has no specific correct answer.
-        <FastModeButtons onSelect={handleFastSubmit} />
-      ) : (
-        // All open questions — and all steady mode questions — use the text input.
-        <SteadyModeInput
-          answer={answer}
-          onChange={setAnswer}
-          onSubmit={handleSteadySubmit}
-        />
-      )}
-    </div>
+
+        {/* ── Answer input ──────────────────────────────────────────────────── */}
+        {submitted ? (
+          <p
+            style={{
+              margin: 0,
+              fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+              fontSize: 11,
+              color: FOREST_GREEN,
+              letterSpacing: '0.04em',
+            }}
+          >
+            ✓ Answer submitted
+          </p>
+        ) : learningMode === 'fast' && questionType === 'self_check' ? (
+          <FastModeButtons onSelect={handleFastSubmit} />
+        ) : (
+          <SteadyModeInput
+            answer={answer}
+            onChange={setAnswer}
+            onSubmit={handleSteadySubmit}
+          />
+        )}
+      </div>
+    </>
   );
 }
 
 // ── Fast mode: yes/no buttons ─────────────────────────────────────────────────
 
-function FastModeButtons({
-  onSelect,
-}: {
-  onSelect: (value: string) => void;
-}) {
+function FastModeButtons({ onSelect }: { onSelect: (value: string) => void }) {
   return (
     <div style={{ display: 'flex', gap: 8 }}>
-      {FAST_MODE_OPTIONS.map((opt) => (
-        <button
-          key={opt.value}
-          onClick={() => onSelect(opt.value)}
-          style={{
-            padding: '6px 16px',
-            border: '1px solid #c7d2fe',
-            borderRadius: 6,
-            background: '#fff',
-            color: '#4338ca',
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            transition: 'background 0.1s ease',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = '#e0e7ff';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = '#fff';
-          }}
-        >
-          {opt.label}
-        </button>
-      ))}
+      <button
+        className="micro-btn-yes"
+        onClick={() => onSelect(FAST_MODE_OPTIONS[0].value)}
+        style={{
+          padding: '7px 18px',
+          border: `1px solid ${GREEN_BORDER}`,
+          borderRadius: 8,
+          background: 'white',
+          color: FOREST_GREEN,
+          fontSize: 12,
+          fontWeight: 600,
+          fontFamily: 'Inter, sans-serif',
+          cursor: 'pointer',
+          transition: 'background 0.12s ease, color 0.12s ease',
+          letterSpacing: '0.01em',
+        }}
+      >
+        {FAST_MODE_OPTIONS[0].label}
+      </button>
+      <button
+        className="micro-btn-not"
+        onClick={() => onSelect(FAST_MODE_OPTIONS[1].value)}
+        style={{
+          padding: '7px 18px',
+          border: `1px solid ${GREEN_BORDER}`,
+          borderRadius: 8,
+          background: 'transparent',
+          color: '#887367',
+          fontSize: 12,
+          fontWeight: 600,
+          fontFamily: 'Inter, sans-serif',
+          cursor: 'pointer',
+          transition: 'background 0.12s ease',
+          letterSpacing: '0.01em',
+        }}
+      >
+        {FAST_MODE_OPTIONS[1].label}
+      </button>
     </div>
   );
 }
@@ -200,15 +223,15 @@ function SteadyModeInput({
   const canSubmit = answer.trim().length > 0;
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // Ctrl/Cmd + Enter submits without requiring the button.
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && canSubmit) {
       onSubmit();
     }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <textarea
+        className="micro-textarea"
         value={answer}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -216,40 +239,38 @@ function SteadyModeInput({
         rows={3}
         style={{
           width: '100%',
-          padding: '8px 10px',
-          border: '1px solid #c7d2fe',
-          borderRadius: 6,
+          padding: '10px 0 8px',
+          // Underline-only per DESIGN.md input spec
+          border: 'none',
+          borderBottom: `1px solid ${GREEN_BORDER}`,
+          borderRadius: 0,
           fontSize: 13,
-          color: '#1e293b',
-          background: '#fff',
-          resize: 'vertical',
-          outline: 'none',
-          fontFamily: 'inherit',
-          lineHeight: 1.5,
-          boxSizing: 'border-box',
-        }}
-        onFocus={(e) => {
-          e.currentTarget.style.border = '1px solid #6366f1';
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.border = '1px solid #c7d2fe';
+          color: '#2D1F0E',
+          background: 'transparent',
+          resize: 'none',
+          fontFamily: "'Georgia', serif",
+          lineHeight: 1.6,
+          boxSizing: 'border-box' as const,
+          transition: 'border-bottom 0.15s ease',
         }}
       />
       <button
+        className="micro-submit"
         onClick={onSubmit}
         disabled={!canSubmit}
         style={{
           alignSelf: 'flex-end',
-          padding: '6px 18px',
+          padding: '7px 20px',
           border: 'none',
-          borderRadius: 6,
-          background: canSubmit ? '#6366f1' : '#e2e8f0',
-          color: canSubmit ? '#fff' : '#94a3b8',
-          fontSize: 13,
-          fontWeight: 500,
+          borderRadius: 8,
+          background: canSubmit ? FOREST_GREEN : 'rgba(61,122,94,0.15)',
+          color: canSubmit ? '#fff' : 'rgba(61,122,94,0.45)',
+          fontSize: 12,
+          fontWeight: 600,
           cursor: canSubmit ? 'pointer' : 'not-allowed',
-          fontFamily: 'inherit',
-          transition: 'background 0.1s ease',
+          fontFamily: 'Inter, sans-serif',
+          letterSpacing: '0.02em',
+          transition: 'background 0.12s ease',
         }}
       >
         Submit
@@ -261,22 +282,23 @@ function SteadyModeInput({
 // ── Difficulty badge ──────────────────────────────────────────────────────────
 
 function DifficultyBadge({ difficulty }: { difficulty: string }) {
-  const colour = DIFFICULTY_COLOUR[difficulty] ?? '#64748b';
+  const meta = DIFFICULTY_META[difficulty] ?? { label: difficulty, color: '#887367' };
 
   return (
     <span
       style={{
-        fontSize: 10,
-        fontWeight: 600,
-        color: colour,
-        border: `1px solid ${colour}`,
+        fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+        fontSize: 9,
+        fontWeight: 700,
+        color: meta.color,
+        background: `${meta.color}18`,
         borderRadius: 4,
-        padding: '1px 6px',
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
+        padding: '2px 7px',
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.08em',
       }}
     >
-      {difficulty}
+      {meta.label}
     </span>
   );
 }

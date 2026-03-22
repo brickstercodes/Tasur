@@ -4,39 +4,22 @@
  * WHY: Custom react-flow node component for the Tasur mindmap.
  *
  * react-flow's default node is a plain rectangle — this component implements
- * the full Freeplane-style visual design from the architecture spec:
- *   - Root: dark fill (#2C3E50), white text, 12px bold.
- *   - Depth 1–4+: pastel fill, saturated border in the branch color, dark text.
- *   - Font size and weight taper with depth (12→10→8.5→7.5→7px, bold only at 0–1).
- *   - Concept nodes (those with a concept_id) show a colored confidence dot and
- *     navigate to chat on click.
+ * the "Nocturne Vellum" visual design:
+ *   - Root: dark pill (#1C1917), white text, Instrument Serif.
+ *   - All other nodes: warm parchment (#F4F3EE), Inter font, depth-scaled sizing.
+ *   - Concept nodes (those with a concept_id) show a colored confidence dot BEFORE
+ *     the label text and navigate to chat on click.
  *   - Collapsed nodes show a "+N" toggle badge; expanded nodes show "−".
- *   - Hover on concept nodes adds a shadow and thickens the border.
+ *   - Hover on non-root nodes adds a shadow and darker border.
  *   - study_cue text appears as a native tooltip via the title attribute.
  *   - Search dim: nodes with searchMatch=false render at 30% opacity.
- *
- * The component is stateless beyond hover — all other state lives in
- * MindmapViewer and is passed through FlowNodeData.
+ *   - Resume target pulse: amber ring animation.
  */
 
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import type { FlowNodeData } from './layout/balanced-tree';
 import { getConfidenceColor } from './color-utils';
-
-// ── Typography constants ──────────────────────────────────────────────────────
-
-const FONT_SIZE_BY_DEPTH: Record<number, string> = {
-  0: '12px',
-  1: '10px',
-  2: '8.5px',
-  3: '7.5px',
-};
-const FONT_SIZE_LEAF = '7px';
-
-function getFontSize(depth: number): string {
-  return FONT_SIZE_BY_DEPTH[depth] ?? FONT_SIZE_LEAF;
-}
 
 // ── Handle styles ─────────────────────────────────────────────────────────────
 
@@ -51,6 +34,29 @@ const HIDDEN_HANDLE_STYLE: React.CSSProperties = {
   background: 'transparent',
 };
 
+// ── Depth-based sizing ────────────────────────────────────────────────────────
+
+function getDepthStyles(depth: number): {
+  padding: string;
+  fontSize: string;
+  fontWeight: number;
+  width: number;
+} {
+  if (depth === 1) return { padding: '7px 12px', fontSize: '11px', fontWeight: 500, width: 190 };
+  if (depth === 2) return { padding: '5px 10px', fontSize: '10.5px', fontWeight: 500, width: 185 };
+  return { padding: '4px 8px', fontSize: '10px', fontWeight: 400, width: 180 };
+}
+
+// ── Depth-based node colour ───────────────────────────────────────────────────
+// Three warm parchment tones that deepen with each level of the tree —
+// like layers of aged paper, lightest at the top, dustiest at the leaves.
+
+function getNodeBackground(depth: number): { bg: string; border: string; borderHover: string } {
+  if (depth === 1) return { bg: '#F2EDE3', border: '#DDD5C4', borderHover: '#C4B9A6' };
+  if (depth === 2) return { bg: '#E8DFD0', border: '#D0C4B0', borderHover: '#B8A99A' };
+  return           { bg: '#DDD4C2', border: '#C4B8A4', borderHover: '#A89A88' };
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
@@ -59,8 +65,6 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
     concept_id,
     study_cue,
     depth,
-    branchColor,
-    pastelColor,
     confidence,
     isCollapsed,
     visibleChildCount,
@@ -76,25 +80,13 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
   const isConcept = !!concept_id;
   const hasChildren = visibleChildCount > 0;
 
-  const backgroundColor = isRoot ? '#2C3E50' : pastelColor;
-  const textColor = isRoot ? '#FFFFFF' : '#1A1A2E';
-  // Resume target nodes use an indigo border so they stand out regardless of branch color.
-  const baseBorderColor = isRoot ? '#2C3E50' : isResumeTarget ? '#6366f1' : branchColor;
-  const fontSize = getFontSize(depth);
-  const fontWeight = depth <= 1 ? 700 : 400;
+  // Search: non-matching nodes fade to 30% opacity.
+  const opacity = searchMatch === false ? 0.3 : 1;
 
-  // Hover adds a shadow and thicker border on concept nodes.
   // Resume target pulsing ring is driven by the CSS animation injected in MindmapViewer.
-  const borderWidth = isHovered && isConcept ? 2 : isResumeTarget ? 2 : 1.5;
-  const boxShadow = isHovered && isConcept
-    ? '0 2px 8px rgba(0,0,0,0.18)'
-    : undefined;
   const animation = isResumeTarget && !isHovered
     ? 'resumePulse 2s ease-out infinite'
     : undefined;
-
-  // Search: non-matching nodes fade to 30% opacity.
-  const opacity = searchMatch === false ? 0.3 : 1;
 
   const handleToggleClick = useCallback(
     (event: React.MouseEvent) => {
@@ -111,9 +103,78 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
     }
   }, [isConcept, concept_id, onConceptClick]);
 
+  // ── Root node ───────────────────────────────────────────────────────────────
+  if (isRoot) {
+    return (
+      <div style={{ opacity, transition: 'opacity 0.2s ease' }}>
+        <Handle
+          id="left"
+          type="source"
+          position={Position.Left}
+          isConnectable={false}
+          style={HIDDEN_HANDLE_STYLE}
+        />
+        <Handle
+          id="left"
+          type="target"
+          position={Position.Left}
+          isConnectable={false}
+          style={HIDDEN_HANDLE_STYLE}
+        />
+
+        <div
+          title={study_cue ?? undefined}
+          style={{
+            background: '#1C1917',
+            color: '#F9F9F6',
+            fontFamily: "'Instrument Serif', Georgia, serif",
+            fontSize: '13px',
+            fontWeight: 400,
+            padding: '10px 18px',
+            borderRadius: '12px',
+            border: 'none',
+            width: 200,
+            letterSpacing: '-0.01em',
+            wordBreak: 'break-word',
+            lineHeight: 1.35,
+            cursor: 'default',
+            position: 'relative',
+            boxSizing: 'border-box',
+            userSelect: 'none',
+            animation,
+          }}
+        >
+          {label}
+        </div>
+
+        <Handle
+          id="right"
+          type="source"
+          position={Position.Right}
+          isConnectable={false}
+          style={HIDDEN_HANDLE_STYLE}
+        />
+        <Handle
+          id="right"
+          type="target"
+          position={Position.Right}
+          isConnectable={false}
+          style={HIDDEN_HANDLE_STYLE}
+        />
+      </div>
+    );
+  }
+
+  // ── Non-root nodes ──────────────────────────────────────────────────────────
+  const { padding, fontSize, fontWeight, width } = getDepthStyles(depth);
+  const { bg, border, borderHover } = getNodeBackground(depth);
+
+  const borderColor = isHovered ? borderHover : border;
+  const boxShadow = isHovered ? '0 2px 12px rgba(0,0,0,0.08)' : undefined;
+
   return (
     <div style={{ opacity, transition: 'opacity 0.2s ease' }}>
-      {/* Left handles — source for left-side parent outgoing edges; target for right-side child incoming edges. */}
+      {/* Left handles */}
       <Handle
         id="left"
         type="source"
@@ -136,15 +197,18 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{
-          backgroundColor,
-          border: `${borderWidth}px solid ${baseBorderColor}`,
-          borderRadius: 4,
-          padding: '4px 7px',
-          width: isRoot ? 180 : 200,
-          color: textColor,
+          background: bg,
+          border: `1px solid ${borderColor}`,
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding,
+          width,
+          color: '#1C1917',
+          fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
           fontSize,
           fontWeight,
-          fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
           wordBreak: 'break-word',
           lineHeight: 1.35,
           cursor: isConcept ? 'pointer' : 'default',
@@ -153,10 +217,10 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
           userSelect: 'none',
           boxShadow,
           animation,
-          transition: 'box-shadow 0.15s ease, border-width 0.1s ease',
+          transition: 'box-shadow 0.15s ease, border-color 0.1s ease',
         }}
       >
-        {/* Confidence dot for concept nodes that have been assessed. */}
+        {/* Confidence dot before label text */}
         {isConcept && confidence !== undefined && (
           <span
             aria-label={`Confidence: ${Math.round(confidence * 100)}%`}
@@ -166,30 +230,27 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
               height: 7,
               borderRadius: '50%',
               backgroundColor: getConfidenceColor(confidence),
-              marginRight: 4,
-              verticalAlign: 'middle',
               flexShrink: 0,
             }}
           />
         )}
 
-        {label}
+        <span style={{ flex: 1 }}>{label}</span>
 
-        {/* Expand / collapse toggle badge (not shown on root). */}
-        {hasChildren && !isRoot && (
+        {/* Expand / collapse toggle badge */}
+        {hasChildren && (
           <span
             onClick={handleToggleClick}
             title={isCollapsed ? 'Expand' : 'Collapse'}
             style={{
               display: 'inline-block',
-              marginLeft: 5,
               fontSize: '9px',
-              color: textColor,
-              opacity: 0.55,
+              color: '#78716C',
+              opacity: 0.7,
               cursor: 'pointer',
-              verticalAlign: 'middle',
               userSelect: 'none',
-              fontWeight: 400,
+              fontWeight: 500,
+              flexShrink: 0,
             }}
           >
             {isCollapsed ? `+${visibleChildCount}` : '−'}
@@ -197,7 +258,7 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
         )}
       </div>
 
-      {/* Right handles — source for right-side parent outgoing edges; target for left-side child incoming edges. */}
+      {/* Right handles */}
       <Handle
         id="right"
         type="source"

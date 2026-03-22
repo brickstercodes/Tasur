@@ -62,7 +62,7 @@ export function MindmapEdge({
   return (
     <BaseEdge
       path={edgePath}
-      style={{ stroke: branchColor, strokeWidth, fill: 'none' }}
+      style={{ stroke: '#D4CFC5', strokeWidth, fill: 'none' }}
     />
   );
 }

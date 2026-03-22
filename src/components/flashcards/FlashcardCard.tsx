@@ -34,16 +34,16 @@ export interface FlashcardCardProps {
 // ── Colour maps ───────────────────────────────────────────────────────────────
 
 const CARD_TYPE_COLOUR: Record<string, { bg: string; text: string; label: string }> = {
-  recall:      { bg: '#dbeafe', text: '#1d4ed8', label: 'Recall' },
-  application: { bg: '#dcfce7', text: '#15803d', label: 'Application' },
-  explain:     { bg: '#f3e8ff', text: '#7e22ce', label: 'Explain' },
-  compare:     { bg: '#fef9c3', text: '#854d0e', label: 'Compare' },
+  recall:      { bg: '#EEE8E1', text: '#554339', label: 'Recall' },
+  application: { bg: '#E5EDE8', text: '#3D7A5E', label: 'Application' },
+  explain:     { bg: '#EDE8F0', text: '#6B5B7B', label: 'Explain' },
+  compare:     { bg: '#F0EAE0', text: '#7A5C2A', label: 'Compare' },
 };
 
 const DIFFICULTY_COLOUR: Record<string, string> = {
-  easy:         '#16a34a',
-  intermediate: '#d97706',
-  hard:         '#dc2626',
+  easy:         '#3D7A5E',
+  intermediate: '#C2692A',
+  hard:         '#9B5C4A',
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -93,13 +93,13 @@ export function FlashcardCard({
             inset: 0,
             backfaceVisibility: 'hidden',
             borderRadius: 12,
-            border: '1px solid #e2e8f0',
-            background: '#fff',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            border: '1px solid #ECEAE2',
+            background: '#FFFFFF',
+            boxShadow: '0 8px 32px rgba(28,25,23,0.08)',
             display: 'flex',
             flexDirection: 'column',
             padding: '20px 24px',
-            fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+            fontFamily: 'Inter, sans-serif',
           }}
         >
           <CardHeader
@@ -121,10 +121,9 @@ export function FlashcardCard({
           >
             <p
               style={{
-                fontSize: 18,
-                fontWeight: 500,
-                color: '#0f172a',
-                lineHeight: 1.6,
+                fontSize: 16,
+                color: '#1a1c1b',
+                lineHeight: 1.65,
                 textAlign: 'center',
                 margin: 0,
               }}
@@ -138,12 +137,14 @@ export function FlashcardCard({
             style={{
               margin: 0,
               textAlign: 'center',
-              fontSize: 11,
-              color: '#94a3b8',
-              letterSpacing: '0.03em',
+              fontSize: 10,
+              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+              color: '#A8A29E',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
             }}
           >
-            Click to reveal answer
+            CLICK TO REVEAL
           </p>
 
           {/* Hints (front side) */}
@@ -164,13 +165,13 @@ export function FlashcardCard({
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
             borderRadius: 12,
-            border: `1px solid ${typeStyle.bg}`,
-            background: '#fafffe',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            border: '1px solid #ECEAE2',
+            background: '#FFFFFF',
+            boxShadow: '0 8px 32px rgba(28,25,23,0.08)',
             display: 'flex',
             flexDirection: 'column',
             padding: '20px 24px',
-            fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+            fontFamily: 'Inter, sans-serif',
           }}
         >
           <CardHeader
@@ -194,7 +195,7 @@ export function FlashcardCard({
             <p
               style={{
                 fontSize: 15,
-                color: '#1e293b',
+                color: '#1a1c1b',
                 lineHeight: 1.7,
                 whiteSpace: 'pre-wrap',
                 margin: 0,
@@ -232,15 +233,14 @@ function CardHeader({
         flexShrink: 0,
       }}
     >
-      {/* Concept badge */}
+      {/* Concept name */}
       <span
         style={{
           fontSize: 11,
-          fontWeight: 600,
-          color: '#64748b',
-          background: '#f1f5f9',
-          borderRadius: 4,
-          padding: '2px 8px',
+          fontFamily: 'Inter, sans-serif',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: '#887367',
           maxWidth: 160,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -304,11 +304,11 @@ function HintsSection({
         }}
         style={{
           background: 'none',
-          border: '1px solid #e2e8f0',
+          border: '1px solid #ECEAE2',
           borderRadius: 5,
           padding: '3px 10px',
           fontSize: 11,
-          color: '#64748b',
+          color: '#887367',
           cursor: 'pointer',
           fontFamily: 'inherit',
         }}
@@ -325,7 +325,7 @@ function HintsSection({
           }}
         >
           {hints.map((hint, i) => (
-            <li key={i} style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>
+            <li key={i} style={{ fontSize: 12, color: '#887367', marginBottom: 2 }}>
               {hint}
             </li>
           ))}

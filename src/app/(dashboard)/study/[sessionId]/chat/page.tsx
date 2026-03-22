@@ -7,10 +7,8 @@
  * This page:
  *   1. Validates auth + session ownership (guard before any DB queries).
  *   2. Fetches the concept name and session metadata in parallel.
- *   3. Renders a breadcrumb and concept header so students always know
- *      where they are in the learning flow.
- *   4. Mounts the ChatInterface client component with everything it needs
- *      to operate without additional server round-trips.
+ *   3. Fetches prerequisites, mindmap study cue, and source document in parallel.
+ *   4. Renders a two-column layout: chat on the left, FocusZone sidebar on right.
  *
  * Missing conceptId or a concept that doesn't belong to the session both
  * return 404 — guards against URL manipulation.
@@ -24,12 +22,29 @@ import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
 import { createServerClient } from '@/lib/supabase';
 import { ChatInterface } from '@/components/chat/ChatInterface';
+import { FocusZone } from '@/components/chat/FocusZone';
 
 // ── Page props ────────────────────────────────────────────────────────────────
 
 interface PageProps {
   params: Promise<{ sessionId: string }>;
   searchParams: Promise<{ conceptId?: string }>;
+}
+
+// ── Helper: traverse mindmap tree to find study_cue for a concept ─────────────
+
+function findStudyCue(node: Record<string, unknown>, targetConceptId: string): string | undefined {
+  if (node.concept_id === targetConceptId && node.study_cue) {
+    return node.study_cue as string;
+  }
+  const children = node.children as Record<string, unknown>[] | undefined;
+  if (children) {
+    for (const child of children) {
+      const result = findStudyCue(child, targetConceptId);
+      if (result) return result;
+    }
+  }
+  return undefined;
 }
 
 // ── Page component ────────────────────────────────────────────────────────────
@@ -81,132 +96,194 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
   const { name: conceptName } = conceptResult.data;
   const domain = subject_domain ?? 'general';
 
+  // Derive user initial for the chat avatar (prefer display name, fall back to email)
+  const userInitial = (session.user.name ?? session.user.email ?? 'U')
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+
+  // Fetch prerequisites, mindmap data (for study_cue), and source document in parallel.
+  // These are non-blocking: failures degrade gracefully.
+  const [prereqRelsResult, mindmapResult, docResult] = await Promise.all([
+    supabase
+      .from('concept_relationships')
+      .select('from_concept_id')
+      .eq('to_concept_id', conceptId)
+      .eq('relationship_type', 'prerequisite'),
+    supabase
+      .from('mindmaps')
+      .select('mindmap_data')
+      .eq('session_id', sessionId)
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('documents')
+      .select('file_path, raw_text, file_type')
+      .eq('session_id', sessionId)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  // Fetch prerequisite concept names.
+  const prereqIds: string[] = prereqRelsResult.data?.map(
+    (r: { from_concept_id: string }) => r.from_concept_id,
+  ) ?? [];
+  const prerequisites: string[] = [];
+  if (prereqIds.length > 0) {
+    const { data: prereqConcepts } = await supabase
+      .from('concepts')
+      .select('name')
+      .in('id', prereqIds);
+    prerequisites.push(...(prereqConcepts?.map((c: { name: string }) => c.name) ?? []));
+  }
+
+  // Extract study_cue from mindmap tree data.
+  const studyCue = mindmapResult.data?.mindmap_data
+    ? findStudyCue(mindmapResult.data.mindmap_data as Record<string, unknown>, conceptId)
+    : undefined;
+
+  // Always route through the preview API — it handles both storage-backed PDFs
+  // (redirect to signed URL) and legacy text-only uploads (styled HTML reader).
+  const documentUrl: string | undefined = docResult.data
+    ? `/api/sessions/${sessionId}/documents/preview`
+    : undefined;
+  const documentFileType: string | undefined = docResult.data?.file_type ?? undefined;
+  const documentText: string | undefined = docResult.data?.raw_text ?? undefined;
+  const documentFileName: string | undefined = docResult.data?.file_path ?? undefined;
+
   return (
     /*
-     * The dashboard layout applies max-w-5xl + px-6 py-10 to <main>.
-     * We keep that constraint for the chat page (unlike mindmap which
-     * needs full viewport) so the conversation feels focused and readable.
+     * Two-column layout: left column is the chat conversation,
+     * right column is the FocusZone sidebar.
+     * Negative margins escape the dashboard layout's horizontal padding
+     * so the sidebar can reach the edge.
      */
     <div
       style={{
         display: 'flex',
-        flexDirection: 'column',
-        height: 'calc(100vh - 112px)', // viewport minus dashboard header + main padding
+        flexDirection: 'row',
+        height: 'calc(100vh - 112px)',
+        gap: 0,
+        marginLeft: -24,
+        marginRight: -24,
       }}
     >
-      {/* ── Breadcrumb ──────────────────────────────────────────────────────── */}
-      <nav
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 12,
-          color: '#94a3b8',
-          marginBottom: 16,
-          flexShrink: 0,
-        }}
-      >
-        <Link
-          href="/dashboard"
-          style={{ color: '#94a3b8', textDecoration: 'none' }}
-        >
-          Dashboard
-        </Link>
-        <span>›</span>
-        <Link
-          href={`/study/${sessionId}/mindmap`}
-          style={{ color: '#94a3b8', textDecoration: 'none' }}
-        >
-          {sessionTitle}
-        </Link>
-        <span>›</span>
-        <span style={{ color: '#475569', fontWeight: 500 }}>{conceptName}</span>
-      </nav>
-
-      {/* ── Concept header ──────────────────────────────────────────────────── */}
+      {/* ── Left column: chat conversation ──────────────────────────────────── */}
       <div
         style={{
+          flex: 1,
+          minWidth: 0,
           display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          marginBottom: 16,
-          flexShrink: 0,
-          paddingBottom: 14,
-          borderBottom: '1px solid #e2e8f0',
+          flexDirection: 'column',
+          padding: '0 24px',
+          overflow: 'hidden',
         }}
       >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 22,
-              fontWeight: 700,
-              color: '#0f172a',
-              letterSpacing: '-0.01em',
-              fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
-            }}
+        {/* Breadcrumb */}
+        <nav
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 12,
+            color: '#94a3b8',
+            marginBottom: 16,
+            flexShrink: 0,
+            paddingTop: 8,
+          }}
+        >
+          <Link href="/dashboard" style={{ color: '#94a3b8', textDecoration: 'none' }}>
+            Dashboard
+          </Link>
+          <span>›</span>
+          <Link
+            href={`/study/${sessionId}/mindmap`}
+            style={{ color: '#94a3b8', textDecoration: 'none' }}
           >
-            {conceptName}
-          </h1>
-          {subject_domain && (
+            {sessionTitle}
+          </Link>
+          <span>›</span>
+          <span style={{ color: '#475569', fontWeight: 500 }}>{conceptName}</span>
+        </nav>
+
+        {/* Concept header — simplified */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 12,
+            flexShrink: 0,
+            paddingBottom: 12,
+            borderBottom: '1px solid #ECEAE2',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span
               style={{
-                display: 'inline-block',
-                marginTop: 4,
                 fontSize: 11,
                 fontWeight: 600,
-                color: '#6366f1',
+                color: learningMode === 'fast' ? '#C2692A' : '#3D7A5E',
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.04em',
               }}
             >
-              {domain}
+              {learningMode === 'fast' ? '⚡ Fast' : '◎ Steady'}
             </span>
-          )}
-        </div>
-
-        {/* Learning mode + back link */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: learningMode === 'fast' ? '#E6550D' : '#1A9641',
-              textTransform: 'uppercase',
-              letterSpacing: '0.03em',
-            }}
-          >
-            {learningMode === 'fast' ? '⚡ Fast' : '◎ Steady'}
-          </span>
-
+            {subject_domain && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: '#887367',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                }}
+              >
+                {domain}
+              </span>
+            )}
+          </div>
           <Link
             href={`/study/${sessionId}/mindmap`}
             style={{
               fontSize: 12,
-              color: '#6366f1',
+              color: '#887367',
               textDecoration: 'none',
               fontWeight: 500,
               padding: '4px 10px',
-              border: '1px solid #c7d2fe',
+              border: '1px solid #ECEAE2',
               borderRadius: 6,
-              fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
             }}
           >
             ← Mindmap
           </Link>
         </div>
+
+        {/* ChatInterface */}
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <ChatInterface
+            sessionId={sessionId}
+            conceptId={conceptId}
+            conceptName={conceptName}
+            domain={domain}
+            learningMode={learningMode}
+            userInitial={userInitial}
+          />
+        </div>
       </div>
 
-      {/* ── Chat interface ──────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, minHeight: 0 }}>
-        <ChatInterface
-          sessionId={sessionId}
-          conceptId={conceptId}
-          conceptName={conceptName}
-          domain={domain}
-          learningMode={learningMode}
-        />
-      </div>
+      {/* ── Right column: Focus Zone ─────────────────────────────────────────── */}
+      <FocusZone
+        conceptName={conceptName}
+        prerequisites={prerequisites}
+        studyCue={studyCue}
+        documentText={documentText}
+        documentFileName={documentFileName}
+        documentUrl={documentUrl}
+        documentFileType={documentFileType}
+      />
     </div>
   );
 }

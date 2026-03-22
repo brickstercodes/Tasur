@@ -4,14 +4,15 @@
  * WHY: Root client component for the interactive mindmap view.
  *
  * This is the "wow moment" — the first thing a student sees after uploading
- * material. It wraps react-flow with Tasur's custom layout and visual design.
+ * material. It wraps react-flow with Tasur's custom layout and visual design
+ * using the "Nocturne Vellum" aesthetic.
  *
  * Responsibilities:
  *   - Manages collapsed node state and re-runs the balanced-tree layout when
  *     it changes (so the tree re-centers correctly, not just hides nodes).
  *   - Manages search query: matching nodes are highlighted, others fade to 30%.
- *   - Exposes a toolbar with zoom, fit-to-view, expand-all, collapse-all, and
- *     search controls, plus a learning-mode indicator.
+ *   - Exposes a pill-shaped floating toolbar with zoom, fit-to-view,
+ *     expand-all, collapse-all, search, and a learning-mode indicator.
  *   - Passes stable callbacks to node data so nodes can toggle collapse and
  *     navigate to concept chat without re-registering event listeners.
  *   - Uses ReactFlowProvider so toolbar controls can call useReactFlow() from
@@ -26,8 +27,6 @@ import React, { useState, useMemo, useCallback } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
-  Background,
-  BackgroundVariant,
   type Node,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -39,7 +38,6 @@ import {
   buildBalancedTreeLayout,
   getTopLevelNodeIds,
   type FlowNodeData,
-  type FlowEdgeData,
 } from './layout/balanced-tree';
 import type { MindmapTreeOutput } from '@/lib/schemas/mindmap-tree-output';
 
@@ -75,6 +73,14 @@ export function MindmapViewer(props: MindmapViewerProps) {
     </ReactFlowProvider>
   );
 }
+
+// ── Confidence legend data ─────────────────────────────────────────────────────
+
+const CONFIDENCE_LEGEND = [
+  { dot: '#3D7A5E', label: 'Mastered' },
+  { dot: '#C2892A', label: 'Reviewing' },
+  { dot: '#9B5C4A', label: 'Struggling' },
+];
 
 // ── Inner component: uses useReactFlow hook ───────────────────────────────────
 
@@ -185,35 +191,40 @@ function MindmapViewerContent({
   const isAnyCollapsed = collapsedNodes.size > 0;
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {/* Keyframe for resume-target pulse ring — injected once at the container level. */}
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        background: '#f9f9f6',
+        backgroundImage: 'radial-gradient(rgba(0,0,0,0.055) 1px, transparent 0)',
+        backgroundSize: '24px 24px',
+      }}
+    >
+      {/* Keyframe for resume-target amber pulse ring */}
       <style>{`
         @keyframes resumePulse {
-          0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0.55); }
-          65%  { box-shadow: 0 0 0 7px rgba(99,102,241,0); }
-          100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+          0%   { box-shadow: 0 0 0 0 rgba(194, 137, 42, 0.4); }
+          65%  { box-shadow: 0 0 0 8px rgba(194, 137, 42, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(194, 137, 42, 0); }
         }
       `}</style>
 
-      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
+      {/* ── Pill-shaped floating toolbar ──────────────────────────────────────── */}
       <div
         style={{
           position: 'absolute',
-          top: 12,
-          left: '50%',
-          transform: 'translateX(-50%)',
+          top: 16,
+          left: 16,
           zIndex: 10,
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          background: 'rgba(255,255,255,0.92)',
-          backdropFilter: 'blur(6px)',
-          border: '1px solid #e0e0e0',
-          borderRadius: 8,
-          padding: '5px 10px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-          fontSize: 12,
-          fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+          gap: 2,
+          background: 'rgba(255,255,255,0.95)',
+          border: '1px solid rgba(219,193,180,0.3)',
+          borderRadius: '9999px',
+          padding: '4px',
+          boxShadow: '0 4px 20px rgba(28,25,23,0.08)',
         }}
       >
         {/* Zoom controls */}
@@ -242,23 +253,31 @@ function MindmapViewerContent({
         </ToolbarButton>
         <ToolbarDivider />
 
-        {/* Search */}
+        {/* Search — inline always, styled to match */}
+        <ToolbarButton onClick={() => {}} title="Search">⌕</ToolbarButton>
         <input
           type="text"
           placeholder="Search…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
-            border: '1px solid #d0d0d0',
-            borderRadius: 4,
-            padding: '2px 7px',
-            fontSize: 11,
-            width: 120,
+            background: 'transparent',
+            border: 'none',
+            borderBottom: searchQuery ? '1px solid #A8A29E' : '1px solid transparent',
             outline: 'none',
-            fontFamily: 'inherit',
-            color: '#1A1A2E',
-            background: searchQuery ? '#fff8dc' : '#fafafa',
-            transition: 'background 0.15s ease',
+            fontSize: 11,
+            width: 100,
+            color: '#1C1917',
+            fontFamily: 'Inter, sans-serif',
+            padding: '2px 0',
+            transition: 'border-color 0.15s ease',
+          }}
+          onFocus={(e) => {
+            (e.currentTarget as HTMLInputElement).style.borderBottomColor = '#A8A29E';
+          }}
+          onBlur={(e) => {
+            if (!searchQuery)
+              (e.currentTarget as HTMLInputElement).style.borderBottomColor = 'transparent';
           }}
         />
         {searchQuery && (
@@ -266,9 +285,8 @@ function MindmapViewerContent({
             ✕
           </ToolbarButton>
         )}
-        <ToolbarDivider />
 
-        {/* Resume target jump button — only shown when a target exists. */}
+        {/* Resume target jump button — only shown when a target exists */}
         {resumeConceptId && (
           <>
             <ToolbarDivider />
@@ -279,24 +297,24 @@ function MindmapViewerContent({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                padding: '3px 8px',
+                padding: '4px 12px',
                 border: 'none',
-                borderRadius: 5,
-                background: '#6366f1',
+                borderRadius: 9999,
+                background: '#C2892A',
                 color: '#fff',
                 fontSize: 11,
                 fontWeight: 600,
                 cursor: 'pointer',
-                fontFamily: 'inherit',
+                fontFamily: 'Inter, sans-serif',
                 letterSpacing: '0.02em',
                 whiteSpace: 'nowrap',
                 transition: 'background 0.1s ease',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = '#4f46e5';
+                (e.currentTarget as HTMLButtonElement).style.background = '#A8751F';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = '#6366f1';
+                (e.currentTarget as HTMLButtonElement).style.background = '#C2892A';
               }}
             >
               ▶ Continue
@@ -304,22 +322,77 @@ function MindmapViewerContent({
           </>
         )}
 
+        <ToolbarDivider />
+
         {/* Learning mode indicator */}
         <span
           style={{
             fontSize: 10,
             fontWeight: 600,
-            color: learningMode === 'fast' ? '#E6550D' : '#1A9641',
+            color: learningMode === 'fast' ? '#C2692A' : '#3D7A5E',
             letterSpacing: '0.03em',
             textTransform: 'uppercase',
             whiteSpace: 'nowrap',
+            padding: '0 8px',
           }}
         >
           {learningMode === 'fast' ? '⚡ Fast' : '◎ Steady'}
         </span>
       </div>
 
-      {/* ── react-flow canvas ────────────────────────────────────────────────── */}
+      {/* ── Confidence legend (bottom-right) ─────────────────────────────────── */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 20,
+          right: 20,
+          zIndex: 10,
+          background: 'rgba(255,255,255,0.9)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(219,193,180,0.2)',
+          borderRadius: 12,
+          padding: '12px 16px',
+          boxShadow: '0 4px 16px rgba(28,25,23,0.06)',
+        }}
+      >
+        <div
+          style={{
+            fontSize: 9,
+            fontFamily: 'monospace',
+            color: '#887367',
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            marginBottom: 10,
+          }}
+        >
+          CONFIDENCE
+        </div>
+        {CONFIDENCE_LEGEND.map(({ dot, label }) => (
+          <div
+            key={label}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 6,
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: dot,
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 11, color: '#554339' }}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── react-flow canvas ─────────────────────────────────────────────────── */}
       <ReactFlow
         nodes={searchedNodes}
         edges={layoutEdges}
@@ -327,7 +400,7 @@ function MindmapViewerContent({
         edgeTypes={EDGE_TYPES}
         fitView
         fitViewOptions={{ padding: 0.12 }}
-        style={{ background: '#F8F9FA' }}
+        style={{ background: 'transparent' }}
         minZoom={0.15}
         maxZoom={2.5}
         nodesDraggable={false}
@@ -338,14 +411,7 @@ function MindmapViewerContent({
         zoomOnDoubleClick={false}
         onDoubleClick={handleFitView}
         attributionPosition="bottom-right"
-      >
-        <Background
-          color="#dde0e3"
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-        />
-      </ReactFlow>
+      />
     </div>
   );
 }
@@ -366,20 +432,23 @@ function ToolbarButton({ onClick, disabled, title, children }: ToolbarButtonProp
       disabled={disabled}
       title={title}
       style={{
-        background: 'none',
+        width: 40,
+        height: 40,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: '50%',
         border: 'none',
-        padding: '2px 5px',
+        background: 'none',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        fontSize: 14,
-        color: disabled ? '#c0c0c0' : '#444',
-        borderRadius: 4,
-        lineHeight: 1,
-        fontFamily: 'inherit',
+        color: disabled ? '#C4B8B0' : '#78716C',
+        fontSize: 15,
         transition: 'background 0.1s ease',
+        flexShrink: 0,
       }}
       onMouseEnter={(e) => {
         if (!disabled)
-          (e.currentTarget as HTMLButtonElement).style.background = '#f0f0f0';
+          (e.currentTarget as HTMLButtonElement).style.background = '#eeeeeb';
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = 'none';
@@ -396,10 +465,11 @@ function ToolbarDivider() {
       style={{
         display: 'inline-block',
         width: 1,
-        height: 16,
-        background: '#e0e0e0',
+        height: 20,
+        background: 'rgba(219,193,180,0.4)',
         margin: '0 2px',
         verticalAlign: 'middle',
+        flexShrink: 0,
       }}
     />
   );
