@@ -240,8 +240,10 @@ export async function POST(
               // Inject orchestrator reasoning into context so explainer knows the approach.
               explainerInput.studentContext =
                 `${studentContext}\n\nOrchestrator approach: ${orchestratorData.reasoning}`;
-            } catch {
+            } catch (orchErr) {
               // Non-fatal — explainer proceeds without orchestrator guidance.
+              // Log so we can diagnose silent failures in understanding_update.
+              console.error('[orchestrator] failed, skipping confidence update:', orchErr);
             }
           }
         }
@@ -264,6 +266,32 @@ export async function POST(
         // Send the full structured output so the client can render micro_assessment
         // and visual_suggestion without a second request.
         controller.enqueue(encodeSSE('metadata', output));
+
+        // ── Confidence: conversation_complete path ───────────────────────────
+        // When the explainer marks a concept as fully covered, ensure the
+        // understanding_state reflects at least "Reviewing" (≥ 0.3).  We only
+        // write if the stored score is still below 0.45 so we never downgrade
+        // a concept the student has already demonstrated mastery of.
+        if (output.conversation_complete) {
+          const REVIEWED_BASELINE = 0.45;
+          const { data: currentState } = await supabase
+            .from('understanding_state')
+            .select('confidence_score')
+            .eq('session_id', sessionId)
+            .eq('concept_id', conceptId)
+            .maybeSingle();
+
+          const existingScore = currentState?.confidence_score ?? 0;
+          if (existingScore < REVIEWED_BASELINE) {
+            await updateUnderstandingState(
+              supabase,
+              sessionId,
+              appUserId,
+              conceptId,
+              REVIEWED_BASELINE,
+            );
+          }
+        }
 
         // Persist the assistant turn.
         await supabase.from('chat_messages').insert({
