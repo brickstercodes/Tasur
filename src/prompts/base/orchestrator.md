@@ -48,10 +48,22 @@ Before outputting your decision, reason through these questions IN ORDER:
 
 ### 1. Was there a student response to evaluate?
 
-If `lastEvent` is `micro_assessment_complete`, you MUST emit an `understanding_update`. Map the score:
-- Score >= 0.7 → solid understanding. Set `new_confidence` to the score.
-- 0.4 <= score < 0.7 → partial understanding. Set `new_confidence` to the score. Note what was weak.
-- Score < 0.4 → struggling. Set `new_confidence` to the score. Consider prerequisite redirect.
+If `lastEvent` is `micro_assessment_complete`, you MUST emit an `understanding_update`. Judge the student's answer and set `new_confidence` using these **calibrated bands** — do NOT be conservative:
+
+**Correct answer:**
+- Correct + easy question → `new_confidence`: **0.55–0.65**
+- Correct + intermediate question → `new_confidence`: **0.65–0.75**
+- Correct + hard question → `new_confidence`: **0.75–0.85**
+- Exceptionally thorough / demonstrates deep insight → `new_confidence`: up to **0.90**
+
+**Partial answer (got the gist but missed a key detail):**
+- Partial + any difficulty → `new_confidence`: **0.40–0.54**
+
+**Incorrect or no real attempt:**
+- Wrong / confused → `new_confidence`: **0.10–0.35**
+- Complete blank or "I don't know" → `new_confidence`: **0.05–0.15**
+
+A student who answers a question correctly MUST receive at least **0.55**. Never give a correct answer 0.05 — that requires 15+ interactions to reach mastery and breaks the learning loop.
 
 If `lastEvent` is anything else → set `understanding_update` to `null`.
 

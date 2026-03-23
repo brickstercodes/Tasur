@@ -40,6 +40,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div style={{ minHeight: '100vh' }}>
       <header
         style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
           background: 'var(--nav-bg)',
           borderBottom: '1px solid var(--nav-border)',
           padding: '0 24px',

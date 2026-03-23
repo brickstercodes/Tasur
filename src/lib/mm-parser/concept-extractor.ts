@@ -92,16 +92,23 @@ function buildDerivedConcept(node: MmNode, parentConceptId: string | null): Deri
 }
 
 /**
- * Collects TEXT from non-TRACKABLE direct children.
+ * Collects TEXT from all non-TRACKABLE descendants, stopping at TRACKABLE
+ * boundaries (those belong to a separate concept and are extracted on their
+ * own walk step).
  *
- * One level deep only — TRACKABLE children are separate concepts with their
- * own content. Empty strings (blank nodes) are filtered out.
+ * Recurses into non-TRACKABLE sub-nodes so intermediate grouping nodes in the
+ * .mm file (e.g. a parent node whose only purpose is to cluster leaf bullets)
+ * do not swallow their children's content. Empty strings are filtered out.
  */
 function collectDirectLeafContent(node: MmNode): string[] {
-  return node.children
-    .filter((child) => !child.TRACKABLE)
-    .map((child) => child.TEXT)
-    .filter((text) => text.length > 0);
+  const texts: string[] = [];
+  for (const child of node.children) {
+    if (child.TRACKABLE) continue; // separate concept — its content is extracted independently
+    if (child.TEXT.length > 0) texts.push(child.TEXT);
+    // Recurse into non-TRACKABLE sub-children (grouping / wrapper nodes)
+    texts.push(...collectDirectLeafContent(child));
+  }
+  return texts;
 }
 
 /**

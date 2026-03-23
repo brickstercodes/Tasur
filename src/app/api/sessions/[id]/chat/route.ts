@@ -23,6 +23,7 @@
  */
 
 import { type NextRequest } from 'next/server';
+import { revalidatePath } from 'next/cache';
 
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
@@ -227,13 +228,18 @@ export async function POST(
                   appUserId,
                   updatedConceptId,
                   newConfidence,
+                  'micro_assessment',
                 );
+
+                // Invalidate the RSC cache for the mindmap page so the fresh
+                // confidence scores are fetched the next time it renders.
+                revalidatePath(`/study/${sessionId}/mindmap`);
 
                 // Mirror the confidence update into the StudentGraph snapshot so the
                 // orchestrator sees fresh scores on its next call. The `graph` object
                 // was loaded above and is still in scope — reuse it to avoid a second
                 // Supabase round-trip.
-                graph.updateConfidence(updatedConceptId, newConfidence, 'explanation');
+                graph.updateConfidence(updatedConceptId, newConfidence, learningMode, 'micro_assessment');
                 await syncToSupabase(graph);
               }
 
@@ -289,8 +295,12 @@ export async function POST(
               appUserId,
               conceptId,
               REVIEWED_BASELINE,
+              'explanation',
             );
           }
+          // Invalidate the mindmap RSC cache regardless of whether we wrote,
+          // so any score change (including higher existing scores) is visible.
+          revalidatePath(`/study/${sessionId}/mindmap`);
         }
 
         // Persist the assistant turn.
@@ -352,7 +362,9 @@ function buildStudentContext(
 }
 
 /**
- * Upserts a confidence score for a single concept in understanding_state.
+ * Upserts a confidence score for a single concept in understanding_state and
+ * appends an entry to the assessment_history JSONB array.
+ *
  * Uses select-then-insert/update pattern because the table has a generated
  * UUID PK rather than a unique constraint on (session_id, concept_id).
  */
@@ -363,21 +375,30 @@ async function updateUnderstandingState(
   userId: string,
   conceptId: string,
   newConfidence: number,
+  method: string = 'micro_assessment',
 ): Promise<void> {
+  const now = new Date().toISOString();
+  const newEntry = { timestamp: now, score: newConfidence, method };
+
   const { data: existing } = await supabase
     .from('understanding_state')
-    .select('id, exposure_count')
+    .select('id, exposure_count, assessment_history')
     .eq('session_id', sessionId)
     .eq('concept_id', conceptId)
     .maybeSingle();
 
   if (existing) {
+    const history = Array.isArray(existing.assessment_history)
+      ? existing.assessment_history
+      : [];
+
     await supabase
       .from('understanding_state')
       .update({
         confidence_score: newConfidence,
         exposure_count: existing.exposure_count + 1,
-        last_assessed_at: new Date().toISOString(),
+        last_assessed_at: now,
+        assessment_history: [...history, newEntry],
       })
       .eq('id', existing.id);
   } else {
@@ -387,7 +408,8 @@ async function updateUnderstandingState(
       concept_id: conceptId,
       confidence_score: newConfidence,
       exposure_count: 1,
-      last_assessed_at: new Date().toISOString(),
+      last_assessed_at: now,
+      assessment_history: [newEntry],
     });
   }
 }

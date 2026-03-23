@@ -341,9 +341,10 @@ export class StudentGraph {
    *
    * @param conceptId   The concept to update.
    * @param score       New confidence value (0.0 – 1.0). Clamped to [0, 1].
-   * @param method      The modality used (e.g. 'flashcard', 'explanation').
+   * @param mode        Learning mode ('fast' | 'steady') — used to track modePerformance.
+   * @param method      The modality used (e.g. 'flashcard', 'micro_assessment', 'explanation').
    */
-  updateConfidence(conceptId: string, score: number, method: string): void {
+  updateConfidence(conceptId: string, score: number, mode: 'fast' | 'steady', method: string): void {
     const node = this.nodes.get(conceptId);
     if (!node) return;
 
@@ -352,6 +353,12 @@ export class StudentGraph {
     node.studentState.confidence = clampedScore;
     node.studentState.exposureCount += 1;
     node.studentState.lastAssessed = new Date().toISOString();
+
+    // Running average for mode-specific performance.
+    // Cumulative mean: new_avg = old_avg + (score - old_avg) / n
+    const n = node.studentState.exposureCount;
+    const prev = node.studentState.modePerformance[mode];
+    node.studentState.modePerformance[mode] = prev + (clampedScore - prev) / n;
 
     // Track the modality if it improved confidence
     if (

@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SteadyIcon, FastIcon } from '@/components/ui/ModeIcons';
+import { saveDocToCache } from '@/lib/doc-cache';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -174,6 +175,8 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         } else if (parsed.type === 'done') {
           setProgressLabel(parsed.label);
           setProgressPercent(100);
+          // Cache file locally so FocusZone can render the real PDF without server storage.
+          try { await saveDocToCache(parsed.sessionId, selectedFile); } catch { /* non-fatal */ }
           router.push(`/study/${parsed.sessionId}/mindmap`);
           return;
         } else if (parsed.type === 'error') {
@@ -206,7 +209,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
   }
 
   return (
-    <div style={{ maxWidth: 520, margin: '0 auto', background: 'var(--bg)', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* ── File dropzone ──────────────────────────────────────────────────── */}
       <div
         onDrop={handleDrop}

@@ -16,7 +16,7 @@
 
 import { generateText } from 'ai';
 
-import { getSpecialistModel } from '@/config/model-provider';
+import { getOrchestratorModel } from '@/config/model-provider';
 import type { AgentResult, TasurAgent } from '@/interfaces/agents';
 import type { MmGeneratorInput } from '@/interfaces/registry';
 import { validateMmOutput } from '@/lib/schemas/mm-generator-output';
@@ -42,7 +42,7 @@ export class MastraMmGeneratorAgent implements TasurAgent<MmGeneratorInput, stri
     }
 
     const { text, usage } = await generateText({
-      model: getSpecialistModel(),
+      model: getOrchestratorModel(),
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
       temperature: MM_GENERATOR_TEMPERATURE,
@@ -55,7 +55,7 @@ export class MastraMmGeneratorAgent implements TasurAgent<MmGeneratorInput, stri
       // Retry once with a stricter prompt that explicitly names the errors
       const retryMessage = buildRetryUserMessage(input, mmXml, validationResult.errors);
       const retryResult = await generateText({
-        model: getSpecialistModel(),
+        model: getOrchestratorModel(),
         system: systemPrompt,
         messages: [{ role: 'user', content: retryMessage }],
         temperature: 0, // zero temperature on retry for maximum consistency

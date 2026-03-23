@@ -147,7 +147,7 @@ describe('syncToSupabase', () => {
 
   it('upserts the graph state when dirty is true', async () => {
     const graph = buildMinimalGraph();
-    graph.updateConfidence('b', 0.6, 'flashcard'); // sets dirty = true
+    graph.updateConfidence('b', 0.6, 'steady', 'flashcard'); // sets dirty = true
 
     const chain = buildUpsertChain({ error: null });
     (__mockFrom as ReturnType<typeof vi.fn>).mockReturnValue(chain);
@@ -162,7 +162,7 @@ describe('syncToSupabase', () => {
 
   it('clears dirty after a successful sync', async () => {
     const graph = buildMinimalGraph();
-    graph.updateConfidence('b', 0.6, 'flashcard');
+    graph.updateConfidence('b', 0.6, 'steady', 'flashcard');
 
     const chain = buildUpsertChain({ error: null });
     (__mockFrom as ReturnType<typeof vi.fn>).mockReturnValue(chain);
@@ -174,7 +174,7 @@ describe('syncToSupabase', () => {
 
   it('throws and does not clear dirty when Supabase returns an error', async () => {
     const graph = buildMinimalGraph();
-    graph.updateConfidence('b', 0.5, 'test');
+    graph.updateConfidence('b', 0.5, 'steady', 'test');
 
     const chain = buildUpsertChain({ error: { message: 'Write failed' } });
     (__mockFrom as ReturnType<typeof vi.fn>).mockReturnValue(chain);

@@ -104,19 +104,31 @@ export async function persistPipelineResults(input: PipelinePersistenceInput): P
 
   // Upload original file to Supabase Storage (non-fatal if it fails)
   let storagePath: string | undefined;
-  if (input.fileBuffer && input.mimeType) {
+  if (input.fileBuffer) {
+    // Fallback MIME type from extension in case file.type was empty (browser/OS dependent)
+    const ext = input.filename.split('.').pop()?.toLowerCase() ?? '';
+    const mimeFromExt: Record<string, string> = {
+      pdf: 'application/pdf', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      txt: 'text/plain', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+    };
+    const effectiveMime = input.mimeType || mimeFromExt[ext] || 'application/octet-stream';
     try {
       const storageClient = supabase.storage.from('tasur-documents');
       // Create bucket if missing (idempotent — ignore "already exists" errors)
       await supabase.storage.createBucket('tasur-documents', { public: false }).catch(() => {});
       const path = `${input.sessionId}/${input.filename}`;
-      const { data: uploadData } = await storageClient.upload(path, input.fileBuffer, {
-        contentType: input.mimeType,
+      const { data: uploadData, error: uploadError } = await storageClient.upload(path, input.fileBuffer, {
+        contentType: effectiveMime,
         upsert: true,
       });
-      storagePath = uploadData?.path;
-    } catch {
-      // Storage upload failure is non-fatal — FocusZone falls back to raw text
+      if (uploadError) {
+        console.error('[storage] upload failed:', uploadError.message);
+      } else {
+        storagePath = uploadData?.path;
+        console.log('[storage] upload succeeded, path:', storagePath);
+      }
+    } catch (err) {
+      console.error('[storage] upload threw:', err);
     }
   }
 

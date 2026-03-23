@@ -405,7 +405,12 @@ export function ChatInterface({
           <div style={{ padding: '12px 0 4px' }}>
             <button
               className="moveon-btn"
-              onClick={() => router.push(`/study/${sessionId}/mindmap`)}
+              onClick={() => {
+                // router.refresh() purges the RSC cache for the current tree so
+                // the mindmap page re-fetches fresh confidence scores from the DB.
+                router.refresh();
+                router.push(`/study/${sessionId}/mindmap`);
+              }}
               style={{
                 width: '100%',
                 padding: '13px 24px',

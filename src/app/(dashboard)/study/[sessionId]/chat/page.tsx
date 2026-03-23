@@ -143,14 +143,34 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
     ? findStudyCue(mindmapResult.data.mindmap_data as Record<string, unknown>, conceptId)
     : undefined;
 
-  // Always route through the preview API — it handles both storage-backed PDFs
-  // (redirect to signed URL) and legacy text-only uploads (styled HTML reader).
-  const documentUrl: string | undefined = docResult.data
-    ? `/api/sessions/${sessionId}/documents/preview`
-    : undefined;
+  // For storage-backed files, generate a signed URL server-side and pass it
+  // directly to the iframe so the browser renders the original document (PDF, etc.)
+  // natively. Fall back to the text preview API route for legacy text-only uploads.
+  let documentUrl: string | undefined;
   const documentFileType: string | undefined = docResult.data?.file_type ?? undefined;
   const documentText: string | undefined = docResult.data?.raw_text ?? undefined;
   const documentFileName: string | undefined = docResult.data?.file_path ?? undefined;
+
+  if (docResult.data) {
+    const filePath = docResult.data.file_path;
+    if (filePath && filePath.includes('/')) {
+      // Storage-backed: generate a 1-hour signed URL → browser renders PDF natively.
+      try {
+        const { data: signedUrlData } = await supabase.storage
+          .from('tasur-documents')
+          .createSignedUrl(filePath, 3600);
+        if (signedUrlData?.signedUrl) {
+          documentUrl = signedUrlData.signedUrl;
+        }
+      } catch {
+        // Fall through to text preview
+      }
+    }
+    // Legacy or storage failure: use the text preview API route.
+    if (!documentUrl) {
+      documentUrl = `/api/sessions/${sessionId}/documents/preview`;
+    }
+  }
 
   return (
     /*
@@ -276,6 +296,7 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
 
       {/* ── Right column: Focus Zone ─────────────────────────────────────────── */}
       <FocusZone
+        sessionId={sessionId}
         conceptName={conceptName}
         prerequisites={prerequisites}
         studyCue={studyCue}

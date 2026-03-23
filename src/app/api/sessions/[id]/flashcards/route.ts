@@ -146,7 +146,7 @@ export async function POST(
 
   const { data: sessionRow } = await supabase
     .from('study_sessions')
-    .select('id')
+    .select('id, learning_mode')
     .eq('id', sessionId)
     .eq('user_id', appUserId)
     .single();
@@ -154,6 +154,8 @@ export async function POST(
   if (!sessionRow) {
     return Response.json({ error: 'Session not found' }, { status: 404 });
   }
+
+  const sessionMode = (sessionRow.learning_mode ?? 'steady') as 'fast' | 'steady';
 
   // Fetch the current SR state for this card.
   const { data: cardRow } = await supabase
@@ -229,7 +231,7 @@ export async function POST(
   try {
     const graph = await loadFromSupabase(sessionId);
     if (graph) {
-      graph.updateConfidence(conceptId, newConfidence, 'flashcard');
+      graph.updateConfidence(conceptId, newConfidence, sessionMode, 'flashcard');
       await syncToSupabase(graph);
     }
   } catch {

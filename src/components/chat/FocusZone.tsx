@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { getDocFromCache } from '@/lib/doc-cache';
 
 interface FocusZoneProps {
+  sessionId: string;
   conceptName: string;
   prerequisites: string[];
   studyCue?: string;
@@ -26,6 +28,7 @@ const SECTION_HEADING_STYLE: React.CSSProperties = {
 };
 
 export function FocusZone({
+  sessionId,
   conceptName,
   prerequisites,
   studyCue,
@@ -36,7 +39,36 @@ export function FocusZone({
 }: FocusZoneProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { theme } = useTheme();
-  const themedDocumentUrl = documentUrl ? `${documentUrl}?theme=${theme}` : undefined;
+  const [blobUrl, setBlobUrl] = useState<string | undefined>();
+  const blobRef = useRef<string | undefined>();
+
+  // Try to load the original file from the browser's IndexedDB cache first.
+  // This lets us render the real PDF without touching server storage.
+  useEffect(() => {
+    let cancelled = false;
+    getDocFromCache(sessionId).then((cached) => {
+      if (cancelled || !cached) return;
+      const url = URL.createObjectURL(cached.data);
+      blobRef.current = url;
+      setBlobUrl(url);
+    }).catch(() => { /* no cache — fall through to server URL */ });
+    return () => {
+      cancelled = true;
+      if (blobRef.current) {
+        URL.revokeObjectURL(blobRef.current);
+        blobRef.current = undefined;
+      }
+    };
+  }, [sessionId]);
+
+  // Blob URL takes priority; fall back to server URL.
+  // Only append theme param for our own preview API route (not blob: or Supabase URLs).
+  const resolvedUrl = blobUrl ?? documentUrl;
+  const themedDocumentUrl = resolvedUrl
+    ? resolvedUrl.startsWith('/api/')
+      ? `${resolvedUrl}?theme=${theme}`
+      : resolvedUrl
+    : undefined;
 
   if (isCollapsed) {
     return (
@@ -245,7 +277,6 @@ export function FocusZone({
                       background: 'var(--bg)',
                     }}
                     title="Source Document"
-                    sandbox="allow-same-origin allow-scripts"
                   />
                 </div>
               ) : documentText ? (

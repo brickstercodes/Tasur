@@ -385,7 +385,7 @@ describe('getProgress', () => {
 describe('updateConfidence', () => {
   it('updates the confidence score and sets dirty', () => {
     const g = buildDbmsGraph();
-    g.updateConfidence('normalization_2NF', 0.8, 'flashcard');
+    g.updateConfidence('normalization_2NF', 0.8, 'steady', 'flashcard');
 
     expect(g.nodes.get('normalization_2NF')!.studentState.confidence).toBe(0.8);
     expect(g.dirty).toBe(true);
@@ -393,26 +393,26 @@ describe('updateConfidence', () => {
 
   it('increments exposureCount on each call', () => {
     const g = buildDbmsGraph();
-    g.updateConfidence('normalization_2NF', 0.6, 'explanation');
-    g.updateConfidence('normalization_2NF', 0.7, 'explanation');
+    g.updateConfidence('normalization_2NF', 0.6, 'steady', 'explanation');
+    g.updateConfidence('normalization_2NF', 0.7, 'steady', 'explanation');
 
     expect(g.nodes.get('normalization_2NF')!.studentState.exposureCount).toBe(2);
   });
 
   it('clamps confidence to [0, 1]', () => {
     const g = buildDbmsGraph();
-    g.updateConfidence('normalization_2NF', 1.5, 'test');
+    g.updateConfidence('normalization_2NF', 1.5, 'steady', 'test');
     expect(g.nodes.get('normalization_2NF')!.studentState.confidence).toBe(1.0);
 
-    g.updateConfidence('normalization_2NF', -0.5, 'test');
+    g.updateConfidence('normalization_2NF', -0.5, 'steady', 'test');
     expect(g.nodes.get('normalization_2NF')!.studentState.confidence).toBe(0.0);
   });
 
   it('tracks effective modalities', () => {
     const g = buildDbmsGraph();
-    g.updateConfidence('normalization_2NF', 0.7, 'flashcard');
-    g.updateConfidence('normalization_2NF', 0.8, 'explanation');
-    g.updateConfidence('normalization_2NF', 0.8, 'flashcard'); // duplicate — not added twice
+    g.updateConfidence('normalization_2NF', 0.7, 'steady', 'flashcard');
+    g.updateConfidence('normalization_2NF', 0.8, 'steady', 'explanation');
+    g.updateConfidence('normalization_2NF', 0.8, 'steady', 'flashcard'); // duplicate — not added twice
 
     const modalities =
       g.nodes.get('normalization_2NF')!.studentState.effectiveModalities;
@@ -423,7 +423,7 @@ describe('updateConfidence', () => {
 
   it('is a no-op for unknown concept ids', () => {
     const g = buildDbmsGraph();
-    expect(() => g.updateConfidence('nonexistent', 0.5, 'test')).not.toThrow();
+    expect(() => g.updateConfidence('nonexistent', 0.5, 'steady', 'test')).not.toThrow();
     expect(g.dirty).toBe(false); // no mutation occurred
   });
 });

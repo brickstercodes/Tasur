@@ -1,5 +1,13 @@
 @import 'tailwindcss';
 
+.landing-nav-link {
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+.landing-nav-link:hover {
+  color: var(--text);
+}
+
 /* Hide native cursor sitewide on pointer devices.
    CustomCursor renders the Tasur nib SVG instead. */
 @media (hover: hover) and (pointer: fine) {

@@ -176,7 +176,7 @@ export class MastraLearningSession {
 
       if (decision.understanding_update) {
         const { concept_id, new_confidence } = decision.understanding_update;
-        graph.updateConfidence(concept_id, new_confidence, 'orchestrator_assessment');
+        graph.updateConfidence(concept_id, new_confidence, input.mode, 'orchestrator_assessment');
       }
 
       routingLog.push({
