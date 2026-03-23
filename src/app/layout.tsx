@@ -11,6 +11,8 @@ import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import './globals.css';
 import { CustomCursor } from '@/components/ui/CustomCursor';
 import { ClickRipple } from '@/components/ui/ClickRipple';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { GlowBackground } from '@/components/ui/GlowBackground';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -42,9 +44,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased`}>
-        <CustomCursor />
-        <ClickRipple />
-        {children}
+        <ThemeProvider>
+          <GlowBackground />
+          <CustomCursor />
+          <ClickRipple />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -86,8 +86,8 @@ export function ProfileMenu({ initial, email }: ProfileMenuProps) {
             position: 'absolute',
             top: 38,
             right: 0,
-            background: '#FDFAF6',
-            border: '1px solid #ECEAE2',
+            background: 'var(--dropdown-bg)',
+            border: '1px solid var(--border)',
             borderRadius: 10,
             padding: '10px 0',
             minWidth: 180,
@@ -98,14 +98,14 @@ export function ProfileMenu({ initial, email }: ProfileMenuProps) {
           <div
             style={{
               padding: '4px 16px 10px',
-              borderBottom: '1px solid #ECEAE2',
+              borderBottom: '1px solid var(--border)',
               marginBottom: 4,
             }}
           >
             <span
               style={{
-                fontSize: 11,
-                color: '#887367',
+                fontSize: 12,
+                color: 'var(--text-muted)',
                 fontFamily: 'Inter, sans-serif',
                 display: 'block',
                 overflow: 'hidden',
@@ -126,7 +126,7 @@ export function ProfileMenu({ initial, email }: ProfileMenuProps) {
               border: 'none',
               cursor: 'pointer',
               fontSize: 13,
-              color: '#554339',
+              color: 'var(--sign-out)',
               fontFamily: 'Inter, sans-serif',
             }}
           >

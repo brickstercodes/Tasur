@@ -46,10 +46,10 @@ export function DeleteSessionButton({ sessionId }: DeleteSessionButtonProps) {
         padding: '6px 12px',
         fontSize: 12,
         fontWeight: 600,
-        color: deleting ? '#94a3b8' : '#ef4444',
-        border: '1px solid #fecaca',
+        color: deleting ? 'var(--text-muted)' : '#ef4444',
+        border: '1px solid color-mix(in srgb, #ef4444 30%, var(--border))',
         borderRadius: 6,
-        background: 'white',
+        background: 'var(--surface)',
         cursor: deleting ? 'not-allowed' : 'pointer',
         fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
       }}

@@ -126,7 +126,7 @@ export function MicroAssessment({
           style={{
             margin: '0 0 16px',
             fontSize: 13.5,
-            color: '#2D1F0E',
+            color: 'var(--text)',
             lineHeight: 1.65,
             fontFamily: "'Georgia', serif",
             fontWeight: 400,
@@ -174,7 +174,7 @@ function FastModeButtons({ onSelect }: { onSelect: (value: string) => void }) {
           padding: '7px 18px',
           border: `1px solid ${GREEN_BORDER}`,
           borderRadius: 8,
-          background: 'white',
+          background: 'var(--surface-elevated)',
           color: FOREST_GREEN,
           fontSize: 12,
           fontWeight: 600,
@@ -194,7 +194,7 @@ function FastModeButtons({ onSelect }: { onSelect: (value: string) => void }) {
           border: `1px solid ${GREEN_BORDER}`,
           borderRadius: 8,
           background: 'transparent',
-          color: '#887367',
+          color: 'var(--text-muted)',
           fontSize: 12,
           fontWeight: 600,
           fontFamily: 'Inter, sans-serif',
@@ -245,7 +245,7 @@ function SteadyModeInput({
           borderBottom: `1px solid ${GREEN_BORDER}`,
           borderRadius: 0,
           fontSize: 13,
-          color: '#2D1F0E',
+          color: 'var(--text)',
           background: 'transparent',
           resize: 'none',
           fontFamily: "'Georgia', serif",
@@ -282,7 +282,7 @@ function SteadyModeInput({
 // ── Difficulty badge ──────────────────────────────────────────────────────────
 
 function DifficultyBadge({ difficulty }: { difficulty: string }) {
-  const meta = DIFFICULTY_META[difficulty] ?? { label: difficulty, color: '#887367' };
+  const meta = DIFFICULTY_META[difficulty] ?? { label: difficulty, color: '#9A9390' };
 
   return (
     <span

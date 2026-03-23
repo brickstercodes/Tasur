@@ -6,7 +6,7 @@
 
 export function TasurWordmark({
   size = 22,
-  color = '#1a1c1b',
+  color = 'var(--logo)',
 }: {
   size?: number;
   color?: string;
@@ -40,10 +40,8 @@ export function TasurWordmark({
         style={{
           display: 'inline-block',
           verticalAlign: 'middle',
-          // Tint the black logo to match the current text color
-          filter: color === '#1a1c1b' || color === '#000' || color === 'black'
-            ? 'none'
-            : undefined,
+          // Use CSS variable so the filter switches with the theme
+          filter: 'var(--logo-filter)',
           position: 'relative',
           top: '-1px',
         }}

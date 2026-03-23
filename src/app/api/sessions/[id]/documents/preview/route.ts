@@ -26,8 +26,9 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_req: Request, { params }: RouteParams) {
+export async function GET(req: Request, { params }: RouteParams) {
   const { id: sessionId } = await params;
+  const theme = new URL(req.url).searchParams.get('theme') === 'dark' ? 'dark' : 'light';
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const session = await auth.api.getSession({ headers: await headers() });
@@ -89,6 +90,10 @@ export async function GET(_req: Request, { params }: RouteParams) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
+  const colors = theme === 'dark'
+    ? { bg: '#18171A', text: '#FAFAF7', border: '#3A3835', muted: '#9A9390', primary: '#C2692A', scrollbar: '#3A3835' }
+    : { bg: '#f9f9f6', text: '#2D2318', border: '#ECEAE2', muted: '#887367', primary: '#944604', scrollbar: '#DDD8CC' };
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,8 +104,8 @@ export async function GET(_req: Request, { params }: RouteParams) {
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #fafaf8;
-      color: #2d2a27;
+      background: ${colors.bg};
+      color: ${colors.text};
       font-family: 'Georgia', serif;
       font-size: 13.5px;
       line-height: 1.75;
@@ -110,7 +115,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
     .doc-header {
       margin-bottom: 24px;
       padding-bottom: 16px;
-      border-bottom: 1px solid #ECEAE2;
+      border-bottom: 1px solid ${colors.border};
     }
 
     .doc-filename {
@@ -119,7 +124,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
       font-weight: 600;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: #944604;
+      color: ${colors.primary};
       margin-bottom: 4px;
     }
 
@@ -128,13 +133,13 @@ export async function GET(_req: Request, { params }: RouteParams) {
       font-size: 9px;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: #A8A29E;
+      color: ${colors.muted};
     }
 
     .doc-body {
       white-space: pre-wrap;
       word-break: break-word;
-      color: #3a3633;
+      color: ${colors.text};
     }
 
     ::selection {
@@ -143,7 +148,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
 
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #ECEAE2; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: ${colors.scrollbar}; border-radius: 10px; }
   </style>
 </head>
 <body>

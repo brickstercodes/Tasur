@@ -42,9 +42,9 @@ function getDepthStyles(depth: number): {
   fontWeight: number;
   width: number;
 } {
-  if (depth === 1) return { padding: '7px 12px', fontSize: '11px', fontWeight: 500, width: 190 };
-  if (depth === 2) return { padding: '5px 10px', fontSize: '10.5px', fontWeight: 500, width: 185 };
-  return { padding: '4px 8px', fontSize: '10px', fontWeight: 400, width: 180 };
+  if (depth === 1) return { padding: '7px 12px', fontSize: '13px', fontWeight: 500, width: 190 };
+  if (depth === 2) return { padding: '5px 10px', fontSize: '12px', fontWeight: 500, width: 185 };
+  return { padding: '4px 8px', fontSize: '12px', fontWeight: 400, width: 180 };
 }
 
 // ── Depth-based node colour ───────────────────────────────────────────────────
@@ -52,9 +52,9 @@ function getDepthStyles(depth: number): {
 // like layers of aged paper, lightest at the top, dustiest at the leaves.
 
 function getNodeBackground(depth: number): { bg: string; border: string; borderHover: string } {
-  if (depth === 1) return { bg: '#F2EDE3', border: '#DDD5C4', borderHover: '#C4B9A6' };
-  if (depth === 2) return { bg: '#E8DFD0', border: '#D0C4B0', borderHover: '#B8A99A' };
-  return           { bg: '#DDD4C2', border: '#C4B8A4', borderHover: '#A89A88' };
+  if (depth === 1) return { bg: 'var(--mindmap-node-1)', border: 'var(--mindmap-node-border)', borderHover: 'var(--mindmap-node-border-hover)' };
+  if (depth === 2) return { bg: 'var(--mindmap-node-2)', border: 'var(--mindmap-node-border)', borderHover: 'var(--mindmap-node-border-hover)' };
+  return           { bg: 'var(--mindmap-node-1)', border: 'var(--mindmap-node-border)', borderHover: 'var(--mindmap-node-border-hover)' };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -65,6 +65,8 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
     concept_id,
     study_cue,
     depth,
+    direction,
+    branchColor,
     confidence,
     isCollapsed,
     visibleChildCount,
@@ -75,6 +77,7 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
   } = data;
 
   const [isHovered, setIsHovered] = useState(false);
+  const [bubbleHovered, setBubbleHovered] = useState(false);
 
   const isRoot = depth === 0;
   const isConcept = !!concept_id;
@@ -125,8 +128,8 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
         <div
           title={study_cue ?? undefined}
           style={{
-            background: '#1C1917',
-            color: '#F9F9F6',
+            background: 'var(--mindmap-node-root)',
+            color: '#FAFAF7',
             fontFamily: "'Instrument Serif', Georgia, serif",
             fontSize: '13px',
             fontWeight: 400,
@@ -205,8 +208,8 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
           gap: '6px',
           padding,
           width,
-          color: '#1C1917',
-          fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+          color: 'var(--mindmap-node-text)',
+          fontFamily: "'Instrument Serif', Georgia, serif",
           fontSize,
           fontWeight,
           wordBreak: 'break-word',
@@ -237,20 +240,39 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
 
         <span style={{ flex: 1 }}>{label}</span>
 
-        {/* Expand / collapse toggle badge */}
+        {/* Edge bubble — sits at the expansion side of the node */}
         {hasChildren && (
           <span
             onClick={handleToggleClick}
-            title={isCollapsed ? 'Expand' : 'Collapse'}
+            onMouseEnter={() => setBubbleHovered(true)}
+            onMouseLeave={() => setBubbleHovered(false)}
+            title={isCollapsed ? `Expand ${visibleChildCount} items` : 'Collapse'}
             style={{
-              display: 'inline-block',
-              fontSize: '9px',
-              color: '#78716C',
-              opacity: 0.7,
+              position: 'absolute',
+              ...(direction === 'left'
+                ? { left: -14 }
+                : { right: -14 }),
+              top: '50%',
+              transform: `translateY(-50%) scale(${bubbleHovered ? 1.35 : 1})`,
+              transition: 'transform 0.15s cubic-bezier(0.34,1.56,0.64,1), background 0.12s ease, color 0.12s ease',
+              minWidth: 22,
+              height: 22,
+              borderRadius: 11,
+              background: bubbleHovered ? branchColor : `${branchColor}28`,
+              border: `1.5px solid ${branchColor}`,
+              color: bubbleHovered ? '#fff' : branchColor,
+              fontSize: 9,
+              fontWeight: 700,
+              fontFamily: "'Courier New', monospace",
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               cursor: 'pointer',
+              zIndex: 10,
+              padding: '0 4px',
               userSelect: 'none',
-              fontWeight: 500,
               flexShrink: 0,
+              lineHeight: 1,
             }}
           >
             {isCollapsed ? `+${visibleChildCount}` : '−'}

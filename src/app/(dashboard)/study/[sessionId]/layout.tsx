@@ -71,8 +71,8 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          background: '#f9f9f6',
-          borderBottom: '1px solid #ECEAE2',
+          background: 'var(--nav-bg)',
+          borderBottom: '1px solid var(--nav-border)',
           marginLeft: -24,
           marginRight: -24,
           paddingLeft: 24,
@@ -85,7 +85,7 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
             href="/dashboard"
             style={{
               fontSize: 12,
-              color: '#B8AFA6',
+              color: 'var(--text-muted)',
               textDecoration: 'none',
               flexShrink: 0,
               letterSpacing: '0.01em',
@@ -100,7 +100,7 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
               display: 'inline-block',
               width: 1,
               height: 12,
-              background: '#ECEAE2',
+              background: 'var(--border)',
               flexShrink: 0,
             }}
           />
@@ -109,7 +109,7 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
             style={{
               fontSize: 13,
               fontWeight: 500,
-              color: '#1a1c1b',
+              color: 'var(--text)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -123,9 +123,9 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
           {domain && (
             <span
               style={{
-                fontSize: 9,
+                fontSize: 11,
                 fontWeight: 600,
-                color: '#A89080',
+                color: 'var(--text-muted)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
                 flexShrink: 0,
@@ -144,7 +144,7 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
         <div style={{ flexShrink: 0, flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
           <span
             style={{
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: 700,
               color: mode === 'fast' ? '#C2692A' : '#3D7A5E',
               textTransform: 'uppercase',

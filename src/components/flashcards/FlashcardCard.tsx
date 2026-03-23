@@ -17,6 +17,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,11 +34,18 @@ export interface FlashcardCardProps {
 
 // ── Colour maps ───────────────────────────────────────────────────────────────
 
-const CARD_TYPE_COLOUR: Record<string, { bg: string; text: string; label: string }> = {
-  recall:      { bg: '#EEE8E1', text: '#554339', label: 'Recall' },
-  application: { bg: '#E5EDE8', text: '#3D7A5E', label: 'Application' },
-  explain:     { bg: '#EDE8F0', text: '#6B5B7B', label: 'Explain' },
-  compare:     { bg: '#F0EAE0', text: '#7A5C2A', label: 'Compare' },
+const CARD_TYPE_COLOUR_DARK: Record<string, { bg: string; text: string; label: string }> = {
+  recall:      { bg: '#2C2B29', text: '#9A9390', label: 'Recall' },
+  application: { bg: '#1A2C25', text: '#3D7A5E', label: 'Application' },
+  explain:     { bg: '#28222E', text: '#9B8AAB', label: 'Explain' },
+  compare:     { bg: '#2C2619', text: '#C2692A', label: 'Compare' },
+};
+
+const CARD_TYPE_COLOUR_LIGHT: Record<string, { bg: string; text: string; label: string }> = {
+  recall:      { bg: '#EEECEA', text: '#78716C', label: 'Recall' },
+  application: { bg: '#E4F0EC', text: '#2D6B50', label: 'Application' },
+  explain:     { bg: '#EDE8F2', text: '#6B4E8A', label: 'Explain' },
+  compare:     { bg: '#F5EDE3', text: '#944604', label: 'Compare' },
 };
 
 const DIFFICULTY_COLOUR: Record<string, string> = {
@@ -59,7 +67,9 @@ export function FlashcardCard({
   onFlip,
 }: FlashcardCardProps) {
   const [hintsVisible, setHintsVisible] = useState(false);
-  const typeStyle = CARD_TYPE_COLOUR[cardType] ?? CARD_TYPE_COLOUR.recall;
+  const { theme } = useTheme();
+  const palette = theme === 'dark' ? CARD_TYPE_COLOUR_DARK : CARD_TYPE_COLOUR_LIGHT;
+  const typeStyle = palette[cardType] ?? palette.recall;
 
   return (
     <div
@@ -93,8 +103,8 @@ export function FlashcardCard({
             inset: 0,
             backfaceVisibility: 'hidden',
             borderRadius: 12,
-            border: '1px solid #ECEAE2',
-            background: '#FFFFFF',
+            border: '1px solid var(--flash-border)',
+            background: 'var(--flash-front-bg)',
             boxShadow: '0 8px 32px rgba(28,25,23,0.08)',
             display: 'flex',
             flexDirection: 'column',
@@ -122,7 +132,7 @@ export function FlashcardCard({
             <p
               style={{
                 fontSize: 16,
-                color: '#1a1c1b',
+                color: 'var(--flash-text)',
                 lineHeight: 1.65,
                 textAlign: 'center',
                 margin: 0,
@@ -137,9 +147,9 @@ export function FlashcardCard({
             style={{
               margin: 0,
               textAlign: 'center',
-              fontSize: 10,
+              fontSize: 12,
               fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-              color: '#A8A29E',
+              color: 'var(--text-muted)',
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
             }}
@@ -165,8 +175,8 @@ export function FlashcardCard({
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
             borderRadius: 12,
-            border: '1px solid #ECEAE2',
-            background: '#FFFFFF',
+            border: '1px solid var(--flash-border)',
+            background: 'var(--flash-back-bg)',
             boxShadow: '0 8px 32px rgba(28,25,23,0.08)',
             display: 'flex',
             flexDirection: 'column',
@@ -195,7 +205,7 @@ export function FlashcardCard({
             <p
               style={{
                 fontSize: 15,
-                color: '#1a1c1b',
+                color: 'var(--flash-text)',
                 lineHeight: 1.7,
                 whiteSpace: 'pre-wrap',
                 margin: 0,
@@ -236,11 +246,11 @@ function CardHeader({
       {/* Concept name */}
       <span
         style={{
-          fontSize: 11,
+          fontSize: 12,
           fontFamily: 'Inter, sans-serif',
           textTransform: 'uppercase',
           letterSpacing: '0.08em',
-          color: '#887367',
+          color: 'var(--text-muted)',
           maxWidth: 160,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -255,7 +265,7 @@ function CardHeader({
         {/* Card type badge */}
         <span
           style={{
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 700,
             color: typeStyle.text,
             background: typeStyle.bg,
@@ -304,11 +314,11 @@ function HintsSection({
         }}
         style={{
           background: 'none',
-          border: '1px solid #ECEAE2',
+          border: '1px solid var(--border)',
           borderRadius: 5,
           padding: '3px 10px',
           fontSize: 11,
-          color: '#887367',
+          color: 'var(--text-muted)',
           cursor: 'pointer',
           fontFamily: 'inherit',
         }}
@@ -325,7 +335,7 @@ function HintsSection({
           }}
         >
           {hints.map((hint, i) => (
-            <li key={i} style={{ fontSize: 12, color: '#887367', marginBottom: 2 }}>
+            <li key={i} style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>
               {hint}
             </li>
           ))}

@@ -350,3 +350,32 @@ export function buildBalancedTreeLayout(
 export function getTopLevelNodeIds(tree: MindmapTreeOutput): string[] {
   return tree.children.map((branch, index) => getStableNodeId(branch, 'root', index));
 }
+
+// ── Utility: get IDs of every node that has children ─────────────────────────
+
+function collectParentIds(
+  node: MindmapNode,
+  parentId: string,
+  siblingIndex: number,
+  result: string[],
+): void {
+  if (!node.children || node.children.length === 0) return;
+  const nodeId = getStableNodeId(node, parentId, siblingIndex);
+  result.push(nodeId);
+  for (const [i, child] of node.children.entries()) {
+    collectParentIds(child, nodeId, i, result);
+  }
+}
+
+/**
+ * Returns the stable IDs of every node that has children (at any depth).
+ * Used to initialise the mindmap in a fully-collapsed state so users open
+ * only the branches they want to focus on.
+ */
+export function getAllCollapsibleNodeIds(tree: MindmapTreeOutput): string[] {
+  const result: string[] = [];
+  for (const [i, child] of tree.children.entries()) {
+    collectParentIds(child, 'root', i, result);
+  }
+  return result;
+}

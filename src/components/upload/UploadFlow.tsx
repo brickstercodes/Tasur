@@ -206,7 +206,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
   }
 
   return (
-    <div style={{ maxWidth: 520, margin: '0 auto', background: '#f9f9f6', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ maxWidth: 520, margin: '0 auto', background: 'var(--bg)', fontFamily: 'Inter, sans-serif' }}>
       {/* ── File dropzone ──────────────────────────────────────────────────── */}
       <div
         onDrop={handleDrop}
@@ -214,12 +214,12 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         onDragLeave={() => setDragOver(false)}
         onClick={() => fileInputRef.current?.click()}
         style={{
-          border: `2px dashed ${dragOver ? '#C2892A' : selectedFile ? '#C2892A' : '#ECEAE2'}`,
+          border: `2px dashed ${dragOver || selectedFile ? 'var(--primary)' : 'var(--border)'}`,
           borderRadius: 12,
           padding: '36px 24px',
           textAlign: 'center',
           cursor: 'pointer',
-          background: dragOver ? '#FEF3E7' : selectedFile ? '#FEF3E7' : '#f4f4f1',
+          background: dragOver || selectedFile ? 'color-mix(in srgb, var(--primary) 8%, var(--surface))' : 'var(--surface)',
           transition: 'all 0.15s ease',
           marginBottom: 20,
         }}
@@ -233,14 +233,14 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         />
         {selectedFile ? (
           <>
-            <p style={{ fontSize: 24, margin: '0 0 8px', color: '#C2892A' }}>↑</p>
+            <p style={{ fontSize: 24, margin: '0 0 8px', color: 'var(--primary)' }}>↑</p>
             <p
               style={{
                 margin: 0,
                 fontFamily: "'Instrument Serif', Georgia, serif",
                 fontStyle: 'italic',
                 fontSize: 18,
-                color: '#554339',
+                color: 'var(--text-muted)',
               }}
             >
               {selectedFile.name}
@@ -248,9 +248,9 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
             <p
               style={{
                 margin: '6px 0 0',
-                fontSize: 10,
+                fontSize: 12,
                 fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                color: '#887367',
+                color: 'var(--text-muted)',
                 letterSpacing: '0.04em',
               }}
             >
@@ -259,14 +259,14 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
           </>
         ) : (
           <>
-            <p style={{ fontSize: 28, margin: '0 0 10px', color: '#887367' }}>↑</p>
+            <p style={{ fontSize: 28, margin: '0 0 10px', color: 'var(--text-muted)' }}>↑</p>
             <p
               style={{
                 margin: 0,
                 fontFamily: "'Instrument Serif', Georgia, serif",
                 fontStyle: 'italic',
                 fontSize: 22,
-                color: '#554339',
+                color: 'var(--text-muted)',
               }}
             >
               Drop your notes here
@@ -274,9 +274,9 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
             <p
               style={{
                 margin: '8px 0 0',
-                fontSize: 10,
+                fontSize: 12,
                 fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                color: '#887367',
+                color: 'var(--text-muted)',
                 letterSpacing: '0.04em',
                 textTransform: 'uppercase',
               }}
@@ -297,7 +297,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
           placeholder="e.g. DBMS, Operating Systems, Computer Networks"
           style={inputStyle}
         />
-        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#887367' }}>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
           Helps the AI use the right terminology and examples for your subject.
         </p>
       </div>
@@ -316,13 +316,13 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
                 style={{
                   flex: 1,
                   padding: '20px 18px',
-                  border: `1px solid ${isSelected ? '#C2892A' : '#ECEAE2'}`,
+                  border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
                   borderRadius: 14,
-                  background: isSelected ? 'white' : '#f4f4f1',
+                  background: isSelected ? 'var(--surface-elevated)' : 'var(--surface)',
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 0.14s ease',
-                  boxShadow: isSelected ? '0 2px 12px rgba(194,137,42,0.12)' : 'none',
+                  boxShadow: isSelected ? '0 2px 12px rgba(194,105,42,0.20)' : 'none',
                 }}
               >
                 {/* Icon */}
@@ -346,7 +346,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
                   margin: '0 0 6px',
                   fontWeight: 700,
                   fontSize: 16,
-                  color: '#1a1c1b',
+                  color: 'var(--text)',
                   fontFamily: 'Inter, sans-serif',
                 }}>
                   {label}
@@ -356,7 +356,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
                 <p style={{
                   margin: 0,
                   fontSize: 12,
-                  color: '#887367',
+                  color: 'var(--text-muted)',
                   fontFamily: 'Inter, sans-serif',
                   lineHeight: 1.5,
                 }}>
@@ -377,8 +377,8 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
           style={{
             flex: 1,
             padding: '13px 20px',
-            background: selectedFile ? '#944604' : '#D4CFC5',
-            color: 'white',
+            background: selectedFile ? 'var(--primary)' : 'var(--border)',
+            color: 'var(--text)',
             border: 'none',
             borderRadius: 8,
             fontWeight: 600,
@@ -398,9 +398,9 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
             style={{
               padding: '13px 16px',
               background: 'transparent',
-              border: '1px solid #ECEAE2',
+              border: '1px solid var(--border)',
               borderRadius: 8,
-              color: '#554339',
+              color: 'var(--text-muted)',
               fontSize: 14,
               cursor: 'pointer',
               fontFamily: 'inherit',
@@ -471,8 +471,8 @@ function ProcessingView({ label, percent }: { label: string; percent: number }) 
             width: 48,
             height: 48,
             borderRadius: '50%',
-            border: '2px solid #ECEAE2',
-            borderTopColor: '#C2892A',
+            border: '2px solid var(--border)',
+            borderTopColor: 'var(--primary)',
             animation: 'spin 0.8s linear infinite',
             margin: '0 auto 16px',
           }}
@@ -485,13 +485,13 @@ function ProcessingView({ label, percent }: { label: string; percent: number }) 
             fontSize: 18,
             fontFamily: "'Instrument Serif', Georgia, serif",
             fontStyle: 'italic',
-            color: '#1a1c1b',
+            color: 'var(--text)',
             animation: 'phrase-fade 1.8s ease-in-out',
           }}
         >
           {BUFFER_PHRASES[phraseIndex]}
         </p>
-        <p style={{ margin: 0, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#887367', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+        <p style={{ margin: 0, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           {label || 'Starting…'}
         </p>
       </div>
@@ -500,7 +500,7 @@ function ProcessingView({ label, percent }: { label: string; percent: number }) 
       <div
         style={{
           height: 3,
-          background: '#ECEAE2',
+          background: 'var(--border)',
           borderRadius: 99,
           overflow: 'hidden',
           marginBottom: 20,
@@ -510,7 +510,7 @@ function ProcessingView({ label, percent }: { label: string; percent: number }) 
           style={{
             height: '100%',
             width: `${percent}%`,
-            background: '#C2892A',
+            background: 'var(--primary)',
             borderRadius: 99,
             transition: 'width 0.4s ease',
           }}
@@ -529,7 +529,7 @@ function ProcessingView({ label, percent }: { label: string; percent: number }) 
                   width: 7,
                   height: 7,
                   borderRadius: '50%',
-                  background: isDone ? '#3D7A5E' : isActive ? '#944604' : '#D4CFC5',
+                  background: isDone ? '#3D7A5E' : isActive ? 'var(--primary)' : 'var(--border)',
                   margin: '0 auto 4px',
                   transition: 'background 0.2s',
                 }}
@@ -537,9 +537,9 @@ function ProcessingView({ label, percent }: { label: string; percent: number }) 
               <p
                 style={{
                   margin: 0,
-                  fontSize: 10,
+                  fontSize: 12,
                   fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                  color: isActive ? '#944604' : '#887367',
+                  color: isActive ? 'var(--primary)' : 'var(--text-muted)',
                   fontWeight: isActive ? 600 : 400,
                   letterSpacing: '0.02em',
                 }}
@@ -571,13 +571,13 @@ function ErrorView({ message, onRetry }: { message: string; onRetry: () => void 
           fontFamily: "'Instrument Serif', Georgia, serif",
           fontStyle: 'italic',
           fontSize: 18,
-          color: '#554339',
+          color: 'var(--text-muted)',
           margin: '0 0 8px',
         }}
       >
         Something went wrong.
       </p>
-      <p style={{ fontSize: 13, color: '#887367', margin: '0 0 20px', maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 20px', maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
         {message}
       </p>
       <button
@@ -585,8 +585,8 @@ function ErrorView({ message, onRetry }: { message: string; onRetry: () => void 
         onClick={onRetry}
         style={{
           padding: '10px 22px',
-          background: '#944604',
-          color: 'white',
+          background: 'var(--primary)',
+          color: 'var(--text)',
           border: 'none',
           borderRadius: 8,
           fontWeight: 600,
@@ -605,9 +605,9 @@ function ErrorView({ message, onRetry }: { message: string; onRetry: () => void 
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
-  fontSize: 10,
+  fontSize: 12,
   fontWeight: 600,
-  color: '#554339',
+  color: 'var(--text-muted)',
   marginBottom: 8,
   letterSpacing: '0.06em',
   textTransform: 'uppercase',
@@ -618,10 +618,10 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '6px 0',
   border: 'none',
-  borderBottom: '1px solid #ECEAE2',
+  borderBottom: '1px solid var(--border)',
   borderRadius: 0,
   fontSize: 14,
-  color: '#1a1c1b',
+  color: 'var(--text)',
   outline: 'none',
   background: 'transparent',
   fontFamily: 'Inter, sans-serif',

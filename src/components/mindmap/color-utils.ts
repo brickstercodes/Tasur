@@ -39,7 +39,7 @@ const PARTIAL_THRESHOLD = 0.3;
 
 export const CONFIDENCE_COLORS = {
   mastered: '#3D7A5E',   // forest green
-  partial: '#C2892A',    // warm amber
+  partial: '#C2692A',    // warm amber
   untouched: '#9B5C4A',  // terracotta
 } as const;
 

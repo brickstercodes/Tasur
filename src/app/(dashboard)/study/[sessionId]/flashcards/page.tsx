@@ -123,22 +123,22 @@ export default async function FlashcardsPage({ params, searchParams }: PageProps
           alignItems: 'center',
           gap: 6,
           fontSize: 12,
-          color: '#887367',
+          color: 'var(--text-muted)',
           marginBottom: 20,
         }}
       >
-        <Link href="/dashboard" style={{ color: '#887367', textDecoration: 'none' }}>
+        <Link href="/dashboard" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
           Dashboard
         </Link>
         <span>›</span>
         <Link
           href={`/study/${sessionId}/mindmap`}
-          style={{ color: '#887367', textDecoration: 'none' }}
+          style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
         >
           {sessionRow.title}
         </Link>
         <span>›</span>
-        <span style={{ color: '#554339', fontWeight: 500 }}>Flashcards</span>
+        <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}>Flashcards</span>
       </nav>
 
       {/* Header */}
@@ -149,11 +149,11 @@ export default async function FlashcardsPage({ params, searchParams }: PageProps
           alignItems: 'flex-start',
           marginBottom: 24,
           paddingBottom: 16,
-          borderBottom: '1px solid #ECEAE2',
+          borderBottom: '1px solid var(--border)',
         }}
       >
         <div>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#887367' }}>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
             {allCards.length} cards total
             {dueCards.length > 0 && ` · ${dueCards.length} due now`}
           </p>
@@ -175,11 +175,11 @@ export default async function FlashcardsPage({ params, searchParams }: PageProps
             href={`/study/${sessionId}/mindmap`}
             style={{
               fontSize: 12,
-              color: '#887367',
+              color: 'var(--text-muted)',
               textDecoration: 'none',
               fontWeight: 500,
               padding: '4px 10px',
-              border: '1px solid #ECEAE2',
+              border: '1px solid var(--border)',
               borderRadius: 6,
             }}
           >
@@ -212,7 +212,7 @@ function NoCardsState({ sessionId }: { sessionId: string }) {
       style={{
         textAlign: 'center',
         padding: '48px 24px',
-        color: '#887367',
+        color: 'var(--text-muted)',
         fontFamily: 'Inter, sans-serif',
       }}
     >
@@ -221,24 +221,24 @@ function NoCardsState({ sessionId }: { sessionId: string }) {
           fontFamily: "'Instrument Serif', Georgia, serif",
           fontStyle: 'italic',
           fontSize: 18,
-          color: '#554339',
+          color: 'var(--text-faint)',
           margin: '0 0 10px',
         }}
       >
         No flashcards yet.
       </p>
-      <p style={{ fontSize: 13, margin: '0 0 20px', color: '#887367' }}>
+      <p style={{ fontSize: 13, margin: '0 0 20px', color: 'var(--text-muted)' }}>
         Flashcards are generated when you study concepts in the chat.
       </p>
       <Link
         href={`/study/${sessionId}/mindmap`}
         style={{
           fontSize: 13,
-          color: '#887367',
+          color: 'var(--text-muted)',
           textDecoration: 'none',
           fontWeight: 500,
           padding: '8px 18px',
-          border: '1px solid #ECEAE2',
+          border: '1px solid var(--border)',
           borderRadius: 7,
         }}
       >
@@ -271,7 +271,7 @@ function NoDueCardsState({
       style={{
         textAlign: 'center',
         padding: '48px 24px',
-        color: '#887367',
+        color: 'var(--text-muted)',
         fontFamily: 'Inter, sans-serif',
       }}
     >
@@ -280,17 +280,17 @@ function NoDueCardsState({
           fontFamily: "'Instrument Serif', Georgia, serif",
           fontStyle: 'italic',
           fontSize: 18,
-          color: '#554339',
+          color: 'var(--text-faint)',
           margin: '0 0 10px',
         }}
       >
         All caught up.
       </p>
-      <p style={{ fontSize: 13, margin: '0 0 4px', color: '#887367' }}>
+      <p style={{ fontSize: 13, margin: '0 0 4px', color: 'var(--text-muted)' }}>
         No cards are due right now.
       </p>
       {formattedNext && (
-        <p style={{ fontSize: 13, margin: '0 0 20px', color: '#887367' }}>
+        <p style={{ fontSize: 13, margin: '0 0 20px', color: 'var(--text-muted)' }}>
           Next review: <strong>{formattedNext}</strong>
         </p>
       )}
@@ -298,11 +298,11 @@ function NoDueCardsState({
         href={`/study/${sessionId}/mindmap`}
         style={{
           fontSize: 13,
-          color: '#887367',
+          color: 'var(--text-muted)',
           textDecoration: 'none',
           fontWeight: 500,
           padding: '8px 18px',
-          border: '1px solid #ECEAE2',
+          border: '1px solid var(--border)',
           borderRadius: 7,
         }}
       >

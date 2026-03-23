@@ -37,6 +37,7 @@ import { MindmapEdge } from './MindmapEdge';
 import {
   buildBalancedTreeLayout,
   getTopLevelNodeIds,
+  getAllCollapsibleNodeIds,
   type FlowNodeData,
 } from './layout/balanced-tree';
 import type { MindmapTreeOutput } from '@/lib/schemas/mindmap-tree-output';
@@ -78,7 +79,7 @@ export function MindmapViewer(props: MindmapViewerProps) {
 
 const CONFIDENCE_LEGEND = [
   { dot: '#3D7A5E', label: 'Mastered' },
-  { dot: '#C2892A', label: 'Reviewing' },
+  { dot: '#C2692A', label: 'Reviewing' },
   { dot: '#9B5C4A', label: 'Struggling' },
 ];
 
@@ -94,7 +95,10 @@ function MindmapViewerContent({
   const router = useRouter();
   const { fitView, zoomIn, zoomOut } = useReactFlow();
 
-  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
+  // Start fully collapsed so the map opens clean — users expand what they need.
+  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(
+    () => new Set(getAllCollapsibleNodeIds(tree)),
+  );
   const [searchQuery, setSearchQuery] = useState('');
 
   // Memoised confidence map avoids rebuilding on every render.
@@ -196,18 +200,20 @@ function MindmapViewerContent({
         width: '100%',
         height: '100%',
         position: 'relative',
-        background: '#f9f9f6',
-        backgroundImage: 'radial-gradient(rgba(0,0,0,0.055) 1px, transparent 0)',
+        background: 'var(--mindmap-bg)',
+        backgroundImage: 'radial-gradient(var(--mindmap-dot) 1px, transparent 0)',
         backgroundSize: '24px 24px',
       }}
     >
-      {/* Keyframe for resume-target amber pulse ring */}
+      {/* Keyframe for resume-target amber pulse ring + suppress RF selection outline */}
       <style>{`
         @keyframes resumePulse {
           0%   { box-shadow: 0 0 0 0 rgba(194, 137, 42, 0.4); }
           65%  { box-shadow: 0 0 0 8px rgba(194, 137, 42, 0); }
           100% { box-shadow: 0 0 0 0 rgba(194, 137, 42, 0); }
         }
+        .react-flow__node.selected > div { outline: none !important; box-shadow: none !important; }
+        .react-flow__node:focus { outline: none !important; }
       `}</style>
 
       {/* ── Pill-shaped floating toolbar ──────────────────────────────────────── */}
@@ -220,11 +226,11 @@ function MindmapViewerContent({
           display: 'flex',
           alignItems: 'center',
           gap: 2,
-          background: 'rgba(255,255,255,0.95)',
-          border: '1px solid rgba(219,193,180,0.3)',
+          background: 'var(--toolbar-bg)',
+          border: '1px solid var(--toolbar-border)',
           borderRadius: '9999px',
           padding: '4px',
-          boxShadow: '0 4px 20px rgba(28,25,23,0.08)',
+          boxShadow: '0 4px 20px rgba(28,25,23,0.12)',
         }}
       >
         {/* Zoom controls */}
@@ -263,17 +269,17 @@ function MindmapViewerContent({
           style={{
             background: 'transparent',
             border: 'none',
-            borderBottom: searchQuery ? '1px solid #A8A29E' : '1px solid transparent',
+            borderBottom: searchQuery ? '1px solid var(--text-muted)' : '1px solid transparent',
             outline: 'none',
             fontSize: 11,
             width: 100,
-            color: '#1C1917',
+            color: 'var(--text)',
             fontFamily: 'Inter, sans-serif',
             padding: '2px 0',
             transition: 'border-color 0.15s ease',
           }}
           onFocus={(e) => {
-            (e.currentTarget as HTMLInputElement).style.borderBottomColor = '#A8A29E';
+            (e.currentTarget as HTMLInputElement).style.borderBottomColor = 'var(--text-muted)';
           }}
           onBlur={(e) => {
             if (!searchQuery)
@@ -300,7 +306,7 @@ function MindmapViewerContent({
                 padding: '4px 12px',
                 border: 'none',
                 borderRadius: 9999,
-                background: '#C2892A',
+                background: 'var(--primary)',
                 color: '#fff',
                 fontSize: 11,
                 fontWeight: 600,
@@ -311,10 +317,10 @@ function MindmapViewerContent({
                 transition: 'background 0.1s ease',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = '#A8751F';
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-hover)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = '#C2892A';
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary)';
               }}
             >
               ▶ Continue
@@ -347,19 +353,19 @@ function MindmapViewerContent({
           bottom: 20,
           right: 20,
           zIndex: 10,
-          background: 'rgba(255,255,255,0.9)',
+          background: 'var(--toolbar-bg)',
           backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(219,193,180,0.2)',
+          border: '1px solid var(--toolbar-border)',
           borderRadius: 12,
           padding: '12px 16px',
-          boxShadow: '0 4px 16px rgba(28,25,23,0.06)',
+          boxShadow: '0 4px 16px rgba(28,25,23,0.08)',
         }}
       >
         <div
           style={{
             fontSize: 9,
             fontFamily: 'monospace',
-            color: '#887367',
+            color: 'var(--text-muted)',
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
             marginBottom: 10,
@@ -387,7 +393,7 @@ function MindmapViewerContent({
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 11, color: '#554339' }}>{label}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</span>
           </div>
         ))}
       </div>
@@ -405,7 +411,6 @@ function MindmapViewerContent({
         maxZoom={2.5}
         nodesDraggable={false}
         nodesConnectable={false}
-        elementsSelectable={false}
         panOnScroll={false}
         zoomOnScroll={true}
         zoomOnDoubleClick={false}
@@ -441,14 +446,14 @@ function ToolbarButton({ onClick, disabled, title, children }: ToolbarButtonProp
         border: 'none',
         background: 'none',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        color: disabled ? '#C4B8B0' : '#78716C',
+        color: disabled ? 'var(--border-hover)' : 'var(--text-muted)',
         fontSize: 15,
         transition: 'background 0.1s ease',
         flexShrink: 0,
       }}
       onMouseEnter={(e) => {
         if (!disabled)
-          (e.currentTarget as HTMLButtonElement).style.background = '#eeeeeb';
+          (e.currentTarget as HTMLButtonElement).style.background = 'var(--tab-hover)';
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = 'none';
@@ -466,7 +471,7 @@ function ToolbarDivider() {
         display: 'inline-block',
         width: 1,
         height: 20,
-        background: 'rgba(219,193,180,0.4)',
+        background: 'var(--border)',
         margin: '0 2px',
         verticalAlign: 'middle',
         flexShrink: 0,

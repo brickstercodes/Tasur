@@ -48,17 +48,18 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white dark:bg-black px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4" >
       <div className="w-full max-w-sm space-y-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-black dark:text-white">
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text)' }}>
             Create your account
           </h1>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
             {'Already have an account? '}
             <Link
               href="/login"
-              className="text-black dark:text-white underline underline-offset-2"
+              className="underline underline-offset-2"
+              style={{ color: 'var(--text)' }}
             >
               Sign in
             </Link>
@@ -66,7 +67,7 @@ export default function SignupPage() {
         </div>
 
         {errorMessage !== null && (
-          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+          <div className="rounded-md p-3 text-sm" style={{ background: 'var(--error-bg)', border: '1px solid var(--error-border)', color: 'var(--error-text)' }}>
             {errorMessage}
           </div>
         )}
@@ -103,7 +104,8 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-md bg-black py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+            className="w-full rounded-md py-2 text-sm font-medium disabled:opacity-50"
+            style={{ background: 'var(--primary)', color: '#ffffff' }}
           >
             {isSubmitting ? 'Creating account…' : 'Create account'}
           </button>

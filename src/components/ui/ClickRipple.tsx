@@ -1,78 +1,107 @@
 'use client';
 
 /**
- * WHY: Adds a subtle ripple dot at every click point so users get clear
- * visual confirmation that a click registered — especially useful with the
- * custom cursor where the hotspot isn't the usual arrow tip.
- *
- * Technique: listen for `pointerdown` on the document (fires before click,
- * so it feels instant), create a fixed-position div at the click coordinates,
- * let the CSS animation run, then remove the element.  No React state — DOM
- * nodes are created and destroyed imperatively to stay off the React render
- * path entirely.
+ * WHY: Adds a parchment-style ink-drop animation at every click point.
+ * A central ink bloom plus small scatter droplets give a quill-on-manuscript feel.
+ * Coordinates are divided by CSS zoom (set on :root) to match the zoomed layout space.
  */
 
 import { useEffect, useRef } from 'react';
 
-// Size and colour of the ripple ring
-const RIPPLE_SIZE = 28;          // px diameter at peak
-const RIPPLE_COLOR = '#944604';  // burnt sienna — matches Tasur CTA amber
-
-// Injected once — lives outside the Tailwind pipeline so it never gets purged
-const RIPPLE_CSS = `
-@keyframes tasur-ripple {
-  0%   { transform: scale(0);   opacity: 0.5; }
-  60%  { transform: scale(1);   opacity: 0.2; }
-  100% { transform: scale(1.2); opacity: 0;   }
+const INK_CSS = `
+@keyframes tasur-ink-bloom {
+  0%   { transform: scale(0.2); opacity: 0.85; filter: blur(0px); }
+  40%  { transform: scale(1);   opacity: 0.55; filter: blur(0.5px); }
+  100% { transform: scale(1.6); opacity: 0;    filter: blur(1.5px); }
 }
-.tasur-ripple-dot {
+@keyframes tasur-ink-drop {
+  0%   { transform: translate(0,0) scale(1);   opacity: 0.75; }
+  60%  { opacity: 0.4; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0.3); opacity: 0; }
+}
+.tasur-ink-bloom {
   position: fixed;
   border-radius: 50%;
   pointer-events: none;
   z-index: 99998;
-  animation: tasur-ripple 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation: tasur-ink-bloom 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+.tasur-ink-drop {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99998;
+  animation: tasur-ink-drop 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 `;
+
+// Scatter droplets: [angle in deg, distance in px, size in px]
+const DROPS: [number, number, number][] = [
+  [  15, 18, 3.5 ],
+  [ 100, 14, 2.5 ],
+  [ 200, 20, 3   ],
+  [ 290, 13, 2   ],
+  [ 155, 10, 2   ],
+];
 
 export function ClickRipple() {
   const styleInjected = useRef(false);
 
   useEffect(() => {
-    // Inject the ripple styles exactly once into the document head
     if (!styleInjected.current) {
       const style = document.createElement('style');
-      style.setAttribute('data-tasur-ripple', 'true');
-      style.textContent = RIPPLE_CSS;
+      style.setAttribute('data-tasur-ink', 'true');
+      style.textContent = INK_CSS;
       document.head.appendChild(style);
       styleInjected.current = true;
     }
 
     function onPointerDown(e: PointerEvent) {
-      // Only react to primary button (left click / tap), not right-click
       if (e.button !== 0) return;
 
-      const dot = document.createElement('div');
-      dot.className = 'tasur-ripple-dot';
+      // Correct for CSS zoom: 1.12 on :root scales the layout space but
+      // clientX/clientY are in unscaled viewport pixels.
+      const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      const x = e.clientX / zoom;
+      const y = e.clientY / zoom;
 
-      const half = RIPPLE_SIZE / 2;
-      dot.style.cssText = `
-        width: ${RIPPLE_SIZE}px;
-        height: ${RIPPLE_SIZE}px;
-        left: ${e.clientX - half}px;
-        top: ${e.clientY - half}px;
-        background: ${RIPPLE_COLOR};
-        transform-origin: center center;
+      // Central ink bloom
+      const bloom = document.createElement('div');
+      bloom.className = 'tasur-ink-bloom';
+      bloom.style.cssText = `
+        width: 12px; height: 12px;
+        left: ${x - 6}px; top: ${y - 6}px;
+        background: radial-gradient(circle, #5c2a08 0%, #944604 55%, transparent 100%);
+        transform-origin: center;
       `;
+      document.body.appendChild(bloom);
 
-      document.body.appendChild(dot);
+      // Scatter droplets
+      for (const [angleDeg, dist, size] of DROPS) {
+        const rad = (angleDeg * Math.PI) / 180;
+        const tx = Math.round(Math.cos(rad) * dist);
+        const ty = Math.round(Math.sin(rad) * dist);
+        const half = size / 2;
 
-      // Clean up after animation finishes (420 ms + small buffer)
-      setTimeout(() => dot.remove(), 500);
+        const drop = document.createElement('div');
+        drop.className = 'tasur-ink-drop';
+        drop.style.cssText = `
+          width: ${size}px; height: ${size}px;
+          left: ${x - half}px; top: ${y - half}px;
+          background: #6b3210;
+          --tx: ${tx}px; --ty: ${ty}px;
+          transform-origin: center;
+        `;
+        document.body.appendChild(drop);
+        setTimeout(() => drop.remove(), 600);
+      }
+
+      setTimeout(() => bloom.remove(), 700);
     }
 
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, []);
 
-  return null; // purely side-effect component
+  return null;
 }

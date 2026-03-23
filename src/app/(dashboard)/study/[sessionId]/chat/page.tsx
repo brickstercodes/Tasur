@@ -187,24 +187,24 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
             alignItems: 'center',
             gap: 6,
             fontSize: 12,
-            color: '#94a3b8',
+            color: 'var(--text-muted)',
             marginBottom: 16,
             flexShrink: 0,
             paddingTop: 8,
           }}
         >
-          <Link href="/dashboard" style={{ color: '#94a3b8', textDecoration: 'none' }}>
+          <Link href="/dashboard" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
             Dashboard
           </Link>
           <span>›</span>
           <Link
             href={`/study/${sessionId}/mindmap`}
-            style={{ color: '#94a3b8', textDecoration: 'none' }}
+            style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
           >
             {sessionTitle}
           </Link>
           <span>›</span>
-          <span style={{ color: '#475569', fontWeight: 500 }}>{conceptName}</span>
+          <span style={{ color: 'var(--text)', fontWeight: 500 }}>{conceptName}</span>
         </nav>
 
         {/* Concept header — simplified */}
@@ -216,7 +216,7 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
             marginBottom: 12,
             flexShrink: 0,
             paddingBottom: 12,
-            borderBottom: '1px solid #ECEAE2',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -236,7 +236,7 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
                 style={{
                   fontSize: 10,
                   fontWeight: 600,
-                  color: '#887367',
+                  color: 'var(--text-muted)',
                   textTransform: 'uppercase',
                   letterSpacing: '0.08em',
                 }}
@@ -249,11 +249,11 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
             href={`/study/${sessionId}/mindmap`}
             style={{
               fontSize: 12,
-              color: '#887367',
+              color: 'var(--text-muted)',
               textDecoration: 'none',
               fontWeight: 500,
               padding: '4px 10px',
-              border: '1px solid #ECEAE2',
+              border: '1px solid var(--border)',
               borderRadius: 6,
             }}
           >

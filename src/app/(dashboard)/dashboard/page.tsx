@@ -65,13 +65,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               margin: 0,
               fontSize: 28,
               fontWeight: 400,
-              color: '#1a1c1b',
+              color: 'var(--text)',
               fontFamily: "'Instrument Serif', Georgia, serif",
             }}
           >
             {isUploadMode ? (addToSessionId ? 'Add Document' : 'New Session') : 'Sessions'}
           </h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#887367' }}>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
             {isUploadMode
               ? 'Upload your notes and let Tasur build your study experience.'
               : sessions.length === 0
@@ -88,8 +88,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               alignItems: 'center',
               gap: 6,
               padding: '9px 18px',
-              background: '#944604',
-              color: 'white',
+              background: 'var(--primary)',
+              color: '#ffffff',
               textDecoration: 'none',
               borderRadius: 8,
               fontWeight: 600,
@@ -107,8 +107,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       {isUploadMode && (
         <div
           style={{
-            background: 'white',
-            border: '1px solid #ECEAE2',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
             borderRadius: 12,
             padding: '28px 28px',
           }}
@@ -120,7 +120,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           <div style={{ marginTop: 16, textAlign: 'center' }}>
             <Link
               href="/dashboard"
-              style={{ fontSize: 12, color: '#887367', textDecoration: 'none' }}
+              style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none' }}
             >
               ← Back to sessions
             </Link>
@@ -175,7 +175,7 @@ function SessionCard({ session }: { session: SessionListItem }) {
               display: 'block',
               fontSize: 20,
               fontWeight: 400,
-              color: '#1a1c1b',
+              color: 'var(--text)',
               textDecoration: 'none',
               fontFamily: "'Instrument Serif', Georgia, serif",
               overflow: 'hidden',
@@ -193,21 +193,21 @@ function SessionCard({ session }: { session: SessionListItem }) {
             {session.domain && (
               <span
                 style={{
-                  fontSize: 10,
+                  fontSize: 12,
                   textTransform: 'uppercase',
                   letterSpacing: '0.08em',
-                  color: '#887367',
+                  color: 'var(--text-muted)',
                 }}
               >
                 {session.domain}
               </span>
             )}
             {session.domain && (
-              <span style={{ color: '#ECEAE2', fontSize: 10 }}>·</span>
+              <span style={{ color: 'var(--border)', fontSize: 12 }}>·</span>
             )}
             <span
               style={{
-                fontSize: 10,
+                fontSize: 12,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
                 color: session.mode === 'fast' ? '#C2692A' : '#3D7A5E',
@@ -219,11 +219,11 @@ function SessionCard({ session }: { session: SessionListItem }) {
 
           {/* Stats line */}
           {session.totalConcepts > 0 ? (
-            <span style={{ fontSize: 12, color: '#887367' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {session.masteredConcepts} of {session.totalConcepts} concepts · {lastActive}
             </span>
           ) : (
-            <span style={{ fontSize: 12, color: '#887367' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               Processing… · {lastActive}
             </span>
           )}
@@ -235,7 +235,7 @@ function SessionCard({ session }: { session: SessionListItem }) {
             href={`/dashboard?upload=1&sessionId=${session.id}`}
             style={{
               fontSize: 12,
-              color: '#887367',
+              color: 'var(--text-muted)',
               textDecoration: 'none',
               fontFamily: 'Inter, sans-serif',
             }}
@@ -248,7 +248,7 @@ function SessionCard({ session }: { session: SessionListItem }) {
             style={{
               fontSize: 13,
               fontWeight: 500,
-              color: '#944604',
+              color: 'var(--primary)',
               textDecoration: 'none',
               fontFamily: 'Inter, sans-serif',
             }}
@@ -268,7 +268,7 @@ function SessionCard({ session }: { session: SessionListItem }) {
           left: 0,
           right: 0,
           height: 3,
-          background: '#C2892A',
+          background: 'var(--primary)',
           borderRadius: '0 0 10px 10px',
         }}
       />
@@ -284,8 +284,8 @@ function EmptyState() {
       style={{
         textAlign: 'center',
         padding: '60px 24px',
-        background: 'white',
-        border: '1px solid #ECEAE2',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 12,
         fontFamily: 'Inter, sans-serif',
       }}
@@ -295,13 +295,13 @@ function EmptyState() {
           fontFamily: "'Instrument Serif', Georgia, serif",
           fontStyle: 'italic',
           fontSize: 18,
-          color: '#554339',
+          color: 'var(--text-faint)',
           margin: '0 0 10px',
         }}
       >
         Your sessions will appear here.
       </p>
-      <p style={{ fontSize: 13, color: '#887367', margin: '0 0 24px' }}>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 24px' }}>
         Upload your first set of notes to generate an interactive study mindmap.
       </p>
       <Link
@@ -309,8 +309,8 @@ function EmptyState() {
         style={{
           display: 'inline-flex',
           padding: '9px 18px',
-          background: '#944604',
-          color: 'white',
+          background: 'var(--primary)',
+          color: '#ffffff',
           textDecoration: 'none',
           borderRadius: 8,
           fontWeight: 600,

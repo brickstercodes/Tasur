@@ -57,10 +57,10 @@ const RATING_BUTTONS: Array<{
   hoverBg: string;
   text: string;
 }> = [
-  { rating: 'again', label: 'Again',  sublabel: '< 1d',   bg: 'white', hoverBg: '#FEF0F0', text: '#9B5C4A' },
-  { rating: 'hard',  label: 'Hard',   sublabel: '~1d',    bg: 'white', hoverBg: '#F5F0E8', text: '#887367' },
-  { rating: 'good',  label: 'Good',   sublabel: '~6d',    bg: 'white', hoverBg: '#EEF4F0', text: '#3D7A5E' },
-  { rating: 'easy',  label: 'Easy',   sublabel: 'longer', bg: 'white', hoverBg: '#EFF3F8', text: '#3B6FA0' },
+  { rating: 'again', label: 'Again',  sublabel: '< 1d',   bg: '#232221', hoverBg: '#2C1A0E', text: '#9B5C4A' },
+  { rating: 'hard',  label: 'Hard',   sublabel: '~1d',    bg: '#232221', hoverBg: '#2C2825', text: '#9A9390' },
+  { rating: 'good',  label: 'Good',   sublabel: '~6d',    bg: '#232221', hoverBg: '#1A2C25', text: '#3D7A5E' },
+  { rating: 'easy',  label: 'Easy',   sublabel: 'longer', bg: '#232221', hoverBg: '#1A2535', text: '#3B6FA0' },
 ];
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ export function FlashcardDeck({ cards, sessionId, learningMode }: FlashcardDeckP
             margin: 0,
             fontSize: 28,
             fontWeight: 400,
-            color: '#1a1c1b',
+            color: 'var(--text)',
             fontFamily: "'Instrument Serif', Georgia, serif",
           }}
         >
@@ -156,9 +156,9 @@ export function FlashcardDeck({ cards, sessionId, learningMode }: FlashcardDeckP
         </h2>
         <span
           style={{
-            fontSize: 10,
+            fontSize: 12,
             fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-            color: '#887367',
+            color: 'var(--text-muted)',
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
           }}
@@ -171,7 +171,7 @@ export function FlashcardDeck({ cards, sessionId, learningMode }: FlashcardDeckP
       <div
         style={{
           height: 2,
-          background: '#ECEAE2',
+          background: 'var(--border)',
           borderRadius: 99,
           overflow: 'hidden',
         }}
@@ -180,7 +180,7 @@ export function FlashcardDeck({ cards, sessionId, learningMode }: FlashcardDeckP
           style={{
             height: '100%',
             width: `${progress * 100}%`,
-            background: '#C2892A',
+            background: 'var(--primary)',
             borderRadius: 99,
             transition: 'width 0.3s ease',
           }}
@@ -260,10 +260,10 @@ function RatingButton({
         alignItems: 'center',
         gap: 2,
         padding: '8px 16px',
-        border: '1px solid #ECEAE2',
+        border: '1px solid var(--border)',
         borderRadius: 6,
-        background: disabled ? '#f4f4f1' : hovered ? hoverBg : bg,
-        color: disabled ? '#887367' : text,
+        background: disabled ? 'var(--surface-elevated)' : hovered ? hoverBg : bg,
+        color: disabled ? 'var(--text-muted)' : text,
         cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'inherit',
         transition: 'background 0.1s ease',
@@ -274,7 +274,7 @@ function RatingButton({
       aria-label={`Rate as ${label}`}
     >
       <span style={{ fontSize: 12, fontWeight: 600 }}>{label}</span>
-      <span style={{ fontSize: 10, opacity: 0.7 }}>{sublabel}</span>
+      <span style={{ fontSize: 11, opacity: 0.7 }}>{sublabel}</span>
     </button>
   );
 }
@@ -310,7 +310,7 @@ function SessionSummary({
       style={{
         textAlign: 'center',
         padding: '40px 24px',
-        background: '#f9f9f6',
+        background: 'var(--bg)',
         borderRadius: 12,
         fontFamily: 'Inter, sans-serif',
       }}
@@ -320,13 +320,13 @@ function SessionSummary({
           margin: '0 0 4px',
           fontSize: 28,
           fontWeight: 400,
-          color: '#1a1c1b',
+          color: 'var(--text)',
           fontFamily: "'Instrument Serif', Georgia, serif",
         }}
       >
         Session complete
       </h2>
-      <p style={{ margin: '0 0 28px', fontSize: 13, color: '#887367' }}>
+      <p style={{ margin: '0 0 28px', fontSize: 13, color: 'var(--text-muted)' }}>
         {minutes > 0 ? `${minutes}m ` : ''}{seconds}s · {learningMode} mode
       </p>
 
@@ -342,7 +342,7 @@ function SessionSummary({
       >
         {accuracy}%
       </div>
-      <p style={{ margin: '0 0 28px', fontSize: 13, color: '#887367' }}>
+      <p style={{ margin: '0 0 28px', fontSize: 13, color: 'var(--text-muted)' }}>
         accuracy ({correct} / {totalCards} correct)
       </p>
 
@@ -364,8 +364,8 @@ function SessionSummary({
               alignItems: 'center',
               gap: 2,
               padding: '10px 16px',
-              background: 'white',
-              border: '1px solid #ECEAE2',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               minWidth: 56,
             }}
@@ -373,7 +373,7 @@ function SessionSummary({
             <span style={{ fontSize: 20, fontWeight: 600, color: btn.text }}>
               {counts[btn.rating] ?? 0}
             </span>
-            <span style={{ fontSize: 11, color: '#887367', fontWeight: 500 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
               {btn.label}
             </span>
           </div>

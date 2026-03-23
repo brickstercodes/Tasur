@@ -36,7 +36,9 @@
       "Bash(wc -l /Users/anugrahshetty/Documents/Tasur/src/prompts/domains/*.md)",
       "Bash(ls -la /Users/anugrahshetty/Documents/Tasur/src/app/\\\\\\(dashboard\\\\\\)/)",
       "Bash(ls -la /Users/anugrahshetty/Documents/Tasur/src/app/\\\\\\(dashboard\\\\\\)/study/)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(grep -r \"color\\\\|background\\\\|#[0-9A-Fa-f]\\\\{3,6\\\\}\" /Users/anugrahshetty/Documents/Tasur/src/app/globals.css)",
+      "Bash(ls /Users/anugrahshetty/Documents/Tasur/src/app/\\\\\\(dashboard\\\\\\)/dashboard/)"
     ]
   }
 }

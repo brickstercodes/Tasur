@@ -22,6 +22,7 @@ import { redirect } from 'next/navigation';
 
 import { TasurWordmark } from '@/components/ui/TasurWordmark';
 import { ProfileMenu } from '@/components/ui/ProfileMenu';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { auth } from '@/lib/auth';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -36,11 +37,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9f9f6' }}>
+    <div style={{ minHeight: '100vh' }}>
       <header
         style={{
-          background: '#f9f9f6',
-          borderBottom: '1px solid #ECEAE2',
+          background: 'var(--nav-bg)',
+          borderBottom: '1px solid var(--nav-border)',
           padding: '0 24px',
           height: 52,
           display: 'flex',
@@ -52,16 +53,25 @@ export default async function DashboardLayout({ children }: { children: React.Re
             maxWidth: '1536px',
             margin: '0 auto',
             width: '100%',
-            display: 'flex',
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
             alignItems: 'center',
-            justifyContent: 'space-between',
           }}
         >
-          <TasurWordmark size={22} color="#1a1c1b" />
-          <ProfileMenu
-            initial={(session.user.name ?? session.user.email ?? 'U').trim().charAt(0).toUpperCase()}
-            email={session.user.email ?? ''}
-          />
+          {/* Left spacer */}
+          <div />
+
+          {/* Centre: wordmark as focal point */}
+          <TasurWordmark size={38} color="var(--logo)" />
+
+          {/* Right: controls flush to the edge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'flex-end' }}>
+            <ThemeToggle />
+            <ProfileMenu
+              initial={(session.user.name ?? session.user.email ?? 'U').trim().charAt(0).toUpperCase()}
+              email={session.user.email ?? ''}
+            />
+          </div>
         </div>
       </header>
 

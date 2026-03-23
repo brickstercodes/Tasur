@@ -36,10 +36,10 @@ export function StudyTabs({ sessionId }: StudyTabsProps) {
             style={{
               fontSize: 13,
               fontWeight: isActive ? 600 : 400,
-              color: isActive ? '#944604' : '#887367',
+              color: isActive ? 'var(--primary)' : 'var(--text-muted)',
               textDecoration: 'none',
               paddingBottom: 2,
-              borderBottom: isActive ? '2px solid #944604' : '2px solid transparent',
+              borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent',
               fontFamily: 'Inter, sans-serif',
               letterSpacing: isActive ? '-0.01em' : undefined,
               transition: 'color 0.12s ease, border-color 0.12s ease',

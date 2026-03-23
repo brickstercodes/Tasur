@@ -9,12 +9,8 @@
 
 import { useEffect, useRef } from 'react';
 
-// How fast the cursor catches up to the mouse.
-// 0.10 = gentle float  |  0.5 = snappy but still smooth  |  1.0 = instant
-const LERP_FACTOR = 0.7;
-
 // Display size in px — the SVG is 2048×2048 so we scale it down.
-const CURSOR_SIZE = 50;
+const CURSOR_SIZE = 70;
 
 // Nib tip offset within the rendered image (measured via canvas pixel analysis).
 // Subtracting these aligns the visual tip with the actual mouse click point.
@@ -23,13 +19,6 @@ const TIP_OFFSET_Y = 15;
 
 export function CustomCursor() {
   const elRef = useRef<HTMLImageElement>(null);
-
-  const targetX = useRef(0);
-  const targetY = useRef(0);
-  const currentX = useRef(0);
-  const currentY = useRef(0);
-  const rafId = useRef<number>(0);
-  const started = useRef(false);
 
   useEffect(() => {
     const hasFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -54,29 +43,19 @@ export function CustomCursor() {
         elRef.current.style.opacity = '0';
         elRef.current.style.transform = `translate(${-100 - TIP_OFFSET_X}px, ${-100 - TIP_OFFSET_Y}px)`;
       }
-
-      started.current = false;
-      if (rafId.current) {
-        cancelAnimationFrame(rafId.current);
-        rafId.current = 0;
-      }
     }
 
     function onMouseMove(e: MouseEvent) {
       forceHideCursorOnTarget(e.target);
 
-      targetX.current = e.clientX;
-      targetY.current = e.clientY;
-
       if (elRef.current) {
+        // CSS zoom on :root scales the layout coordinate system but clientX/clientY
+        // are in unscaled viewport pixels — divide to correct the mismatch.
+        const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        const x = e.clientX / zoom;
+        const y = e.clientY / zoom;
         elRef.current.style.opacity = '1';
-      }
-
-      if (!started.current) {
-        currentX.current = e.clientX;
-        currentY.current = e.clientY;
-        started.current = true;
-        tick();
+        elRef.current.style.transform = `translate(${x - TIP_OFFSET_X}px, ${y - TIP_OFFSET_Y}px)`;
       }
     }
 
@@ -91,18 +70,6 @@ export function CustomCursor() {
       forceHideCursorOnTarget(e.target);
     }
 
-    function tick() {
-      currentX.current += (targetX.current - currentX.current) * LERP_FACTOR;
-      currentY.current += (targetY.current - currentY.current) * LERP_FACTOR;
-
-      if (elRef.current) {
-        elRef.current.style.transform =
-          `translate(${currentX.current - TIP_OFFSET_X}px, ${currentY.current - TIP_OFFSET_Y}px)`;
-      }
-
-      rafId.current = requestAnimationFrame(tick);
-    }
-
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseover', onMouseOver, true);
     document.addEventListener('mouseout', onMouseOut);
@@ -115,7 +82,6 @@ export function CustomCursor() {
       document.removeEventListener('mouseout', onMouseOut);
       window.removeEventListener('blur', hideCursor);
       document.removeEventListener('visibilitychange', hideCursor);
-      cancelAnimationFrame(rafId.current);
       styleEl.remove();
     };
   }, []);

@@ -29,7 +29,7 @@ export function VisualSuggestion({ type, data }: VisualSuggestionProps) {
     <div
       style={{
         margin: '12px 0',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--border)',
         borderRadius: 8,
         overflow: 'hidden',
         fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
@@ -38,12 +38,12 @@ export function VisualSuggestion({ type, data }: VisualSuggestionProps) {
     >
       <div
         style={{
-          background: '#f8fafc',
-          borderBottom: '1px solid #e2e8f0',
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
           padding: '6px 12px',
           fontSize: 11,
           fontWeight: 600,
-          color: '#64748b',
+          color: 'var(--text-muted)',
           textTransform: 'uppercase',
           letterSpacing: '0.04em',
         }}
@@ -51,7 +51,7 @@ export function VisualSuggestion({ type, data }: VisualSuggestionProps) {
         {type === 'table' ? 'Table' : type === 'comparison' ? 'Comparison' : 'Diagram'}
       </div>
 
-      <div style={{ padding: '12px 16px', background: '#fff' }}>
+      <div style={{ padding: '12px 16px', background: 'var(--surface-elevated)' }}>
         {type === 'table' && <TableVisual data={data} />}
         {type === 'comparison' && <ComparisonVisual data={data} />}
         {type === 'diagram' && <DiagramVisual data={data} />}
@@ -89,10 +89,10 @@ function TableVisual({ data }: { data: Record<string, unknown> }) {
                   style={{
                     textAlign: 'left',
                     padding: '6px 10px',
-                    background: '#f1f5f9',
-                    borderBottom: '2px solid #e2e8f0',
+                    background: 'var(--surface-elevated)',
+                    borderBottom: '2px solid var(--border)',
                     fontWeight: 600,
-                    color: '#334155',
+                    color: 'var(--text)',
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -105,15 +105,15 @@ function TableVisual({ data }: { data: Record<string, unknown> }) {
             {rows.map((row, i) => (
               <tr
                 key={i}
-                style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}
+                style={{ background: i % 2 === 0 ? 'var(--surface-elevated)' : 'var(--surface)' }}
               >
                 {(Array.isArray(row) ? row : []).map((cell, j) => (
                   <td
                     key={j}
                     style={{
                       padding: '6px 10px',
-                      borderBottom: '1px solid #e2e8f0',
-                      color: '#475569',
+                      borderBottom: '1px solid var(--border)',
+                      color: 'var(--text-muted)',
                       verticalAlign: 'top',
                     }}
                   >
@@ -155,19 +155,19 @@ function ComparisonVisual({ data }: { data: Record<string, unknown> }) {
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
       <thead>
         <tr>
-          <th style={thStyle('#f1f5f9')}>Property</th>
-          <th style={thStyle('#e0f2fe')}>{leftLabel}</th>
-          <th style={thStyle('#fce7f3')}>{rightLabel}</th>
+          <th style={thStyle('var(--surface-elevated)')}>Property</th>
+          <th style={thStyle('var(--surface-elevated)')}>{leftLabel}</th>
+          <th style={thStyle('var(--surface-elevated)')}>{rightLabel}</th>
         </tr>
       </thead>
       <tbody>
         {items.map((item, i) => (
-          <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+          <tr key={i} style={{ background: i % 2 === 0 ? 'var(--surface-elevated)' : 'var(--surface)' }}>
             <td style={tdStyle}><strong>{item.attribute}</strong></td>
-            <td style={{ ...tdStyle, background: i % 2 === 0 ? '#f0f9ff' : '#e0f2fe22' }}>
+            <td style={{ ...tdStyle }}>
               {item.left}
             </td>
-            <td style={{ ...tdStyle, background: i % 2 === 0 ? '#fdf2f8' : '#fce7f322' }}>
+            <td style={{ ...tdStyle }}>
               {item.right}
             </td>
           </tr>
@@ -206,14 +206,14 @@ function DiagramVisual({ data }: { data: Record<string, unknown> }) {
     : [];
 
   return (
-    <div style={{ color: '#334155', lineHeight: 1.6 }}>
+    <div style={{ color: 'var(--text)', lineHeight: 1.6 }}>
       {description && (
-        <p style={{ margin: '0 0 10px', color: '#475569' }}>{description}</p>
+        <p style={{ margin: '0 0 10px', color: 'var(--text-muted)' }}>{description}</p>
       )}
 
       {nodes.length > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
             Nodes
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
@@ -221,12 +221,12 @@ function DiagramVisual({ data }: { data: Record<string, unknown> }) {
               <span
                 key={i}
                 style={{
-                  background: '#f1f5f9',
-                  border: '1px solid #cbd5e1',
+                  background: 'var(--surface-elevated)',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
                   padding: '2px 8px',
                   fontSize: 12,
-                  color: '#1e293b',
+                  color: 'var(--text)',
                 }}
               >
                 {node}
@@ -238,12 +238,12 @@ function DiagramVisual({ data }: { data: Record<string, unknown> }) {
 
       {edges.length > 0 && (
         <div>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
             Relationships
           </span>
           <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
             {edges.map((edge, i) => (
-              <li key={i} style={{ color: '#475569', fontSize: 12, marginBottom: 2 }}>
+              <li key={i} style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 2 }}>
                 <strong>{edge.from}</strong>
                 {edge.label ? ` —[${edge.label}]→ ` : ' → '}
                 <strong>{edge.to}</strong>
@@ -264,16 +264,16 @@ function DiagramVisual({ data }: { data: Record<string, unknown> }) {
 
 function KeyValueFallback({ data }: { data: Record<string, unknown> }) {
   const entries = Object.entries(data);
-  if (entries.length === 0) return <span style={{ color: '#94a3b8' }}>No data</span>;
+  if (entries.length === 0) return <span style={{ color: 'var(--text-muted)' }}>No data</span>;
 
   return (
     <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px' }}>
       {entries.map(([key, value]) => (
         <>
-          <dt key={`${key}-k`} style={{ fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>
+          <dt key={`${key}-k`} style={{ fontWeight: 600, color: '#FAFAF7', whiteSpace: 'nowrap' }}>
             {key}
           </dt>
-          <dd key={`${key}-v`} style={{ margin: 0, color: '#64748b' }}>
+          <dd key={`${key}-v`} style={{ margin: 0, color: '#9A9390' }}>
             {typeof value === 'object' ? JSON.stringify(value) : String(value ?? '')}
           </dd>
         </>
@@ -289,9 +289,9 @@ function thStyle(bg: string): React.CSSProperties {
     textAlign: 'left',
     padding: '6px 10px',
     background: bg,
-    borderBottom: '2px solid #e2e8f0',
+    borderBottom: '2px solid #3A3835',
     fontWeight: 600,
-    color: '#334155',
+    color: '#FAFAF7',
     whiteSpace: 'nowrap',
     fontSize: 12,
   };
@@ -299,8 +299,8 @@ function thStyle(bg: string): React.CSSProperties {
 
 const tdStyle: React.CSSProperties = {
   padding: '6px 10px',
-  borderBottom: '1px solid #e2e8f0',
-  color: '#475569',
+  borderBottom: '1px solid #3A3835',
+  color: '#9A9390',
   verticalAlign: 'top',
   fontSize: 13,
 };

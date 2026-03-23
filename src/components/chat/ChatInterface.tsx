@@ -322,7 +322,7 @@ export function ChatInterface({
         @keyframes cursor-fade { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         .chat-scroll::-webkit-scrollbar { width: 4px; }
         .chat-scroll::-webkit-scrollbar-track { background: transparent; }
-        .chat-scroll::-webkit-scrollbar-thumb { background: #DDD8CC; border-radius: 10px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 10px; }
         .send-btn:hover:not(:disabled) { background: #7A3803 !important; }
         .moveon-btn:hover { opacity: 0.88; transform: translateY(-1px); }
       `}</style>
@@ -358,9 +358,9 @@ export function ChatInterface({
               <p
                 style={{
                   fontFamily: "'Instrument Serif', Georgia, serif",
-                  fontStyle: 'italic',
+                  fontStyle: 'italic' as const,
                   fontSize: 18,
-                  color: '#887367',
+                  color: 'var(--text-muted)',
                   margin: 0,
                 }}
               >
@@ -382,12 +382,12 @@ export function ChatInterface({
           {error && (
             <div
               style={{
-                background: '#fef6f0',
-                border: '1px solid #F5C4A0',
-                borderLeft: '3px solid #944604',
+                background: 'var(--error-bg)',
+                border: '1px solid var(--error-border)',
+                borderLeft: '3px solid var(--primary)',
                 borderRadius: 8,
                 padding: '10px 14px',
-                color: '#7A3803',
+                color: 'var(--error-text)',
                 fontSize: 13,
                 margin: '8px 0',
                 fontFamily: 'Inter, sans-serif',
@@ -411,7 +411,7 @@ export function ChatInterface({
                 padding: '13px 24px',
                 border: 'none',
                 borderRadius: 10,
-                background: '#944604',
+                background: 'var(--primary)',
                 color: '#fff',
                 fontSize: 14,
                 fontWeight: 600,
@@ -434,7 +434,7 @@ export function ChatInterface({
         {/* Input area */}
         <div
           style={{
-            borderTop: '1px solid #ECEAE2',
+            borderTop: '1px solid var(--border)',
             padding: '14px 0 4px',
             display: 'flex',
             gap: 10,
@@ -455,11 +455,11 @@ export function ChatInterface({
             style={{
               flex: 1,
               padding: '10px 14px',
-              border: '1px solid #ECEAE2',
+              border: '1px solid var(--input-border)',
               borderRadius: 10,
               fontSize: 13.5,
-              color: '#2D2318',
-              background: isStreaming ? '#FAF8F4' : '#FDFAF6',
+              color: 'var(--text)',
+              background: isStreaming ? 'var(--bg)' : 'var(--input-bg)',
               resize: 'none',
               outline: 'none',
               fontFamily: "'Georgia', serif",
@@ -467,10 +467,10 @@ export function ChatInterface({
               transition: 'border-color 0.15s ease',
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#C2892A';
+              e.currentTarget.style.borderColor = 'var(--input-focus)';
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#ECEAE2';
+              e.currentTarget.style.borderColor = 'var(--input-border)';
             }}
           />
           <button
@@ -482,8 +482,8 @@ export function ChatInterface({
               height: 40,
               border: 'none',
               borderRadius: 10,
-              background: inputText.trim() && !isStreaming ? '#944604' : '#ECEAE2',
-              color: inputText.trim() && !isStreaming ? '#fff' : '#B8AFA6',
+              background: inputText.trim() && !isStreaming ? 'var(--primary)' : 'var(--border)',
+              color: inputText.trim() && !isStreaming ? '#fff' : 'var(--text-muted)',
               fontSize: 16,
               cursor: inputText.trim() && !isStreaming ? 'pointer' : 'not-allowed',
               display: 'flex',
@@ -520,8 +520,8 @@ function MessageBubble({
 }) {
   const isUser = message.role === 'user';
   const accent = message.messageType
-    ? MESSAGE_TYPE_ACCENT[message.messageType] ?? '#887367'
-    : '#887367';
+    ? (MESSAGE_TYPE_ACCENT[message.messageType] ?? 'var(--text-muted)')
+    : 'var(--text-muted)';
   const userAvatarColor = avatarColorForInitial(userInitial);
 
   if (isUser) {
@@ -533,10 +533,10 @@ function MessageBubble({
             maxWidth: '72%',
             padding: '11px 16px',
             borderRadius: '16px 16px 4px 16px',
-            background: 'linear-gradient(145deg, #EDE5D5 0%, #E6DCC8 100%)',
-            border: '1px solid #D4C4A8',
-            boxShadow: '0 2px 8px rgba(61,43,31,0.10), inset 0 1px 0 rgba(255,250,240,0.6)',
-            color: '#2D1F0E',
+            background: 'var(--surface-elevated)',
+            border: '1px solid var(--border)',
+            boxShadow: '0 2px 8px rgba(28,25,23,0.08)',
+            color: 'var(--text)',
             fontSize: 13.5,
             lineHeight: 1.65,
             fontFamily: "'Georgia', serif",
@@ -580,8 +580,8 @@ function MessageBubble({
           width: AVATAR_SIZE,
           height: AVATAR_SIZE,
           borderRadius: '50%',
-          background: '#F4F0E8',
-          border: '1px solid #E8DFC8',
+          background: 'var(--surface-elevated)',
+          border: '1px solid var(--border)',
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
@@ -599,7 +599,7 @@ function MessageBubble({
         {message.messageType && (
           <div
             style={{
-              fontSize: 9,
+              fontSize: 11,
               fontFamily: "'JetBrains Mono', 'Courier New', monospace",
               fontWeight: 700,
               color: accent,
@@ -612,26 +612,22 @@ function MessageBubble({
           </div>
         )}
 
-      {/* Parchment manuscript block */}
+      {/* Manuscript block */}
       <div
         style={{
           width: '100%',
           padding: '18px 20px 18px 20px',
-          // Old paper: warm cream gradient, slightly yellowed edges
-          background: 'linear-gradient(180deg, #FDFAF2 0%, #FAF5E8 60%, #F7F0E0 100%)',
-          border: '1px solid #E8DFC8',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
           borderLeft: `3px solid ${accent}`,
           borderRadius: '0 8px 8px 0',
-          // Subtle aged shadow — deeper on bottom/right like held paper
           boxShadow: `
-            0 2px 12px rgba(61,43,31,0.07),
-            0 1px 3px rgba(61,43,31,0.05),
-            inset 0 1px 0 rgba(255,252,240,0.8),
-            inset 0 -1px 0 rgba(180,160,120,0.12)
+            0 2px 12px rgba(28,25,23,0.07),
+            0 1px 3px rgba(28,25,23,0.05)
           `,
           fontSize: 13.5,
           lineHeight: 1.78,
-          color: '#2D1F0E',
+          color: 'var(--text)',
           fontFamily: "'Georgia', serif",
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',

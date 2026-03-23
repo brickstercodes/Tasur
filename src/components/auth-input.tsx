@@ -30,7 +30,8 @@ export function AuthInput({
     <div className="space-y-1">
       <label
         htmlFor={id}
-        className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+        className="block text-sm font-medium"
+        style={{ color: 'var(--text-muted)' }}
       >
         {label}
       </label>
@@ -42,7 +43,12 @@ export function AuthInput({
         placeholder={placeholder}
         autoComplete={autoComplete}
         onChange={onChange}
-        className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-black placeholder-zinc-400 focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder-zinc-600 dark:focus:border-white"
+        className="w-full rounded-md px-3 py-2 text-sm focus:outline-none"
+        style={{
+          border: '1px solid var(--input-border)',
+          background: 'var(--input-bg)',
+          color: 'var(--text)',
+        }}
       />
     </div>
   );
