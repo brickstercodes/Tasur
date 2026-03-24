@@ -3,8 +3,8 @@
  *
  * The Phase 2 study-partner chat. Implements TasurStreamingAgent: stream() gives
  * the frontend real-time typing, execute() gives the orchestrator a complete
- * structured turn. Uses getOrchestratorModel() because good Socratic pedagogy
- * requires the high-capability model.
+ * structured turn. Uses getSpecialistModel() for domain-specific concept
+ * explanations.
  *
  * NOTE: Mastra 0.24.9 Agent.generate() and Agent.stream() are both broken with
  * AI SDK v6 models. Both generateObject() and streamText() from the AI SDK are

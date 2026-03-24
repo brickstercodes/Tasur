@@ -381,16 +381,14 @@ body {
 @layer base {
   /* Prevent text selection on double-click */
   button,
-  a,
-  [role='button'] {
+  a {
     user-select: none;
     -webkit-user-select: none;
   }
 
   /* Press-down scale — physical "click" feedback */
   button:active,
-  a:active,
-  [role='button']:active {
+  a:active {
     transform: scale(0.96) !important;
     transition: transform 0.08s ease !important;
   }
@@ -608,5 +606,97 @@ body {
     opacity: 1;
     transform: none;
     filter: none;
+  }
+}
+
+/* ── Study tab micro-motion ─────────────────────────────────────────────── */
+
+.study-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--border) 88%, var(--primary) 12%);
+  box-shadow:
+    0 1px 5px rgba(36, 22, 11, 0.05),
+    0 0 0 1px color-mix(in srgb, var(--primary) 6%, transparent) inset;
+}
+
+.study-tab-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  box-shadow: none;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.study-tab-link .study-tab-text {
+  letter-spacing: -0.005em;
+}
+
+.study-tab-link:hover {
+  transform: translateY(-1px);
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-elevated) 82%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--border));
+  box-shadow: 0 4px 11px rgba(36, 22, 11, 0.08);
+}
+
+.study-tab-link.is-active {
+  color: #ffffff;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary-hover) 84%, var(--primary) 16%),
+    var(--primary)
+  );
+  border-color: color-mix(in srgb, var(--primary) 65%, transparent);
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.study-tab-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 58%, transparent);
+  outline-offset: 2px;
+}
+
+.study-route-veil {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 70;
+  background:
+    radial-gradient(
+      130% 90% at 50% 8%,
+      color-mix(in srgb, var(--primary) 12%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 82%, transparent), var(--bg));
+  transition: opacity 0.18s ease;
+}
+
+.study-route-veil.is-visible {
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .study-tab-link,
+  .study-route-veil {
+    transition: none;
   }
 }

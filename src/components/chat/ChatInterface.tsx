@@ -32,6 +32,7 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  createdAt?: number;
   messageType?: string;
   microAssessment?: {
     question: string;
@@ -44,6 +45,7 @@ interface ChatMessage {
     data: Record<string, unknown>;
   };
   isStreaming?: boolean;
+  streamCompleteTick?: number;
   conversationComplete?: boolean;
 }
 
@@ -223,6 +225,7 @@ export function ChatInterface({
             id: row.id,
             role: row.role as 'user' | 'assistant',
             content: row.content,
+            createdAt: new Date(row.created_at).getTime(),
             messageType: row.message_type ?? undefined,
             microAssessment: row.metadata?.micro_assessment ?? undefined,
             visualSuggestion: row.metadata?.visual_suggestion ?? undefined,
@@ -261,6 +264,7 @@ export function ChatInterface({
         id: `user-${Date.now()}`,
         role: 'user',
         content: text,
+        createdAt: Date.now(),
       };
 
       const streamingId = `assistant-${Date.now()}`;
@@ -269,6 +273,7 @@ export function ChatInterface({
         role: 'assistant',
         content: '',
         isStreaming: true,
+        createdAt: Date.now(),
       };
 
       setMessages((prev) => [...prev, userMessage, streamingPlaceholder]);
@@ -386,7 +391,13 @@ export function ChatInterface({
     if (eventName === 'done') {
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === streamingId ? { ...m, isStreaming: false } : m,
+          m.id === streamingId
+            ? {
+                ...m,
+                isStreaming: false,
+                streamCompleteTick: Date.now(),
+              }
+            : m,
         ),
       );
       return;
@@ -419,11 +430,49 @@ export function ChatInterface({
       <style>{`
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         @keyframes cursor-fade { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes bubble-in-user {
+          from { opacity: 0; transform: translateX(10px) translateY(4px) scale(0.985); }
+          to { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
+        }
+        @keyframes bubble-in-assistant {
+          from { opacity: 0; transform: translateX(-10px) translateY(5px) scale(0.985); }
+          to { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
+        }
+        @keyframes ink-settle {
+          0% { filter: blur(1.8px); transform: translateY(2px); opacity: 0.72; }
+          100% { filter: blur(0); transform: translateY(0); opacity: 1; }
+        }
+        @keyframes thinking-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+          50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 24%, transparent); }
+        }
+        @keyframes send-spin {
+          0% { transform: scale(1) rotate(0deg); }
+          50% { transform: scale(0.9) rotate(18deg); }
+          100% { transform: scale(1) rotate(0deg); }
+        }
         .chat-scroll::-webkit-scrollbar { width: 4px; }
         .chat-scroll::-webkit-scrollbar-track { background: transparent; }
         .chat-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 10px; }
         .send-btn:hover:not(:disabled) { background: #7A3803 !important; }
         .moveon-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+        .bubble-enter-user { animation: bubble-in-user 260ms cubic-bezier(0.2, 0.78, 0.28, 1) both; }
+        .bubble-enter-assistant { animation: bubble-in-assistant 280ms cubic-bezier(0.2, 0.78, 0.28, 1) both; }
+        .assistant-paper-stream-complete { animation: ink-settle 420ms ease-out both; }
+        .assistant-avatar-thinking { animation: thinking-pulse 1.25s ease-in-out infinite; }
+        .message-type-label { animation: bubble-in-assistant 220ms cubic-bezier(0.2, 0.78, 0.28, 1) both; }
+        .send-btn-streaming .send-icon { animation: send-spin 700ms ease-in-out infinite; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .bubble-enter-user,
+          .bubble-enter-assistant,
+          .assistant-paper-stream-complete,
+          .assistant-avatar-thinking,
+          .message-type-label,
+          .send-btn-streaming .send-icon {
+            animation: none !important;
+          }
+        }
       `}</style>
 
       <div
@@ -585,7 +634,7 @@ export function ChatInterface({
             }}
           />
           <button
-            className="send-btn"
+            className={`send-btn ${isStreaming ? 'send-btn-streaming' : ''}`}
             onClick={() => sendMessage(inputText)}
             disabled={!inputText.trim() || isStreaming}
             style={{
@@ -606,7 +655,7 @@ export function ChatInterface({
             }}
             title="Send"
           >
-            ↑
+            <span className="send-icon">↑</span>
           </button>
         </div>
       </div>
@@ -640,7 +689,7 @@ function MessageBubble({
   if (isUser) {
     // ── User bubble: parchment float, right-aligned with avatar ──────────────
     return (
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 10, margin: '10px 0' }}>
+      <div className="bubble-enter-user" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 10, margin: '10px 0' }}>
         <div
           style={{
             maxWidth: '72%',
@@ -686,9 +735,10 @@ function MessageBubble({
 
   // ── Assistant message: manuscript block with Tasur logo avatar ────────────
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, margin: '14px 0' }}>
+    <div className="bubble-enter-assistant" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, margin: '14px 0' }}>
       {/* Tasur logo avatar */}
       <div
+        className={message.isStreaming && message.content.length === 0 ? 'assistant-avatar-thinking' : undefined}
         style={{
           width: AVATAR_SIZE,
           height: AVATAR_SIZE,
@@ -711,6 +761,7 @@ function MessageBubble({
         {/* Message type label */}
         {message.messageType && (
           <div
+            className="message-type-label"
             style={{
               fontSize: 11,
               fontFamily: "'JetBrains Mono', 'Courier New', monospace",
@@ -727,6 +778,7 @@ function MessageBubble({
 
       {/* Manuscript block */}
       <div
+        className={!message.isStreaming && message.streamCompleteTick ? 'assistant-paper-stream-complete' : undefined}
         style={{
           width: '100%',
           padding: '18px 20px 18px 20px',

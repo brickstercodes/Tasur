@@ -92,13 +92,19 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
     : undefined;
 
   const handleToggleClick = useCallback(
-    (event: React.MouseEvent) => {
+    (event: React.PointerEvent) => {
       // Stop propagation so react-flow's node-click handler doesn't also fire.
+      event.preventDefault();
       event.stopPropagation();
       onToggleCollapse(id);
     },
     [id, onToggleCollapse],
   );
+
+  const handleNodePointerDown = useCallback((event: React.PointerEvent) => {
+    // Prevent click-hold from initiating any React Flow node-level interaction.
+    event.stopPropagation();
+  }, []);
 
   const handleConceptClick = useCallback(() => {
     if (isConcept && concept_id) {
@@ -109,7 +115,7 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
   // ── Root node ───────────────────────────────────────────────────────────────
   if (isRoot) {
     return (
-      <div style={{ opacity, transition: 'opacity 0.2s ease' }}>
+      <div className="nodrag nopan" style={{ opacity, transition: 'opacity 0.2s ease' }}>
         <Handle
           id="left"
           type="source"
@@ -126,6 +132,8 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
         />
 
         <div
+          className="nopan"
+          onPointerDown={handleNodePointerDown}
           title={study_cue ?? undefined}
           style={{
             background: 'var(--mindmap-node-root)',
@@ -176,7 +184,7 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
   const boxShadow = isHovered ? '0 2px 12px rgba(0,0,0,0.08)' : undefined;
 
   return (
-    <div style={{ opacity, transition: 'opacity 0.2s ease' }}>
+    <div className="nodrag nopan" style={{ opacity, transition: 'opacity 0.2s ease' }}>
       {/* Left handles */}
       <Handle
         id="left"
@@ -195,6 +203,8 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
 
       {/* Node body */}
       <div
+        className="nopan"
+        onPointerDown={handleNodePointerDown}
         title={study_cue ?? undefined}
         onClick={handleConceptClick}
         onMouseEnter={() => setIsHovered(true)}
@@ -243,7 +253,8 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
         {/* Edge bubble — sits at the expansion side of the node */}
         {hasChildren && (
           <span
-            onClick={handleToggleClick}
+            className="nopan"
+            onPointerDown={handleToggleClick}
             onMouseEnter={() => setBubbleHovered(true)}
             onMouseLeave={() => setBubbleHovered(false)}
             title={isCollapsed ? `Expand ${visibleChildCount} items` : 'Collapse'}

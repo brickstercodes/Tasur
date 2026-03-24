@@ -85,10 +85,7 @@ Respond with **only** a JSON object. No markdown fences, no explanation — raw 
 {
   "message_type": "<explanation | analogy | example | micro_assessment | clarification>",
   "content": "<the main text of your response — always required, always student-facing>",
-  "visual_suggestion": {
-    "type": "<diagram | table | comparison>",
-    "data": { "<key>": "<value>" }
-  } | null,
+  "visual_suggestion": <one of the shapes below, or null>,
   "micro_assessment": {
     "question": "<question shown to the student>",
     "expected_understanding": "<grading rubric — what a correct answer includes, what a partial answer looks like, what a wrong answer reveals>",
@@ -98,6 +95,54 @@ Respond with **only** a JSON object. No markdown fences, no explanation — raw 
   "handoff_signal": "<ready_for_flashcards | suggest_prerequisite_review | needs_more_examples>" | null
 }
 ```
+
+### `visual_suggestion` data shapes — use EXACTLY these structures
+
+**table** — use when comparing properties across items or showing structured data:
+```json
+{
+  "type": "table",
+  "data": {
+    "headers": ["Column A", "Column B", "Column C"],
+    "rows": [
+      ["row1-val-a", "row1-val-b", "row1-val-c"],
+      ["row2-val-a", "row2-val-b", "row2-val-c"]
+    ]
+  }
+}
+```
+
+**comparison** — use when contrasting exactly two things side-by-side:
+```json
+{
+  "type": "comparison",
+  "data": {
+    "left": "Thing A",
+    "right": "Thing B",
+    "items": [
+      { "attribute": "Property 1", "left": "A's value", "right": "B's value" },
+      { "attribute": "Property 2", "left": "A's value", "right": "B's value" }
+    ]
+  }
+}
+```
+
+**diagram** — use for hierarchies, flows, and relationships between components:
+```json
+{
+  "type": "diagram",
+  "data": {
+    "description": "One sentence describing what this diagram shows.",
+    "nodes": ["Node A", "Node B", "Node C"],
+    "edges": [
+      { "from": "Node A", "to": "Node B", "label": "optional relationship label" },
+      { "from": "Node B", "to": "Node C" }
+    ]
+  }
+}
+```
+
+Only emit `visual_suggestion` when it genuinely aids understanding (hierarchy, comparison, structured data). Set it to `null` when plain text is clearer.
 
 ---
 
@@ -133,8 +178,11 @@ Respond with **only** a JSON object. No markdown fences, no explanation — raw 
   "visual_suggestion": {
     "type": "table",
     "data": {
-      "violation": "Employee(EmpID, Dept, DeptLocation) — DeptLocation depends on Dept, not EmpID",
-      "fix": "Employee(EmpID, Dept) + Department(Dept, DeptLocation)"
+      "headers": ["", "Before (violation)", "After (3NF fix)"],
+      "rows": [
+        ["Table", "Employee(EmpID, Dept, DeptLocation)", "Employee(EmpID, Dept) + Department(Dept, DeptLocation)"],
+        ["Problem", "DeptLocation depends on Dept, not EmpID", "Each fact stored in exactly one place"]
+      ]
     }
   },
   "micro_assessment": {

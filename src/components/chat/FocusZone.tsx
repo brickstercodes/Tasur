@@ -4,6 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getDocFromCache } from '@/lib/doc-cache';
 
+const DEFAULT_FOCUS_ZONE_WIDTH = 340;
+const MIN_FOCUS_ZONE_WIDTH = 260;
+const MAX_FOCUS_ZONE_WIDTH = 620;
+
 interface FocusZoneProps {
   sessionId: string;
   conceptName: string;
@@ -38,9 +42,15 @@ export function FocusZone({
   documentFileType,
 }: FocusZoneProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [panelWidth, setPanelWidth] = useState<number | null>(null);
+  const [isHandleHovered, setIsHandleHovered] = useState(false);
   const { theme } = useTheme();
   const [blobUrl, setBlobUrl] = useState<string | undefined>();
   const blobRef = useRef<string | undefined>();
+  const panelRef = useRef<HTMLElement | null>(null);
+  const isResizingRef = useRef(false);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(DEFAULT_FOCUS_ZONE_WIDTH);
 
   // Try to load the original file from the browser's IndexedDB cache first.
   // This lets us render the real PDF without touching server storage.
@@ -60,6 +70,41 @@ export function FocusZone({
       }
     };
   }, [sessionId]);
+
+  useEffect(() => {
+    function handlePointerMove(event: PointerEvent) {
+      if (!isResizingRef.current) return;
+
+      // Dragging left increases width (sidebar is anchored to the right side).
+      const delta = resizeStartXRef.current - event.clientX;
+      const nextWidth = Math.min(
+        MAX_FOCUS_ZONE_WIDTH,
+        Math.max(MIN_FOCUS_ZONE_WIDTH, resizeStartWidthRef.current + delta),
+      );
+      setPanelWidth(nextWidth);
+    }
+
+    function stopResizing() {
+      isResizingRef.current = false;
+    }
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResizing);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResizing);
+    };
+  }, []);
+
+  function handleResizeStart(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const currentWidth = panelRef.current?.offsetWidth ?? DEFAULT_FOCUS_ZONE_WIDTH;
+    isResizingRef.current = true;
+    resizeStartXRef.current = event.clientX;
+    resizeStartWidthRef.current = currentWidth;
+    setPanelWidth(currentWidth);
+  }
 
   // Blob URL takes priority; fall back to server URL.
   // Only append theme param for our own preview API route (not blob: or Supabase URLs).
@@ -108,11 +153,18 @@ export function FocusZone({
         .focus-zone-scroll::-webkit-scrollbar { width: 4px; }
         .focus-zone-scroll::-webkit-scrollbar-track { background: transparent; }
         .focus-zone-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 10px; }
+
+        @keyframes focus-zone-grip-pulse {
+          0%, 100% { opacity: 0.72; }
+          50% { opacity: 1; }
+        }
       `}</style>
       <aside
+        ref={panelRef}
         className="focus-zone-scroll"
         style={{
-          width: '340px',
+          position: 'relative',
+          width: panelWidth === null ? '50%' : `${panelWidth}px`,
           flexShrink: 0,
           borderLeft: '1px solid var(--focus-border)',
           background: 'var(--focus-bg)',
@@ -122,6 +174,81 @@ export function FocusZone({
           overflowY: 'auto',
         }}
       >
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize Focus Zone"
+          title="Drag to resize (double-click to reset)"
+          onDoubleClick={() => setPanelWidth(null)}
+          onPointerDown={handleResizeStart}
+          onMouseEnter={() => setIsHandleHovered(true)}
+          onMouseLeave={() => setIsHandleHovered(false)}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 24,
+            transform: 'translateX(-50%)',
+            cursor: 'col-resize',
+            touchAction: 'none',
+            userSelect: 'none',
+            zIndex: 2,
+            background: isHandleHovered
+              ? 'color-mix(in srgb, var(--primary) 18%, transparent)'
+              : 'transparent',
+            transition: 'background 0.18s ease',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 8,
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                width: 3,
+                height: 46,
+                borderRadius: 999,
+                background: isHandleHovered
+                  ? 'var(--primary)'
+                  : 'color-mix(in srgb, var(--text-faint) 55%, var(--focus-bg))',
+                opacity: isHandleHovered ? 1 : 0.75,
+                transition: 'all 0.18s ease',
+              }}
+            />
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                letterSpacing: '-0.05em',
+                lineHeight: 1,
+                color: isHandleHovered ? 'var(--primary)' : 'var(--text-muted)',
+                background: isHandleHovered
+                  ? 'color-mix(in srgb, var(--primary) 18%, var(--surface-elevated))'
+                  : 'var(--surface-elevated)',
+                border: isHandleHovered
+                  ? '1px solid color-mix(in srgb, var(--primary) 55%, var(--border))'
+                  : '1px solid color-mix(in srgb, var(--text-muted) 35%, var(--border))',
+                borderRadius: 999,
+                padding: '4px 10px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.14)',
+                animation: isHandleHovered ? 'none' : 'focus-zone-grip-pulse 1.9s ease-in-out infinite',
+                transition: 'all 0.18s ease',
+              }}
+            >
+              ⇔
+            </div>
+          </div>
+        </div>
         <div style={{ padding: '28px 28px 24px' }}>
           {/* ── Section 1: Header ─────────────────────────────────────────────── */}
           <div

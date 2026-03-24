@@ -24,12 +24,46 @@ export const explainerOutputSchema = z.object({
 
   /**
    * Optional structured visual to accompany the text.
-   * The frontend renders this as a table, comparison card, etc.
+   * The frontend renders this as a table, comparison card, or diagram.
+   *
+   * `data` is a flat object with all possible fields optional — each `type`
+   * uses a different subset so generateObject has concrete field names to fill:
+   *   table      → populate headers + rows
+   *   comparison → populate left + right + items
+   *   diagram    → populate description + nodes + edges
    */
   visual_suggestion: z
     .object({
       type: z.enum(['diagram', 'table', 'comparison']),
-      data: z.record(z.string(), z.unknown()),
+      data: z.object({
+        // table fields
+        headers: z.array(z.string()).optional(),
+        rows: z.array(z.array(z.string())).optional(),
+        // diagram fields
+        description: z.string().optional(),
+        nodes: z.array(z.string()).optional(),
+        edges: z
+          .array(
+            z.object({
+              from: z.string(),
+              to: z.string(),
+              label: z.string().optional(),
+            }),
+          )
+          .optional(),
+        // comparison fields
+        left: z.string().optional(),
+        right: z.string().optional(),
+        items: z
+          .array(
+            z.object({
+              attribute: z.string(),
+              left: z.string(),
+              right: z.string(),
+            }),
+          )
+          .optional(),
+      }),
     })
     .nullable()
     .optional(),

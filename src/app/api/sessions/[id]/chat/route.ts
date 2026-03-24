@@ -149,7 +149,7 @@ export async function POST(
   const [historyResult, understandingResult, conceptResult] = await Promise.all([
     supabase
       .from('chat_messages')
-      .select('role, content')
+      .select('role, content, metadata')
       .eq('session_id', sessionId)
       .eq('concept_id', conceptId)
       .order('created_at', { ascending: true })
@@ -169,12 +169,19 @@ export async function POST(
   ]);
 
   // Exclude the message we just inserted — it becomes `currentMessage` below.
+  // For assistant messages that asked a micro_assessment, append the question to
+  // the content so the agent has full context when the student's answer arrives.
   const conversationHistory = (historyResult.data ?? [])
     .filter((row) => !(row.role === 'user' && row.content === message))
-    .map((row) => ({
-      role: row.role as 'user' | 'assistant',
-      content: row.content,
-    }));
+    .map((row) => {
+      let content: string = row.content;
+      const assessment = (row.metadata as { micro_assessment?: { question?: string } } | null)
+        ?.micro_assessment;
+      if (row.role === 'assistant' && assessment?.question) {
+        content += `\n\n[Assessment question asked to student: ${assessment.question}]`;
+      }
+      return { role: row.role as 'user' | 'assistant', content };
+    });
 
   const studentContext = buildStudentContext(
     understandingResult.data ?? [],
@@ -259,6 +266,9 @@ export async function POST(
         const result = await explainer.execute(explainerInput);
         const output: ExplainerOutput = result.data;
 
+        // Temporary diagnostic log — remove after visual_suggestion is confirmed working.
+        console.log('[explainer] visual_suggestion raw:', JSON.stringify(output.visual_suggestion, null, 2));
+
         // Send the full content as a single token so the client renders it
         // complete and formatted at once rather than building up word-by-word.
         controller.enqueue(encodeSSE('token', { text: output.content }));
@@ -299,7 +309,7 @@ export async function POST(
 
         // Persist the assistant turn, including structured micro_assessment /
         // visual_suggestion so they survive page reloads.
-        await supabase.from('chat_messages').insert({
+        const { error: insertError } = await supabase.from('chat_messages').insert({
           session_id: sessionId,
           concept_id: conceptId,
           role: 'assistant',
@@ -310,6 +320,9 @@ export async function POST(
             visual_suggestion: output.visual_suggestion ?? null,
           },
         });
+        if (insertError) {
+          console.error('[chat] assistant message insert failed:', insertError);
+        }
 
         controller.enqueue(encodeSSE('done', {}));
         controller.close();

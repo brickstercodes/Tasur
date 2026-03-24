@@ -84,6 +84,9 @@ const CONFIDENCE_LEGEND = [
   { dot: '#9B5C4A', label: 'Struggling' },
 ];
 
+// Dashboard header (52px) + study nav (48px) + breathing room.
+const MINDMAP_FLOATING_TOP = 108;
+
 // ── Inner component: uses useReactFlow hook ───────────────────────────────────
 
 function MindmapViewerContent({
@@ -260,10 +263,11 @@ function MindmapViewerContent({
       {/* ── Pill-shaped floating toolbar ──────────────────────────────────────── */}
       <div
         style={{
-          position: 'absolute',
-          top: 16,
+          // Viewport-anchored so it never gets clipped by sticky parent layout bars.
+          position: 'fixed',
+          top: MINDMAP_FLOATING_TOP,
           left: 16,
-          zIndex: 10,
+          zIndex: 45,
           display: 'flex',
           alignItems: 'center',
           gap: 2,
@@ -454,9 +458,16 @@ function MindmapViewerContent({
         maxZoom={2.5}
         nodesDraggable={false}
         nodesConnectable={false}
+        elementsSelectable={false}
+        nodesFocusable={false}
+        elevateNodesOnSelect={false}
+        selectionOnDrag={false}
+        selectNodesOnDrag={false}
+        panOnDrag={true}
         panOnScroll={false}
         zoomOnScroll={true}
         zoomOnDoubleClick={false}
+        nodeDragThreshold={6}
         onDoubleClick={handleFitView}
         attributionPosition="bottom-right"
       />

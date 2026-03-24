@@ -142,10 +142,21 @@ function ComparisonVisual({ data }: { data: Record<string, unknown> }) {
   const leftLabel = typeof data.left === 'string' ? data.left : 'A';
   const rightLabel = typeof data.right === 'string' ? data.right : 'B';
 
-  // Support both { attributes, left_values, right_values } and { items: [] } shapes.
-  const items = Array.isArray(data.items)
+  // Support three possible shapes the LLM may emit:
+  //   1. { items: [{ attribute, left, right }] }  ← canonical
+  //   2. { attributes[], left_values[], right_values[] }
+  //   3. { rows: [[attribute, left, right], ...] } ← LLM sometimes uses table format
+  let items = Array.isArray(data.items)
     ? (data.items as Array<{ attribute: string; left: string; right: string }>)
     : buildComparisonItems(data);
+
+  if (items.length === 0 && Array.isArray(data.rows)) {
+    items = (data.rows as unknown[][]).map((row) => ({
+      attribute: String(row[0] ?? ''),
+      left: String(row[1] ?? ''),
+      right: String(row[2] ?? ''),
+    }));
+  }
 
   if (items.length === 0) {
     return <KeyValueFallback data={data} />;
@@ -269,14 +280,14 @@ function KeyValueFallback({ data }: { data: Record<string, unknown> }) {
   return (
     <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px' }}>
       {entries.map(([key, value]) => (
-        <>
-          <dt key={`${key}-k`} style={{ fontWeight: 600, color: '#FAFAF7', whiteSpace: 'nowrap' }}>
+        [
+          <dt key={`${key}-k`} style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>
             {key}
-          </dt>
-          <dd key={`${key}-v`} style={{ margin: 0, color: '#9A9390' }}>
+          </dt>,
+          <dd key={`${key}-v`} style={{ margin: 0, color: 'var(--text-muted)' }}>
             {typeof value === 'object' ? JSON.stringify(value) : String(value ?? '')}
-          </dd>
-        </>
+          </dd>,
+        ]
       ))}
     </dl>
   );
@@ -289,9 +300,9 @@ function thStyle(bg: string): React.CSSProperties {
     textAlign: 'left',
     padding: '6px 10px',
     background: bg,
-    borderBottom: '2px solid #3A3835',
+    borderBottom: '2px solid var(--border)',
     fontWeight: 600,
-    color: '#FAFAF7',
+    color: 'var(--text)',
     whiteSpace: 'nowrap',
     fontSize: 12,
   };
@@ -299,8 +310,8 @@ function thStyle(bg: string): React.CSSProperties {
 
 const tdStyle: React.CSSProperties = {
   padding: '6px 10px',
-  borderBottom: '1px solid #3A3835',
-  color: '#9A9390',
+  borderBottom: '1px solid var(--border)',
+  color: 'var(--text-muted)',
   verticalAlign: 'top',
   fontSize: 13,
 };
