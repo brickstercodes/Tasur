@@ -23,7 +23,7 @@
  * pattern for using useReactFlow outside the ReactFlow component tree.
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
@@ -38,6 +38,7 @@ import {
   buildBalancedTreeLayout,
   getTopLevelNodeIds,
   getAllCollapsibleNodeIds,
+  findAncestorIds,
   type FlowNodeData,
 } from './layout/balanced-tree';
 import type { MindmapTreeOutput } from '@/lib/schemas/mindmap-tree-output';
@@ -100,6 +101,8 @@ function MindmapViewerContent({
     () => new Set(getAllCollapsibleNodeIds(tree)),
   );
   const [searchQuery, setSearchQuery] = useState('');
+  // Set to true after expanding ancestors; cleared once fitView fires.
+  const [pendingJumpToResume, setPendingJumpToResume] = useState(false);
 
   // Memoised confidence map avoids rebuilding on every render.
   const confidenceMap = useMemo(
@@ -177,12 +180,37 @@ function MindmapViewerContent({
     fitView({ padding: 0.12, duration: 450 });
   }, [fitView]);
 
-  // Jump viewport to the resume target node.
+  // Jump viewport to the resume target node, expanding collapsed ancestors first.
   const handleJumpToResume = useCallback(() => {
+    if (!resumeConceptId) return;
+
     const resumeNode = layoutNodes.find((n) => n.data.isResumeTarget);
-    if (!resumeNode) return;
+    if (resumeNode) {
+      // Node is already visible — jump immediately.
+      fitView({ nodes: [{ id: resumeNode.id }], padding: 0.5, duration: 550 });
+      return;
+    }
+
+    // Node is hidden inside a collapsed ancestor — expand ancestors first, then
+    // set pendingJumpToResume so the useEffect below fires fitView once the
+    // re-layout has added the node to the canvas.
+    const ancestorIds = findAncestorIds(tree, resumeConceptId);
+    setCollapsedNodes((prev) => {
+      const next = new Set(prev);
+      for (const id of ancestorIds) next.delete(id);
+      return next;
+    });
+    setPendingJumpToResume(true);
+  }, [fitView, layoutNodes, resumeConceptId, tree]);
+
+  // Fire fitView once the pending jump target becomes visible in the layout.
+  useEffect(() => {
+    if (!pendingJumpToResume) return;
+    const resumeNode = layoutNodes.find((n) => n.data.isResumeTarget);
+    if (!resumeNode) return; // Still not visible yet — wait for next render.
     fitView({ nodes: [{ id: resumeNode.id }], padding: 0.5, duration: 550 });
-  }, [fitView, layoutNodes]);
+    setPendingJumpToResume(false);
+  }, [pendingJumpToResume, layoutNodes, fitView]);
 
   const handleZoomIn = useCallback(() => {
     zoomIn({ duration: 200 });

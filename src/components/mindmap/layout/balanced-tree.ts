@@ -382,3 +382,46 @@ export function getAllCollapsibleNodeIds(tree: MindmapTreeOutput): string[] {
   }
   return result;
 }
+
+// ── Utility: find ancestor IDs for a target concept ───────────────────────────
+
+/**
+ * Returns the stable IDs of every ancestor node of the node whose
+ * concept_id matches `targetConceptId`.
+ *
+ * Used by "Continue" to surgically expand only the collapsed ancestors
+ * of the resume target before jumping the viewport to it, leaving the
+ * rest of the tree in its current collapsed state.
+ */
+function searchAncestors(
+  node: MindmapNode,
+  parentId: string,
+  siblingIndex: number,
+  targetConceptId: string,
+  result: string[],
+): boolean {
+  const nodeId = getStableNodeId(node, parentId, siblingIndex);
+
+  // If this node IS the target, signal found (don't add self — callers add themselves).
+  if (node.concept_id === targetConceptId) return true;
+
+  if (node.children) {
+    for (const [i, child] of node.children.entries()) {
+      if (searchAncestors(child, nodeId, i, targetConceptId, result)) {
+        // This node is an ancestor of the target — add it so it can be un-collapsed.
+        result.push(nodeId);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+export function findAncestorIds(tree: MindmapTreeOutput, targetConceptId: string): string[] {
+  const result: string[] = [];
+  for (const [i, branch] of tree.children.entries()) {
+    if (searchAncestors(branch, 'root', i, targetConceptId, result)) break;
+  }
+  return result;
+}
