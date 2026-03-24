@@ -13,7 +13,7 @@
 
 import { generateObject, streamText } from 'ai';
 
-import { getOrchestratorModel } from '@/config/model-provider';
+import { getSpecialistModel } from '@/config/model-provider';
 import type { AgentResult, TasurStreamingAgent } from '@/interfaces/agents';
 import type { ConceptExplainerInput } from '@/interfaces/registry';
 import { explainerOutputSchema } from '@/lib/schemas/explainer-output';
@@ -50,7 +50,7 @@ export class MastraConceptExplainerAgent
     }
 
     const { object, usage } = await generateObject({
-      model: getOrchestratorModel(),
+      model: getSpecialistModel(),
       schema: explainerOutputSchema,
       system: systemPrompt,
       messages,
@@ -75,7 +75,7 @@ export class MastraConceptExplainerAgent
     }
 
     const result = streamText({
-      model: getOrchestratorModel(),
+      model: getSpecialistModel(),
       system: systemPrompt,
       messages,
     });

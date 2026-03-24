@@ -431,3 +431,182 @@ body {
 .sign-out-btn:hover {
   text-decoration: underline;
 }
+
+/* ── Shared authenticated app manuscript UI ─────────────────────────────── */
+
+.app-parchment-shell {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+.app-parchment-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(110% 70% at 16% 14%, rgba(148, 70, 4, 0.11), transparent 62%),
+    radial-gradient(120% 74% at 84% 20%, rgba(148, 70, 4, 0.07), transparent 60%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(70, 44, 26, 0.02) 0,
+      rgba(70, 44, 26, 0.02) 1px,
+      transparent 1px,
+      transparent 6px
+    );
+}
+
+.app-parchment-shell::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(77, 49, 24, 0.13),
+      transparent 2.6%,
+      transparent 97.4%,
+      rgba(77, 49, 24, 0.13)
+    ),
+    radial-gradient(circle at 6% 30%, rgba(77, 49, 24, 0.18), transparent 18%),
+    radial-gradient(circle at 94% 68%, rgba(77, 49, 24, 0.16), transparent 20%);
+  opacity: 0.5;
+}
+
+[data-theme='dark'] .app-parchment-shell::before {
+  background:
+    radial-gradient(110% 70% at 16% 14%, rgba(194, 105, 42, 0.2), transparent 64%),
+    radial-gradient(120% 74% at 84% 20%, rgba(194, 105, 42, 0.13), transparent 62%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 240, 224, 0.018) 0,
+      rgba(255, 240, 224, 0.018) 1px,
+      transparent 1px,
+      transparent 7px
+    );
+}
+
+[data-theme='dark'] .app-parchment-shell::after {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(194, 105, 42, 0.18),
+      transparent 3%,
+      transparent 97%,
+      rgba(194, 105, 42, 0.18)
+    ),
+    radial-gradient(circle at 8% 32%, rgba(194, 105, 42, 0.22), transparent 20%),
+    radial-gradient(circle at 92% 70%, rgba(194, 105, 42, 0.2), transparent 20%);
+  opacity: 0.42;
+}
+
+.manuscript-card {
+  background: color-mix(in srgb, var(--surface) 90%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--border) 84%, var(--primary) 16%);
+  box-shadow:
+    0 2px 10px rgba(36, 22, 11, 0.05),
+    0 0 0 1px color-mix(in srgb, var(--primary) 8%, transparent) inset;
+  transition:
+    transform 0.24s ease,
+    border-color 0.24s ease,
+    box-shadow 0.24s ease,
+    background 0.24s ease;
+}
+
+.manuscript-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  box-shadow:
+    0 8px 26px rgba(36, 22, 11, 0.08),
+    0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent) inset;
+}
+
+.manuscript-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--primary) 65%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary-hover) 84%, var(--primary) 16%),
+    var(--primary)
+  );
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 22%, transparent);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.manuscript-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow: 0 12px 22px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+.app-fade-up {
+  animation: appFadeUp 0.65s cubic-bezier(0.2, 0.76, 0.3, 1) both;
+}
+
+.stagger-list > * {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: appFadeUp 0.58s cubic-bezier(0.2, 0.76, 0.3, 1) both;
+}
+
+.stagger-list > *:nth-child(1) {
+  animation-delay: 40ms;
+}
+.stagger-list > *:nth-child(2) {
+  animation-delay: 95ms;
+}
+.stagger-list > *:nth-child(3) {
+  animation-delay: 150ms;
+}
+.stagger-list > *:nth-child(4) {
+  animation-delay: 205ms;
+}
+.stagger-list > *:nth-child(5) {
+  animation-delay: 260ms;
+}
+.stagger-list > *:nth-child(6) {
+  animation-delay: 315ms;
+}
+
+@keyframes appFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-fade-up,
+  .stagger-list > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}

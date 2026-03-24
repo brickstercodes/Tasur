@@ -55,8 +55,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4" >
-      <div className="w-full max-w-sm space-y-8">
+    <div className="app-parchment-shell flex min-h-screen flex-col items-center justify-center px-4" >
+      <div className="manuscript-card app-fade-up w-full max-w-sm space-y-8 rounded-xl px-7 py-8">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text)' }}>
             Sign in to Tasur
@@ -102,8 +102,8 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-md py-2 text-sm font-medium disabled:opacity-50"
-            style={{ background: 'var(--primary)', color: '#ffffff' }}
+            className="manuscript-button w-full rounded-md py-2 text-sm font-medium disabled:opacity-50"
+            style={{ color: '#ffffff' }}
           >
             {isSubmitting ? 'Signing in…' : 'Sign in'}
           </button>
@@ -122,7 +122,7 @@ export default function LoginPage() {
           type="button"
           onClick={handleGoogleSignIn}
           className="w-full rounded-md px-4 py-2 text-sm font-medium"
-          style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+          style={{ border: '1px solid var(--border)', background: 'color-mix(in srgb, var(--surface) 88%, var(--bg))', color: 'var(--text)' }}
         >
           Continue with Google
         </button>

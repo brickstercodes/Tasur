@@ -1,22 +1,35 @@
 /**
  * WHY: Mastra-backed .mm Generator Agent — replaces Document Parser + Mindmap Generator.
  *
- * Receives raw extracted text and produces a Freeplane .mm XML string in a single
- * LLM call. This XML is the single source of truth for the entire study session:
- * concept registry, knowledge graph, visual mindmap, and teaching sequence are all
- * derived from it deterministically by the .mm Parser utility (not by more LLM calls).
+ * Receives raw extracted text (or raw PDF bytes for PDFs) and produces a Freeplane
+ * .mm XML string. This XML is the single source of truth for the entire study session.
+ *
+ * Two execution paths:
+ *
+ *   PDF-native path  (fileType === "pdf" && fileBuffer is present)
+ *     → Sends the raw PDF bytes directly to Gemini vision (gemini-2.5-pro by default)
+ *       with thinking enabled. Gemini can SEE every diagram on every page and will
+ *       produce accurate [DIAGRAM TO STUDY: …] callout nodes without relying on
+ *       text extraction to describe visuals.
+ *
+ *   Text-based path  (all other file types, or PDF without a buffer)
+ *     → Sends the extracted raw text to the orchestrator model. Used for DOCX, TXT,
+ *       and image OCR results where multimodal vision adds no value.
+ *
+ * Both paths validate the output with validateMmOutput() and retry once on failure.
+ * The PDF path always retries with PDF-native (Gemini 2.5 Pro + file bytes) — it
+ * never falls back to the text-based path, which would lose diagram visibility and
+ * downgrade to the older orchestrator model.
  *
  * On malformed XML: validates with validateMmOutput() and retries once with a
- * stricter prompt that explicitly names the validation errors before failing hard.
+ * stricter prompt before failing hard.
  *
- * NOTE: Uses generateText() (not generateObject()) because the output is raw XML,
- * not JSON. Mastra 0.24.9 compatibility note: same generateText() from AI SDK
- * is used directly, same as other agents in this project.
+ * NOTE: Uses generateText() (not generateObject()) because the output is raw XML.
  */
 
 import { generateText } from 'ai';
 
-import { getOrchestratorModel } from '@/config/model-provider';
+import { getOrchestratorModel, getPdfMmModel } from '@/config/model-provider';
 import type { AgentResult, TasurAgent } from '@/interfaces/agents';
 import type { MmGeneratorInput } from '@/interfaces/registry';
 import { validateMmOutput } from '@/lib/schemas/mm-generator-output';
@@ -25,75 +38,202 @@ import { loadPrompt } from '@/prompts/loader';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 /** Low temperature for structural consistency — the .mm format is strict. */
-const MM_GENERATOR_TEMPERATURE = 0.1;
+const TEXT_TEMPERATURE = 0.1;
+/** Thinking models require temperature = 1. */
+const PDF_TEMPERATURE = 1;
 
 // ── Mastra .mm Generator Agent ────────────────────────────────────────────────
 
 export class MastraMmGeneratorAgent implements TasurAgent<MmGeneratorInput, string> {
   async execute(input: MmGeneratorInput): Promise<AgentResult<string>> {
     const startTime = Date.now();
-    const systemPrompt = loadPrompt('mm-generator', input.subjectHint ?? null);
-    const userMessage = buildUserMessage(input);
 
-    if (process.env.DEBUG_PROMPTS) {
-      process.stderr.write(
-        `\n[DEBUG mastra:mm-generator]\n[system]\n${systemPrompt}\n[user]\n${userMessage}\n`,
+    // PDF-native path: send bytes directly so Gemini can see diagrams on the page
+    if (input.fileType === 'pdf' && input.fileBuffer) {
+      return executePdfNative(input, startTime);
+    }
+
+    // Text-based path: all other file types
+    return executeTextBased(input, startTime);
+  }
+}
+
+// ── Text-based execution (DOCX / TXT / image OCR) ─────────────────────────────
+
+async function executeTextBased(
+  input: MmGeneratorInput,
+  startTime: number,
+): Promise<AgentResult<string>> {
+  const systemPrompt = loadPrompt('mm-generator', input.subjectHint ?? null);
+  const userMessage = buildTextUserMessage(input);
+
+  if (process.env.DEBUG_PROMPTS) {
+    process.stderr.write(
+      `\n[DEBUG mastra:mm-generator:text]\n[system]\n${systemPrompt}\n[user]\n${userMessage}\n`,
+    );
+  }
+
+  const { text, usage } = await generateText({
+    model: getOrchestratorModel(),
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }],
+    temperature: TEXT_TEMPERATURE,
+  });
+
+  const mmXml = extractXmlFromResponse(text);
+  const validationResult = validateMmOutput(mmXml);
+
+  if (!validationResult.valid) {
+    const retryMessage = buildTextRetryMessage(input, mmXml, validationResult.errors);
+    const retryResult = await generateText({
+      model: getOrchestratorModel(),
+      system: systemPrompt,
+      messages: [{ role: 'user', content: retryMessage }],
+      temperature: 0,
+    });
+
+    const retriedXml = extractXmlFromResponse(retryResult.text);
+    const retryValidation = validateMmOutput(retriedXml);
+
+    if (!retryValidation.valid) {
+      throw new Error(
+        `.mm Generator (text) failed validation after retry. Errors:\n${retryValidation.errors.join('\n')}`,
       );
     }
 
-    const { text, usage } = await generateText({
-      model: getOrchestratorModel(),
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
-      temperature: MM_GENERATOR_TEMPERATURE,
-    });
-
-    const mmXml = extractXmlFromResponse(text);
-    const validationResult = validateMmOutput(mmXml);
-
-    if (!validationResult.valid) {
-      // Retry once with a stricter prompt that explicitly names the errors
-      const retryMessage = buildRetryUserMessage(input, mmXml, validationResult.errors);
-      const retryResult = await generateText({
-        model: getOrchestratorModel(),
-        system: systemPrompt,
-        messages: [{ role: 'user', content: retryMessage }],
-        temperature: 0, // zero temperature on retry for maximum consistency
-      });
-
-      const retriedXml = extractXmlFromResponse(retryResult.text);
-      const retryValidation = validateMmOutput(retriedXml);
-
-      if (!retryValidation.valid) {
-        throw new Error(
-          `.mm Generator failed validation after retry. Errors:\n${retryValidation.errors.join('\n')}`,
-        );
-      }
-
-      return {
-        data: retriedXml,
-        usage: {
-          inputTokens: (usage.inputTokens ?? 0) + (retryResult.usage.inputTokens ?? 0),
-          outputTokens: (usage.outputTokens ?? 0) + (retryResult.usage.outputTokens ?? 0),
-        },
-        duration: Date.now() - startTime,
-      };
-    }
-
     return {
-      data: mmXml,
+      data: retriedXml,
       usage: {
-        inputTokens: usage.inputTokens ?? 0,
-        outputTokens: usage.outputTokens ?? 0,
+        inputTokens: (usage.inputTokens ?? 0) + (retryResult.usage.inputTokens ?? 0),
+        outputTokens: (usage.outputTokens ?? 0) + (retryResult.usage.outputTokens ?? 0),
       },
       duration: Date.now() - startTime,
     };
   }
+
+  return {
+    data: mmXml,
+    usage: {
+      inputTokens: usage.inputTokens ?? 0,
+      outputTokens: usage.outputTokens ?? 0,
+    },
+    duration: Date.now() - startTime,
+  };
 }
 
-// ── Message builders ──────────────────────────────────────────────────────────
+// ── PDF-native execution ───────────────────────────────────────────────────────
 
-function buildUserMessage(input: MmGeneratorInput): string {
+async function executePdfNative(
+  input: MmGeneratorInput,
+  startTime: number,
+): Promise<AgentResult<string>> {
+  const systemPrompt = loadPrompt('mm-generator', input.subjectHint ?? null);
+  const userTextPart = buildPdfUserTextPart(input);
+
+  if (process.env.DEBUG_PROMPTS) {
+    process.stderr.write(
+      `\n[DEBUG mastra:mm-generator:pdf-native]\n[system]\n${systemPrompt}\n[user-text]\n${userTextPart}\n`,
+    );
+  }
+
+  const { text, usage } = await generateText({
+    model: getPdfMmModel(),
+    system: systemPrompt,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'file' as const,
+            data: input.fileBuffer!,
+            mediaType: 'application/pdf',
+          },
+          {
+            type: 'text' as const,
+            text: userTextPart,
+          },
+        ],
+      },
+    ],
+    temperature: PDF_TEMPERATURE,
+    providerOptions: {
+      google: {
+        thinkingConfig: {
+          thinkingLevel: 'high' as const,
+        },
+      },
+    },
+  });
+
+  const mmXml = extractXmlFromResponse(text);
+  const validationResult = validateMmOutput(mmXml);
+
+  if (!validationResult.valid) {
+    process.stderr.write(
+      `[mm-generator] PDF-native validation failed. Errors: ${validationResult.errors.join(', ')}\n`,
+    );
+    // Always retry with PDF-native — never fall back to the text-based path for PDFs.
+    // Text-based uses an older model and loses all diagram visibility, which is the
+    // whole reason we're on this path. Retry with the same file + explicit error list.
+    const retryResult = await generateText({
+      model: getPdfMmModel(),
+      system: loadPrompt('mm-generator', input.subjectHint ?? null),
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'file' as const, data: input.fileBuffer!, mediaType: 'application/pdf' },
+            {
+              type: 'text' as const,
+              text: [
+                buildPdfUserTextPart(input),
+                '',
+                'CRITICAL: Your previous attempt produced invalid XML. Errors:',
+                ...validationResult.errors.map((e) => `- ${e}`),
+                '',
+                'Output ONLY valid XML starting with <map and ending with </map>.',
+              ].join('\n'),
+            },
+          ],
+        },
+      ],
+      temperature: PDF_TEMPERATURE,
+      providerOptions: {
+        google: {
+          thinkingConfig: { thinkingLevel: 'medium' as const },
+        },
+      },
+    });
+    const retriedXml = extractXmlFromResponse(retryResult.text);
+    const retryValidation = validateMmOutput(retriedXml);
+    if (!retryValidation.valid) {
+      throw new Error(
+        `.mm Generator (PDF-native) failed validation after retry. Errors:\n${retryValidation.errors.join('\n')}`,
+      );
+    }
+    return {
+      data: retriedXml,
+      usage: {
+        inputTokens: (usage.inputTokens ?? 0) + (retryResult.usage.inputTokens ?? 0),
+        outputTokens: (usage.outputTokens ?? 0) + (retryResult.usage.outputTokens ?? 0),
+      },
+      duration: Date.now() - startTime,
+    };
+  }
+
+  return {
+    data: mmXml,
+    usage: {
+      inputTokens: usage.inputTokens ?? 0,
+      outputTokens: usage.outputTokens ?? 0,
+    },
+    duration: Date.now() - startTime,
+  };
+}
+
+// ── Message builders ───────────────────────────────────────────────────────────
+
+function buildTextUserMessage(input: MmGeneratorInput): string {
   const lines = [
     `Generate a COMPLETE and EXHAUSTIVE Freeplane .mm mindmap for the following study material.`,
     ``,
@@ -136,7 +276,47 @@ function buildUserMessage(input: MmGeneratorInput): string {
   return lines.join('\n');
 }
 
-function buildRetryUserMessage(
+/**
+ * Builds the text part of the PDF-native user message.
+ * The file part (PDF bytes) is attached separately as a FilePart.
+ * Gemini sees the actual pages including diagrams — no text extraction needed.
+ */
+function buildPdfUserTextPart(input: MmGeneratorInput): string {
+  const lines = [
+    `Generate a COMPLETE and EXHAUSTIVE Freeplane .mm mindmap from the attached PDF.`,
+    ``,
+    `CRITICAL: This mindmap is the student's PRIMARY and SOLE resource for their exam.`,
+    `Every concept, definition, property, algorithm step, formula, worked example, and`,
+    `comparison visible in this PDF MUST appear as a leaf node in the mindmap.`,
+    `Do NOT summarize. Produce depth: aim for 4–5 levels with dense leaf nodes.`,
+    ``,
+    `DIAGRAMS: You can see the actual PDF pages. For every diagram, figure, chart, table,`,
+    `or visual on any page, add a leaf node exactly in this format:`,
+    `[DIAGRAM TO STUDY: brief description of what the diagram shows]`,
+    `Place the callout node inside the branch that covers that diagram's topic.`,
+  ];
+
+  if (input.subjectHint) {
+    lines.push(``, `Subject: ${input.subjectHint}`);
+  }
+
+  if (input.customInstructions) {
+    lines.push(
+      ``,
+      `━━━ MANDATORY STUDENT DIRECTIVES ━━━`,
+      `The student has specified the following requirements. These MUST be honored:`,
+      ``,
+      input.customInstructions,
+      `━━━ END STUDENT DIRECTIVES ━━━`,
+      ``,
+      `Reminder: the student explicitly requires — "${input.customInstructions}"`,
+    );
+  }
+
+  return lines.join('\n');
+}
+
+function buildTextRetryMessage(
   input: MmGeneratorInput,
   previousOutput: string,
   errors: string[],

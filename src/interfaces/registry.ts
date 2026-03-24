@@ -30,6 +30,10 @@ export interface MmGeneratorInput {
   /** Optional user-supplied instruction that shapes how the AI structures the output.
    *  Already sanitised and guardrail-checked by the upload route before reaching here. */
   customInstructions?: string;
+  /** Raw PDF bytes. When present alongside fileType === "pdf", the mm-generator sends
+   *  the file directly to Gemini vision so it can see diagrams on the page.
+   *  Populated by the upload route; undefined for all non-PDF file types. */
+  fileBuffer?: Buffer;
 }
 
 /** Raw file buffer + metadata sent to the Document Parser Agent (DEPRECATED). */

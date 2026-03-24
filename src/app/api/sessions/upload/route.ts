@@ -109,12 +109,25 @@ export async function POST(req: Request) {
 
       try {
         // ── Phase 1a: Text extraction ──────────────────────────────────────
+        // For PDFs, extraction failure is non-fatal: Gemini vision reads the bytes
+        // directly and generates the mindmap from the visual content. rawText will be
+        // empty (scanned / image-only PDF) but the pipeline continues normally.
+        // For all other file types there is no vision fallback, so we fail hard.
         emit({ type: 'progress', step: 'extracting', label: 'Extracting text…', percent: 8 });
-        const parseResult = await parseDocument(fileBuffer, fileType);
-        if (!parseResult.success) {
-          throw new Error(`Text extraction failed: ${parseResult.error}`);
+        let rawText = '';
+        try {
+          const parseResult = await parseDocument(fileBuffer, fileType);
+          if (parseResult.success) {
+            rawText = parseResult.data.rawText;
+          } else if (fileType !== 'pdf') {
+            throw new Error(`Text extraction failed: ${parseResult.error}`);
+          }
+          // PDF with no text layer → rawText stays '' and Gemini vision takes over
+        } catch (parseErr) {
+          if (fileType !== 'pdf') throw parseErr;
+          // PDF parser threw an unhandled exception (e.g. corrupt page tree).
+          // Non-fatal for PDFs — Gemini vision reads the bytes directly.
         }
-        const rawText = parseResult.data.rawText;
 
         // ── Phase 1b: .mm Generator (single LLM call) ──────────────────────
         emit({ type: 'progress', step: 'generating_mm', label: 'Generating study mindmap…', percent: 25 });
@@ -123,6 +136,8 @@ export async function POST(req: Request) {
           fileType,
           subjectHint: domain,
           customInstructions,
+          // PDF-native path: pass raw bytes so Gemini vision can see diagrams on the page
+          fileBuffer: fileType === 'pdf' ? fileBuffer : undefined,
         });
         const mmXml = mmResult.data;
 

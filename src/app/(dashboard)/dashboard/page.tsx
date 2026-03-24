@@ -49,9 +49,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const isUploadMode = upload === '1';
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto' }}>
+    <div className="app-fade-up" style={{ maxWidth: 860, margin: '0 auto' }}>
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div
+        className="manuscript-heading"
         style={{
           display: 'flex',
           alignItems: 'flex-start',
@@ -83,18 +84,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         {!isUploadMode && (
           <Link
             href="/dashboard?upload=1"
+            className="manuscript-button"
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '9px 18px',
-              background: 'var(--primary)',
-              color: '#ffffff',
-              textDecoration: 'none',
-              borderRadius: 8,
-              fontWeight: 600,
-              fontSize: 13,
-              border: 'none',
               fontFamily: 'Inter, sans-serif',
             }}
           >
@@ -106,9 +97,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       {/* ── Upload flow ──────────────────────────────────────────────────── */}
       {isUploadMode && (
         <div
+          className="manuscript-card app-fade-up"
           style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
             borderRadius: 12,
             padding: '28px 28px',
           }}
@@ -130,7 +120,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
       {/* ── Session list ─────────────────────────────────────────────────── */}
       {!isUploadMode && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {sessions.length === 0 ? (
             <EmptyState />
           ) : (
@@ -156,7 +146,7 @@ function SessionCard({ session }: { session: SessionListItem }) {
 
   return (
     <div
-      className="session-card"
+      className="session-card manuscript-card"
       style={{
         position: 'relative',
         padding: '20px 24px',
@@ -281,11 +271,10 @@ function SessionCard({ session }: { session: SessionListItem }) {
 function EmptyState() {
   return (
     <div
+      className="manuscript-card app-fade-up"
       style={{
         textAlign: 'center',
         padding: '60px 24px',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
         borderRadius: 12,
         fontFamily: 'Inter, sans-serif',
       }}
@@ -306,16 +295,9 @@ function EmptyState() {
       </p>
       <Link
         href="/dashboard?upload=1"
+        className="manuscript-button"
         style={{
-          display: 'inline-flex',
-          padding: '9px 18px',
-          background: 'var(--primary)',
-          color: '#ffffff',
-          textDecoration: 'none',
-          borderRadius: 8,
-          fontWeight: 600,
-          fontSize: 13,
-          border: 'none',
+          fontFamily: 'Inter, sans-serif',
         }}
       >
         New session +

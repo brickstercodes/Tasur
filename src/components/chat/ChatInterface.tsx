@@ -52,6 +52,18 @@ interface HistoryRow {
   role: 'user' | 'assistant' | 'system';
   content: string;
   message_type: string | null;
+  metadata?: {
+    micro_assessment?: {
+      question: string;
+      expected_understanding: string;
+      difficulty: 'easy' | 'intermediate' | 'hard';
+      question_type?: 'self_check' | 'open';
+    } | null;
+    visual_suggestion?: {
+      type: 'diagram' | 'table' | 'comparison';
+      data: Record<string, unknown>;
+    } | null;
+  } | null;
   created_at: string;
 }
 
@@ -62,6 +74,91 @@ export interface ChatInterfaceProps {
   domain: string;
   learningMode: 'fast' | 'steady';
   userInitial?: string;
+}
+
+// ── Markdown renderer ─────────────────────────────────────────────────────────
+//
+// Lightweight inline renderer for the assistant's Georgia-serif message blocks.
+// Handles the patterns the LLM actually emits: bold, italic, bullets, headings.
+// No external dependency — keeps the rendering tied to the app's font stack.
+
+function parseInline(text: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*\n]+\*\*|\*[^*\n]+\*)/);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return <strong key={i} style={{ fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    }
+    return part || null;
+  });
+}
+
+function renderMarkdown(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  const result: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (line === '') {
+      if (i > 0 && i < lines.length - 1) {
+        result.push(<div key={i} style={{ height: '0.55em' }} />);
+      }
+      i++;
+      continue;
+    }
+
+    if (line.startsWith('### ')) {
+      result.push(
+        <div key={i} style={{ fontWeight: 700, marginTop: i > 0 ? 6 : 0, marginBottom: 2 }}>
+          {parseInline(line.slice(4))}
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    if (line.startsWith('## ') || line.startsWith('# ')) {
+      const depth = line.startsWith('## ') ? 3 : 2;
+      const prefix = line.startsWith('## ') ? '## ' : '# ';
+      result.push(
+        <div key={i} style={{ fontWeight: 700, fontSize: `${1 + 0.05 * depth}em`, marginTop: i > 0 ? 8 : 0, marginBottom: 3 }}>
+          {parseInline(line.slice(prefix.length))}
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // Collect consecutive bullet items
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      const bulletStart = i;
+      const bullets: string[] = [];
+      while (i < lines.length && (lines[i].startsWith('- ') || lines[i].startsWith('* '))) {
+        bullets.push(lines[i].slice(2));
+        i++;
+      }
+      result.push(
+        <div key={bulletStart} style={{ marginTop: 4, marginBottom: 4 }}>
+          {bullets.map((b, bi) => (
+            <div key={bi} style={{ display: 'flex', gap: 8, marginBottom: bi < bullets.length - 1 ? 3 : 0 }}>
+              <span style={{ flexShrink: 0, opacity: 0.6, marginTop: 1 }}>•</span>
+              <span>{parseInline(b)}</span>
+            </div>
+          ))}
+        </div>
+      );
+      continue;
+    }
+
+    result.push(<div key={i}>{parseInline(line)}</div>);
+    i++;
+  }
+
+  return <>{result}</>;
 }
 
 // ── Avatar helpers ─────────────────────────────────────────────────────────────
@@ -127,6 +224,8 @@ export function ChatInterface({
             role: row.role as 'user' | 'assistant',
             content: row.content,
             messageType: row.message_type ?? undefined,
+            microAssessment: row.metadata?.micro_assessment ?? undefined,
+            visualSuggestion: row.metadata?.visual_suggestion ?? undefined,
           }));
 
         setMessages(loaded);
@@ -634,26 +733,29 @@ function MessageBubble({
           lineHeight: 1.78,
           color: 'var(--text)',
           fontFamily: "'Georgia', serif",
-          whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           position: 'relative',
         }}
       >
-        {message.content}
-        {message.isStreaming && (
-          <span
-            style={{
-              display: 'inline-block',
-              width: 2,
-              height: 16,
-              background: accent,
-              borderRadius: 1,
-              marginLeft: 3,
-              verticalAlign: 'text-bottom',
-              opacity: 0.7,
-              animation: 'cursor-fade 0.9s ease-in-out infinite',
-            }}
-          />
+        {message.isStreaming ? (
+          <>
+            <span style={{ whiteSpace: 'pre-wrap' }}>{message.content}</span>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 2,
+                height: 16,
+                background: accent,
+                borderRadius: 1,
+                marginLeft: 3,
+                verticalAlign: 'text-bottom',
+                opacity: 0.7,
+                animation: 'cursor-fade 0.9s ease-in-out infinite',
+              }}
+            />
+          </>
+        ) : (
+          renderMarkdown(message.content)
         )}
       </div>
 

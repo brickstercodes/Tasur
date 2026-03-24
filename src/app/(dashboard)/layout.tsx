@@ -37,14 +37,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div style={{ minHeight: '100vh' }}>
+    <div className="app-parchment-shell" style={{ minHeight: '100vh' }}>
       <header
         style={{
           position: 'sticky',
           top: 0,
           zIndex: 50,
-          background: 'var(--nav-bg)',
-          borderBottom: '1px solid var(--nav-border)',
+          background: 'color-mix(in srgb, var(--nav-bg) 86%, transparent)',
+          borderBottom: '1px solid color-mix(in srgb, var(--primary) 18%, var(--nav-border))',
+          backdropFilter: 'blur(10px)',
           padding: '0 24px',
           height: 52,
           display: 'flex',

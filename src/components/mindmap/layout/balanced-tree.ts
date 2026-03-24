@@ -196,8 +196,11 @@ function positionNode(
       onToggleCollapse: ctx.onToggleCollapse,
       onConceptClick: ctx.onConceptClick,
     },
-    // Non-concept leaf nodes are not selectable (they're just detail bullets).
-    selectable: !!node.concept_id,
+    // All non-root nodes must be selectable so React Flow sets pointer-events: all
+    // on the wrapper div. Without this, nodes with selectable:false + no onNodeClick
+    // get pointer-events:none (React Flow's hasPointerEvents check), which swallows
+    // clicks on the expand/collapse bubble before they reach our handler.
+    selectable: true,
     draggable: false,
   });
 

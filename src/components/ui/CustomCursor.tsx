@@ -32,12 +32,6 @@ export function CustomCursor() {
     styleEl.textContent = '* { cursor: none !important; }';
     document.head.appendChild(styleEl);
 
-    function forceHideCursorOnTarget(target: EventTarget | null) {
-      if (target instanceof HTMLElement || target instanceof SVGElement) {
-        target.style.setProperty('cursor', 'none', 'important');
-      }
-    }
-
     function hideCursor() {
       if (elRef.current) {
         elRef.current.style.opacity = '0';
@@ -46,8 +40,6 @@ export function CustomCursor() {
     }
 
     function onMouseMove(e: MouseEvent) {
-      forceHideCursorOnTarget(e.target);
-
       if (elRef.current) {
         // CSS zoom on :root scales the layout coordinate system but clientX/clientY
         // are in unscaled viewport pixels — divide to correct the mismatch.
@@ -66,19 +58,13 @@ export function CustomCursor() {
       }
     }
 
-    function onMouseOver(e: MouseEvent) {
-      forceHideCursorOnTarget(e.target);
-    }
-
     document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseover', onMouseOver, true);
     document.addEventListener('mouseout', onMouseOut);
     window.addEventListener('blur', hideCursor);
     document.addEventListener('visibilitychange', hideCursor);
 
     return () => {
       document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseover', onMouseOver, true);
       document.removeEventListener('mouseout', onMouseOut);
       window.removeEventListener('blur', hideCursor);
       document.removeEventListener('visibilitychange', hideCursor);

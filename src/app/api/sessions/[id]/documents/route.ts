@@ -129,9 +129,18 @@ export async function POST(req: Request, { params }: RouteParams) {
         }) as StudentGraphState;
 
         emit({ type: 'progress', step: 'extracting', label: 'Extracting text…', percent: 8 });
-        const parseResult = await parseDocument(fileBuffer, fileType);
-        if (!parseResult.success) throw new Error(`Text extraction failed: ${parseResult.error}`);
-        const rawText = parseResult.data.rawText;
+        let rawText = '';
+        try {
+          const parseResult = await parseDocument(fileBuffer, fileType);
+          if (parseResult.success) {
+            rawText = parseResult.data.rawText;
+          } else if (fileType !== 'pdf') {
+            throw new Error(`Text extraction failed: ${parseResult.error}`);
+          }
+        } catch (parseErr) {
+          if (fileType !== 'pdf') throw parseErr;
+          // PDF parser threw — non-fatal, Gemini vision reads the bytes directly
+        }
 
         emit({ type: 'progress', step: 'generating_mm', label: 'Generating study mindmap…', percent: 30 });
         const mmResult = await agents.get('mm-generator').execute({
@@ -139,6 +148,8 @@ export async function POST(req: Request, { params }: RouteParams) {
           fileType,
           subjectHint: domain,
           customInstructions,
+          // PDF-native path: pass raw bytes so Gemini vision can see diagrams on the page
+          fileBuffer: fileType === 'pdf' ? fileBuffer : undefined,
         });
         const mmXml = mmResult.data;
 

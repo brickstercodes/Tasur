@@ -81,7 +81,7 @@ export async function GET(
 
   const { data: messages, error } = await supabase
     .from('chat_messages')
-    .select('id, role, content, message_type, created_at')
+    .select('id, role, content, message_type, metadata, created_at')
     .eq('session_id', sessionId)
     .eq('concept_id', conceptId)
     .order('created_at', { ascending: true })
@@ -259,15 +259,9 @@ export async function POST(
         const result = await explainer.execute(explainerInput);
         const output: ExplainerOutput = result.data;
 
-        // Stream content word-by-word so the client receives progressive chunks.
-        // Each word is a separate SSE token event — browser renders them as they arrive.
-        const words = output.content.split(' ');
-        for (let i = 0; i < words.length; i++) {
-          const text = i === 0 ? words[i] : ` ${words[i]}`;
-          controller.enqueue(encodeSSE('token', { text }));
-          // Yield to the event loop between chunks to allow backpressure handling.
-          await Promise.resolve();
-        }
+        // Send the full content as a single token so the client renders it
+        // complete and formatted at once rather than building up word-by-word.
+        controller.enqueue(encodeSSE('token', { text: output.content }));
 
         // Send the full structured output so the client can render micro_assessment
         // and visual_suggestion without a second request.
@@ -303,13 +297,18 @@ export async function POST(
           revalidatePath(`/study/${sessionId}/mindmap`);
         }
 
-        // Persist the assistant turn.
+        // Persist the assistant turn, including structured micro_assessment /
+        // visual_suggestion so they survive page reloads.
         await supabase.from('chat_messages').insert({
           session_id: sessionId,
           concept_id: conceptId,
           role: 'assistant',
           content: output.content,
           message_type: output.message_type,
+          metadata: {
+            micro_assessment: output.micro_assessment ?? null,
+            visual_suggestion: output.visual_suggestion ?? null,
+          },
         });
 
         controller.enqueue(encodeSSE('done', {}));

@@ -29,11 +29,19 @@ const LARGE_PDF_PAGE_THRESHOLD = 50;
  * - Large PDF (>50 pages) → success with isChunked: true and chunks array
  */
 export async function parsePdf(buffer: Buffer): Promise<ParseResult> {
-  // pdf-parse v2 prefers Uint8Array over Buffer to avoid unnecessary copies.
-  const data = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-  const parser = new PDFParse({ data, verbosity: 0 });
+  // Use `new Uint8Array(buffer)` (copy constructor) rather than the shared-memory
+  // view `new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)`.
+  // When Node.js allocates Buffers from its internal pool, buffer.byteOffset > 0,
+  // and pdfjs-dist calls .buffer on the typed array to get the backing ArrayBuffer —
+  // ignoring the offset — which gives it the whole pool instead of just the PDF bytes.
+  // A copy guarantees byteOffset === 0 and an isolated ArrayBuffer.
+  const data = new Uint8Array(buffer);
+
+  let parser: InstanceType<typeof PDFParse> | null = null;
 
   try {
+    // Constructor is now inside try so any synchronous throw is caught.
+    parser = new PDFParse({ data, verbosity: 0 });
     const result = await parser.getText();
 
     const rawText = result.text.trim();
@@ -72,7 +80,6 @@ export async function parsePdf(buffer: Buffer): Promise<ParseResult> {
 
     const message = err instanceof Error ? err.message : String(err);
 
-    // Catch any other error messages that suggest encryption (belt-and-suspenders).
     if (isEncryptionError(message)) {
       return {
         success: false,
@@ -82,7 +89,11 @@ export async function parsePdf(buffer: Buffer): Promise<ParseResult> {
 
     return { success: false, error: `PDF parsing failed: ${message}` };
   } finally {
-    await parser.destroy();
+    // Swallow destroy() errors — a cleanup failure must never override the result
+    // already returned by the catch block above.
+    if (parser) {
+      try { await parser.destroy(); } catch { /* intentionally ignored */ }
+    }
   }
 }
 

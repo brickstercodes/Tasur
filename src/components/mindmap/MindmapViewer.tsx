@@ -214,6 +214,7 @@ function MindmapViewerContent({
         }
         .react-flow__node.selected > div { outline: none !important; box-shadow: none !important; }
         .react-flow__node:focus { outline: none !important; }
+        .react-flow__node { cursor: default !important; }
       `}</style>
 
       {/* ── Pill-shaped floating toolbar ──────────────────────────────────────── */}

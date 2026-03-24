@@ -17,6 +17,8 @@ import type { LanguageModel } from 'ai';
 
 const DEFAULT_ORCHESTRATOR_MODEL_ID = 'gemini-2.0-pro-exp-02-05';
 const DEFAULT_SPECIALIST_MODEL_ID = 'gemini-2.0-flash';
+/** Gemini model used for PDF-native mindmap generation (needs vision + thinking). */
+const DEFAULT_PDF_MM_MODEL_ID = 'gemini-2.5-pro-preview-05-06';
 
 function buildModel(modelId: string): LanguageModel {
   const provider = process.env.LLM_PROVIDER ?? 'gemini';
@@ -63,4 +65,19 @@ export function getOrchestratorModel(): LanguageModel {
 export function getSpecialistModel(): LanguageModel {
   const modelId = process.env.SPECIALIST_MODEL ?? DEFAULT_SPECIALIST_MODEL_ID;
   return buildModel(modelId);
+}
+
+/**
+ * Returns the Gemini model used for PDF-native mindmap generation.
+ *
+ * Always uses Google regardless of LLM_PROVIDER — PDF multimodal vision is
+ * Gemini-specific and this path is only taken for PDF uploads.
+ * Reads PDF_MM_MODEL from env, falls back to Gemini 2.5 Pro.
+ */
+export function getPdfMmModel(): LanguageModel {
+  const modelId = process.env.PDF_MM_MODEL ?? DEFAULT_PDF_MM_MODEL_ID;
+  const google = createGoogleGenerativeAI({
+    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  });
+  return google(modelId);
 }

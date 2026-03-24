@@ -62,17 +62,20 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
     <div>
       {/* ── Session navigation strip ─────────────────────────────────────── */}
       <nav
+        className="app-fade-up"
         style={{
           position: 'sticky',
           top: 52, // dashboard header height
           zIndex: 40,
           height: SESSION_NAV_HEIGHT,
+          marginTop: -40, // counteract dashboard main's 40px padding-top to sit flush under header
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          background: 'var(--nav-bg)',
-          borderBottom: '1px solid var(--nav-border)',
+          background: 'color-mix(in srgb, var(--nav-bg) 84%, transparent)',
+          borderBottom: '1px solid color-mix(in srgb, var(--primary) 16%, var(--nav-border))',
+          backdropFilter: 'blur(9px)',
           marginLeft: -24,
           marginRight: -24,
           paddingLeft: 24,

@@ -287,15 +287,15 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
             </p>
             <p
               style={{
-                margin: '8px 0 0',
-                fontSize: 12,
-                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                color: 'var(--text-muted)',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
+              margin: '8px 0 0',
+              fontSize: 12,
+              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+              color: 'var(--text-muted)',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
               }}
             >
-              PDF, DOCX, TXT, PNG, JPG
+              PDF (recommended) · DOCX, TXT, PNG, JPG
             </p>
           </>
         )}
