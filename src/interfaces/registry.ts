@@ -27,6 +27,9 @@ export interface MmGeneratorInput {
   rawText: string;
   fileType: string;          // e.g. "pdf", "docx", "txt" — for context in the prompt
   subjectHint?: string;      // e.g. "dbms" — helps the model use domain terminology
+  /** Optional user-supplied instruction that shapes how the AI structures the output.
+   *  Already sanitised and guardrail-checked by the upload route before reaching here. */
+  customInstructions?: string;
 }
 
 /** Raw file buffer + metadata sent to the Document Parser Agent (DEPRECATED). */

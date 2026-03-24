@@ -95,17 +95,43 @@ export class MastraMmGeneratorAgent implements TasurAgent<MmGeneratorInput, stri
 
 function buildUserMessage(input: MmGeneratorInput): string {
   const lines = [
-    `Generate a comprehensive Freeplane .mm mindmap for the following study material.`,
+    `Generate a COMPLETE and EXHAUSTIVE Freeplane .mm mindmap for the following study material.`,
+    ``,
+    `CRITICAL: This mindmap is the student's PRIMARY and SOLE resource for their exam.`,
+    `Every concept, definition, property, algorithm step, formula, worked example, comparison,`,
+    `and diagram reference present in the source material MUST appear as a leaf node.`,
+    `Do NOT summarize. Do NOT omit "minor" details. If it is in the source, it is in the mindmap.`,
+    `Produce depth: aim for 4–5 levels with dense leaf nodes — not a flat overview.`,
   ];
 
   if (input.subjectHint) {
-    lines.push(`Subject hint: ${input.subjectHint}`);
+    lines.push(``, `Subject: ${input.subjectHint}`);
   }
   if (input.fileType) {
     lines.push(`Source file type: ${input.fileType}`);
   }
 
-  lines.push('', 'Source material:', input.rawText);
+  if (input.customInstructions) {
+    lines.push(
+      ``,
+      `━━━ MANDATORY STUDENT DIRECTIVES ━━━`,
+      `The student has specified the following requirements. These MUST be honored in your output`,
+      `and take priority over any default style preferences:`,
+      ``,
+      input.customInstructions,
+      `━━━ END STUDENT DIRECTIVES ━━━`,
+    );
+  }
+
+  lines.push(``, `--- SOURCE MATERIAL BEGIN ---`, input.rawText, `--- SOURCE MATERIAL END ---`);
+
+  if (input.customInstructions) {
+    lines.push(
+      ``,
+      `Reminder before you generate: the student explicitly requires — "${input.customInstructions}"`,
+      `Ensure your output fully satisfies this.`,
+    );
+  }
 
   return lines.join('\n');
 }

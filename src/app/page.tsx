@@ -9,6 +9,7 @@
 import Link from 'next/link';
 import { TasurWordmark } from '@/components/ui/TasurWordmark';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { ScrollRevealController } from '@/components/ui/ScrollRevealController';
 import { LandingMindmapPreview } from './LandingMindmapPreview';
 
 // ------------------------------------------------------------------
@@ -85,7 +86,7 @@ function Nav() {
 
 function Hero() {
   return (
-    <section className="max-w-screen-xl mx-auto px-8 md:px-12 pt-36 pb-24">
+    <section data-scroll-reveal className="reveal-delay-1 max-w-screen-xl mx-auto px-8 md:px-12 pt-36 pb-24">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
         {/* Left — Copy */}
         <div className="lg:col-span-6 flex flex-col">
@@ -162,9 +163,14 @@ function ScholarsInterface() {
   ];
 
   return (
-    <section id="library" className="py-28" style={{ background: 'var(--surface)' }}>
+    <section
+      id="library"
+      data-scroll-reveal
+      className="reveal-delay-2 py-28"
+      style={{ background: 'var(--surface)' }}
+    >
       <div className="max-w-screen-xl mx-auto px-8 md:px-12">
-        <div className="mb-16">
+        <div className="mb-16 manuscript-heading">
           <h2
             className="text-5xl mb-4"
             style={{ fontFamily: 'var(--font-instrument-serif)', color: 'var(--text)' }}
@@ -204,6 +210,8 @@ function ScholarsInterface() {
               {sessions.map((s, i) => (
                 <div
                   key={i}
+                  data-scroll-reveal
+                  className={i === 0 ? 'reveal-stagger-1' : i === 1 ? 'reveal-stagger-2' : 'reveal-stagger-3'}
                   style={{
                     background: '#232221',
                     borderRadius: 10,
@@ -320,7 +328,7 @@ function ScholarsInterface() {
 
 function ConceptualMapping() {
   return (
-    <section className="py-28 max-w-screen-xl mx-auto px-8 md:px-12">
+    <section data-scroll-reveal className="reveal-delay-1 py-28 max-w-screen-xl mx-auto px-8 md:px-12">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
         {/* Visual */}
         <div className="lg:col-span-6 order-2 lg:order-1">
@@ -401,7 +409,8 @@ function ConceptualMapping() {
 function AiTutor() {
   return (
     <section
-      className="py-28"
+      data-scroll-reveal
+      className="reveal-delay-2 py-28"
       style={{ background: 'color-mix(in srgb, var(--surface) 70%, var(--bg))' }}
     >
       <div className="max-w-screen-xl mx-auto px-8 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
@@ -630,8 +639,8 @@ function AdaptiveFlashcards() {
   ];
 
   return (
-    <section className="py-28 max-w-screen-xl mx-auto px-8 md:px-12">
-      <div className="text-center mb-20">
+    <section data-scroll-reveal className="reveal-delay-1 py-28 max-w-screen-xl mx-auto px-8 md:px-12">
+      <div className="text-center mb-20 manuscript-heading">
         <span className="text-xs tracking-[0.2em] uppercase block mb-4 font-bold"
           style={{ fontFamily: 'var(--font-geist-mono)', color: 'var(--primary)' }}>
           Feature Three
@@ -643,10 +652,17 @@ function AdaptiveFlashcards() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
-        {cards.map(({ icon, title, body, elevated }) => (
+        {cards.map(({ icon, title, body, elevated }, index) => (
           <div
             key={title}
-            className="p-8 rounded-xl transition-all duration-200"
+            data-scroll-reveal
+            className={`p-8 rounded-xl transition-all duration-200 ${
+              index === 0
+                ? 'reveal-stagger-1'
+                : index === 1
+                  ? 'reveal-stagger-2'
+                  : 'reveal-stagger-3'
+            }`}
             style={{
               background: elevated ? 'var(--bg)' : 'var(--surface)',
               marginTop: elevated ? '-2rem' : '0',
@@ -686,9 +702,14 @@ function AdaptiveFlashcards() {
 
 function Philosophy() {
   return (
-    <section id="philosophy" className="py-28" style={{ background: 'var(--surface)' }}>
+    <section
+      id="philosophy"
+      data-scroll-reveal
+      className="reveal-delay-1 py-28"
+      style={{ background: 'var(--surface)' }}
+    >
       <div className="max-w-screen-xl mx-auto px-8 md:px-12">
-        <div className="max-w-3xl mx-auto text-center mb-20">
+        <div className="max-w-3xl mx-auto text-center mb-20 manuscript-heading">
           <span
             className="text-xs font-bold tracking-[0.2em] uppercase block mb-4"
             style={{ fontFamily: 'var(--font-geist-mono)', color: 'var(--primary)' }}
@@ -728,10 +749,17 @@ function Philosophy() {
               title: 'Spaced Repetition',
               body: 'An AI orchestrator schedules reviews at the precise moment before you would forget, compounding retention without wasting time on concepts you already own.',
             },
-          ].map(({ icon, title, body, elevated }) => (
+          ].map(({ icon, title, body, elevated }, index) => (
             <div
               key={title}
-              className="p-8 rounded-xl transition-all duration-200"
+              data-scroll-reveal
+              className={`p-8 rounded-xl transition-all duration-200 ${
+                index === 0
+                  ? 'reveal-stagger-1'
+                  : index === 1
+                    ? 'reveal-stagger-2'
+                    : 'reveal-stagger-3'
+              }`}
               style={{
                 background: elevated ? 'var(--bg)' : 'var(--surface)',
                 marginTop: elevated ? '-2rem' : '0',
@@ -807,8 +835,12 @@ function Methodology() {
   ];
 
   return (
-    <section id="methodology" className="py-28 max-w-screen-xl mx-auto px-8 md:px-12">
-      <div className="mb-16">
+    <section
+      id="methodology"
+      data-scroll-reveal
+      className="reveal-delay-2 py-28 max-w-screen-xl mx-auto px-8 md:px-12"
+    >
+      <div className="mb-16 manuscript-heading">
         <span
           className="text-xs font-bold tracking-[0.2em] uppercase block mb-4"
           style={{ fontFamily: 'var(--font-geist-mono)', color: 'var(--primary)' }}
@@ -825,10 +857,19 @@ function Methodology() {
       </div>
 
       <div className="space-y-4">
-        {phases.map((phase) => (
+        {phases.map((phase, index) => (
           <div
             key={phase.number}
-            className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start p-8 rounded-xl group transition-all duration-200 hover:shadow-lg"
+            data-scroll-reveal
+            className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-start p-8 rounded-xl group transition-all duration-200 hover:shadow-lg ${
+              index === 0
+                ? 'reveal-stagger-1'
+                : index === 1
+                  ? 'reveal-stagger-2'
+                  : index === 2
+                    ? 'reveal-stagger-3'
+                    : 'reveal-stagger-4'
+            }`}
             style={{ background: 'var(--surface)' }}
           >
             <div className="lg:col-span-1">
@@ -873,7 +914,11 @@ function Methodology() {
 
 function Cta() {
   return (
-    <section className="py-28 relative overflow-hidden" style={{ background: 'var(--primary)' }}>
+    <section
+      data-scroll-reveal
+      className="reveal-delay-2 py-28 relative overflow-hidden"
+      style={{ background: 'var(--primary)' }}
+    >
       <div
         className="absolute inset-0 opacity-5"
         style={{
@@ -955,7 +1000,10 @@ export default function LandingPage() {
   return (
     <>
       <Nav />
-      <main>
+      <main className="landing-parchment">
+        <ScrollRevealController />
+        <div aria-hidden className="landing-parchment-backdrop" />
+        <div aria-hidden className="landing-ink-ornaments" />
         <Hero />
         <Philosophy />
         <ScholarsInterface />

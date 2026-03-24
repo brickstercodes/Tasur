@@ -145,6 +145,237 @@ body {
   line-height: 1.72;
 }
 
+.landing-parchment {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.landing-parchment::before,
+.landing-parchment::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: clamp(18px, 3vw, 44px);
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.52;
+}
+
+.landing-parchment::before {
+  left: 0;
+  background:
+    radial-gradient(circle at right 8px top 6%, rgba(80, 51, 25, 0.22), transparent 34%),
+    radial-gradient(circle at right 5px 24%, rgba(80, 51, 25, 0.18), transparent 26%),
+    radial-gradient(circle at right 10px 49%, rgba(80, 51, 25, 0.16), transparent 30%),
+    radial-gradient(circle at right 7px 76%, rgba(80, 51, 25, 0.18), transparent 28%),
+    linear-gradient(to right, rgba(66, 41, 20, 0.18), transparent 75%);
+}
+
+.landing-parchment::after {
+  right: 0;
+  background:
+    radial-gradient(circle at left 8px top 12%, rgba(80, 51, 25, 0.22), transparent 32%),
+    radial-gradient(circle at left 10px 35%, rgba(80, 51, 25, 0.17), transparent 28%),
+    radial-gradient(circle at left 6px 62%, rgba(80, 51, 25, 0.15), transparent 28%),
+    radial-gradient(circle at left 11px 87%, rgba(80, 51, 25, 0.17), transparent 30%),
+    linear-gradient(to left, rgba(66, 41, 20, 0.18), transparent 75%);
+}
+
+.landing-parchment > section {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-parchment > section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(120% 80% at 20% 18%, rgba(148, 70, 4, 0.08), transparent 62%),
+    radial-gradient(120% 80% at 86% 74%, rgba(99, 70, 45, 0.07), transparent 58%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(70, 44, 26, 0.028) 0,
+      rgba(70, 44, 26, 0.028) 1px,
+      transparent 1px,
+      transparent 7px
+    );
+  opacity: 0.58;
+}
+
+.landing-parchment > section > * {
+  position: relative;
+  z-index: 1;
+}
+
+.manuscript-heading {
+  position: relative;
+}
+
+.manuscript-heading::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: clamp(4px, 1.6vw, 18px);
+  width: 86px;
+  height: 24px;
+  pointer-events: none;
+  opacity: 0.45;
+  background:
+    radial-gradient(circle at 8% 58%, rgba(148, 70, 4, 0.42) 0 1.2px, transparent 1.4px),
+    radial-gradient(circle at 20% 42%, rgba(148, 70, 4, 0.28) 0 1px, transparent 1.2px),
+    radial-gradient(circle at 36% 62%, rgba(148, 70, 4, 0.34) 0 1.1px, transparent 1.3px),
+    radial-gradient(circle at 52% 38%, rgba(148, 70, 4, 0.24) 0 0.9px, transparent 1.1px),
+    radial-gradient(circle at 66% 54%, rgba(148, 70, 4, 0.3) 0 1px, transparent 1.2px),
+    radial-gradient(circle at 82% 44%, rgba(148, 70, 4, 0.22) 0 0.9px, transparent 1.1px);
+}
+
+.landing-parchment-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 12% 14%, rgba(148, 70, 4, 0.16), transparent 56%),
+    radial-gradient(ellipse at 88% 24%, rgba(125, 81, 42, 0.12), transparent 52%),
+    radial-gradient(ellipse at 26% 84%, rgba(98, 72, 49, 0.12), transparent 54%),
+    linear-gradient(180deg, rgba(176, 138, 92, 0.08), rgba(249, 245, 236, 0) 16%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(68, 46, 28, 0.028) 0,
+      rgba(68, 46, 28, 0.028) 1px,
+      transparent 1px,
+      transparent 6px
+    );
+  opacity: 1;
+}
+
+.landing-ink-ornaments {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 52%, rgba(148, 70, 4, 0.12), transparent 24%),
+    radial-gradient(circle at 92% 34%, rgba(148, 70, 4, 0.12), transparent 24%),
+    radial-gradient(circle at 74% 90%, rgba(45, 35, 24, 0.08), transparent 22%);
+  animation: parchmentDrift 22s ease-in-out infinite alternate;
+}
+
+[data-theme='dark'] .landing-parchment-backdrop {
+  background:
+    radial-gradient(ellipse at 14% 14%, rgba(194, 105, 42, 0.2), transparent 54%),
+    radial-gradient(ellipse at 85% 34%, rgba(124, 91, 62, 0.18), transparent 50%),
+    radial-gradient(ellipse at 32% 78%, rgba(84, 68, 53, 0.18), transparent 52%),
+    linear-gradient(180deg, rgba(194, 105, 42, 0.14), rgba(24, 23, 26, 0) 22%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 245, 230, 0.026) 0,
+      rgba(255, 245, 230, 0.026) 1px,
+      transparent 1px,
+      transparent 6px
+    );
+}
+
+[data-theme='dark'] .landing-parchment > section::before {
+  background:
+    radial-gradient(120% 80% at 20% 18%, rgba(194, 105, 42, 0.14), transparent 64%),
+    radial-gradient(120% 80% at 86% 74%, rgba(123, 93, 68, 0.14), transparent 60%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 241, 224, 0.02) 0,
+      rgba(255, 241, 224, 0.02) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+  opacity: 0.72;
+}
+
+[data-theme='dark'] .landing-parchment::before,
+[data-theme='dark'] .landing-parchment::after {
+  opacity: 0.34;
+}
+
+[data-theme='dark'] .manuscript-heading::after {
+  opacity: 0.4;
+  background:
+    radial-gradient(circle at 8% 58%, rgba(212, 137, 76, 0.48) 0 1.2px, transparent 1.4px),
+    radial-gradient(circle at 20% 42%, rgba(212, 137, 76, 0.35) 0 1px, transparent 1.2px),
+    radial-gradient(circle at 36% 62%, rgba(212, 137, 76, 0.38) 0 1.1px, transparent 1.3px),
+    radial-gradient(circle at 52% 38%, rgba(212, 137, 76, 0.24) 0 0.9px, transparent 1.1px),
+    radial-gradient(circle at 66% 54%, rgba(212, 137, 76, 0.32) 0 1px, transparent 1.2px),
+    radial-gradient(circle at 82% 44%, rgba(212, 137, 76, 0.26) 0 0.9px, transparent 1.1px);
+}
+
+[data-scroll-reveal] {
+  opacity: 0;
+  transform: translateY(40px) scale(0.986);
+  filter: blur(4px);
+  transition:
+    opacity 1.05s cubic-bezier(0.18, 0.84, 0.28, 1),
+    transform 1.05s cubic-bezier(0.18, 0.84, 0.28, 1),
+    filter 1.05s cubic-bezier(0.18, 0.84, 0.28, 1);
+  will-change: opacity, transform, filter;
+}
+
+[data-scroll-reveal].is-revealed {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+.reveal-delay-1 {
+  transition-delay: 90ms;
+}
+
+.reveal-delay-2 {
+  transition-delay: 170ms;
+}
+
+.reveal-stagger-1 {
+  transition-delay: 80ms;
+}
+
+.reveal-stagger-2 {
+  transition-delay: 160ms;
+}
+
+.reveal-stagger-3 {
+  transition-delay: 240ms;
+}
+
+.reveal-stagger-4 {
+  transition-delay: 320ms;
+}
+
+@keyframes parchmentDrift {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 0.76;
+  }
+  to {
+    transform: translateY(-12px) scale(1.02);
+    opacity: 0.95;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-scroll-reveal] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+
+  .landing-ink-ornaments {
+    animation: none;
+  }
+}
+
 /* ── Global button / link interaction feel ───────────────────────────────── */
 /* Must be in @layer base so Tailwind v4 doesn't tree-shake element selectors */
 @layer base {

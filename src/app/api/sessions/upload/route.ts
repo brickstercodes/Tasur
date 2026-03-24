@@ -44,6 +44,7 @@ import {
   persistPipelineResults,
 } from '@/lib/session-persistence';
 import type { LearningMode } from '@/types/sessions';
+import { validateCustomInstructions } from '@/lib/guardrails';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -86,6 +87,12 @@ export async function POST(req: Request) {
     (formData.get('title') as string | null)?.trim() ||
     file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
 
+  const guardrail = validateCustomInstructions(formData.get('customInstructions') as string | null);
+  if (!guardrail.ok) {
+    return new Response(guardrail.reason, { status: 422 });
+  }
+  const customInstructions = guardrail.sanitised || undefined;
+
   const fileBuffer = Buffer.from(await file.arrayBuffer());
   const filename = file.name;
   const mimeType = file.type;
@@ -115,6 +122,7 @@ export async function POST(req: Request) {
           rawText,
           fileType,
           subjectHint: domain,
+          customInstructions,
         });
         const mmXml = mmResult.data;
 

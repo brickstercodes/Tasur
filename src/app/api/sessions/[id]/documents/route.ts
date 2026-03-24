@@ -37,6 +37,7 @@ import {
 } from '@/lib/orchestration/session-utils';
 import { appendDocumentToSession } from '@/lib/session-persistence';
 import type { StudentGraphState } from '@/types/graph';
+import { validateCustomInstructions } from '@/lib/guardrails';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -93,6 +94,12 @@ export async function POST(req: Request, { params }: RouteParams) {
     || 'general';
   const mode = sessionRow.learning_mode as 'fast' | 'steady';
 
+  const guardrail = validateCustomInstructions(formData.get('customInstructions') as string | null);
+  if (!guardrail.ok) {
+    return new Response(guardrail.reason, { status: 422 });
+  }
+  const customInstructions = guardrail.sanitised || undefined;
+
   const fileBuffer = Buffer.from(await file.arrayBuffer());
   const filename = file.name;
   const mimeType = file.type;
@@ -131,6 +138,7 @@ export async function POST(req: Request, { params }: RouteParams) {
           rawText,
           fileType,
           subjectHint: domain,
+          customInstructions,
         });
         const mmXml = mmResult.data;
 

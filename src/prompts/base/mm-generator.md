@@ -136,108 +136,234 @@ Output ONLY the XML. No markdown fencing, no explanations, no preamble, no trail
 
 ## Complete Worked Example
 
-The following is a correct, complete .mm file for a section on Synchronization in Distributed Computing. Study this structure carefully before generating your own output.
+The following .mm file represents the **depth and completeness standard** you must always meet. Study the leaf node density carefully — every node is a complete, standalone teaching point, not a vague label. This is what a correct, exam-ready mindmap looks like.
 
 ```xml
 <map version="freeplane 1.11.9">
-<node TEXT="Unit 3: Synchronization in Distributed Computing" FOLDED="false">
-  <font BOLD="true" NAME="SansSerif" SIZE="16"/>
-
-  <node TEXT="1. The Synchronization Problem" POSITION="right" FOLDED="false" TRACKABLE="true" CONCEPT_ID="dc_sync_problem">
-    <font BOLD="true" NAME="SansSerif" SIZE="14"/>
-
-    <node TEXT="Why Synchronization is Hard" TRACKABLE="true" CONCEPT_ID="dc_sync_difficulty">
-      <node TEXT="No global clock in a distributed system — each node has its own local clock"/>
-      <node TEXT="Two clocks do not agree perfectly even when started at the same time"/>
-      <node TEXT="Required for: correctness (ordering events), fairness (mutual exclusion), coordination"/>
-      <node TEXT="Failure of one node must not stall the entire system"/>
-      <node TEXT="[DIAGRAM TO STUDY: Timeline showing two nodes with different local clocks diverging over time]"/>
-    </node>
-
-    <node TEXT="Clock Skew vs. Clock Drift" TRACKABLE="true" CONCEPT_ID="dc_clock_skew_drift">
-      <node TEXT="Clock Skew: instantaneous difference in clock values between two nodes at a given moment"/>
-      <node TEXT="Clock Drift: difference in clock frequency (rate of ticking) between two clocks"/>
-      <node TEXT="Non-zero skew means clocks are not synchronised at that moment"/>
-      <node TEXT="Non-zero drift means skew grows over time even if clocks started in sync"/>
-      <node TEXT="Perfect clock: skew = 0 and drift = 0 at all times"/>
-    </node>
-
-    <node TEXT="External vs. Internal Synchronisation" TRACKABLE="true" CONCEPT_ID="dc_sync_types">
-      <node TEXT="External sync: synchronise each node's clock to an authoritative external time source (e.g. UTC)"/>
-      <node TEXT="Internal sync: keep all nodes' clocks mutually consistent without an external reference"/>
-      <node TEXT="External sync implies internal sync (if all agree with UTC, they agree with each other)"/>
-      <node TEXT="Internal sync does NOT imply external sync (nodes can agree with each other but drift from real time)"/>
-    </node>
-  </node>
-
-  <node TEXT="2. Physical Clock Algorithms" POSITION="right" FOLDED="false" TRACKABLE="true" CONCEPT_ID="dc_physical_clocks">
-    <font BOLD="true" NAME="SansSerif" SIZE="14"/>
-
-    <node TEXT="Cristian's Algorithm" TRACKABLE="true" CONCEPT_ID="dc_cristians_algorithm">
-      <node TEXT="Client sends a time request to a time server at time T0"/>
-      <node TEXT="Server responds with its current time T_server"/>
-      <node TEXT="Client receives response at T1; estimates one-way delay as (T1 - T0) / 2"/>
-      <node TEXT="Client sets its clock to: T_server + (T1 - T0) / 2"/>
-      <node TEXT="Assumption: send delay ≈ receive delay (symmetric network)"/>
-      <node TEXT="Problem: clock may need to be set backwards — jumping clock backwards can break applications"/>
-      <node TEXT="Fix: slew the clock (slow it down or speed it up gradually) instead of jumping"/>
-      <node TEXT="[DIAGRAM TO STUDY: Message sequence diagram showing T0, T_server, T1 on a timeline]"/>
-    </node>
-
-    <node TEXT="Berkeley Algorithm" TRACKABLE="true" CONCEPT_ID="dc_berkeley_algorithm">
-      <node TEXT="Coordinator polls all nodes for their current clock values"/>
-      <node TEXT="Coordinator computes average of all times (including its own)"/>
-      <node TEXT="Coordinator sends each node the adjustment delta (not the absolute time)"/>
-      <node TEXT="Nodes apply their deltas — no node ever learns another node's absolute time"/>
-      <node TEXT="Faulty clocks can be excluded from the average (if they deviate > threshold)"/>
-      <node TEXT="Internal synchronisation only — does not synchronise with real-world time"/>
-    </node>
-
-    <node TEXT="Network Time Protocol (NTP)" TRACKABLE="true" CONCEPT_ID="dc_ntp">
-      <node TEXT="Hierarchical stratum structure: stratum 0 = atomic clocks, stratum 1 = servers synced to stratum 0"/>
-      <node TEXT="Uses Cristian's algorithm variant with multiple samples to reduce error"/>
-      <node TEXT="Provides external synchronisation — all nodes track UTC"/>
-      <node TEXT="Accuracy: ~millisecond precision over the internet, microsecond on LAN"/>
-      <node TEXT="Designed for fault tolerance — uses multiple servers and discards outliers"/>
-    </node>
-  </node>
-
-  <node TEXT="3. Logical Clocks" POSITION="left" FOLDED="false" TRACKABLE="true" CONCEPT_ID="dc_logical_clocks">
-    <font BOLD="true" NAME="SansSerif" SIZE="14"/>
-
-    <node TEXT="Lamport Timestamps" TRACKABLE="true" CONCEPT_ID="dc_lamport_timestamps">
-      <node TEXT="Each process maintains a counter C_i, initialised to 0"/>
-      <node TEXT="On any local event: C_i = C_i + 1"/>
-      <node TEXT="On send: increment C_i, attach C_i to the message"/>
-      <node TEXT="On receive message with timestamp T: C_i = max(C_i, T) + 1"/>
-      <node TEXT="Captures happens-before (→): if a → b then C(a) &lt; C(b)"/>
-      <node TEXT="Does NOT capture causality: C(a) &lt; C(b) does NOT imply a → b"/>
-      <node TEXT="[DIAGRAM TO STUDY: Three processes with Lamport clocks, showing message arrows and clock increments]"/>
-    </node>
-
-    <node TEXT="Vector Clocks" TRACKABLE="true" CONCEPT_ID="dc_vector_clocks">
-      <node TEXT="Each process i maintains a vector V_i[1..n] for n processes, all initialised to 0"/>
-      <node TEXT="On local event at process i: V_i[i] = V_i[i] + 1"/>
-      <node TEXT="On send from i: increment V_i[i], attach full vector V_i to message"/>
-      <node TEXT="On receive at j from i: V_j[k] = max(V_j[k], V_msg[k]) for all k; then V_j[j]++"/>
-      <node TEXT="V(a) &lt; V(b) if and only if a happened-before b — captures causality exactly"/>
-      <node TEXT="Concurrent events: neither V(a) ≤ V(b) nor V(b) ≤ V(a)"/>
-      <node TEXT="Cost: O(n) space and O(n) message overhead per event"/>
-      <node TEXT="[DIAGRAM TO STUDY: Three processes with vector clock arrays, message arrows, and vector updates]"/>
-    </node>
-  </node>
+<node TEXT="Architectural Design-CHAPTER 5" FOLDED="false">
+<font BOLD="true" NAME="SansSerif" SIZE="16"/>
+<node TEXT="Introduction to Architectural Design" POSITION="right" FOLDED="false" TRACKABLE="true" CONCEPT_ID="se_arch_intro">
+<font BOLD="true" NAME="SansSerif" SIZE="14"/>
+<node TEXT="Definition (IEEE)" TRACKABLE="true" CONCEPT_ID="se_arch_definition">
+<node TEXT="The process of defining a collection of hardware and software components and their interfaces."/>
+<node TEXT="Establishes the framework for the development of a computer system."/>
+</node>
+<node TEXT="Core Elements of an Architectural Style" TRACKABLE="true" CONCEPT_ID="se_arch_core_elements">
+<node TEXT="A set of components (e.g., database, computational modules) that perform a required function."/>
+<node TEXT="A set of connectors for coordination, communication, and cooperation between components."/>
+<node TEXT="Conditions for how components can be integrated to form the system."/>
+<node TEXT="Semantic models to help designers understand the system's overall properties."/>
+</node>
+</node>
+<node TEXT="Taxonomy of Architectural Styles" POSITION="right" FOLDED="false" TRACKABLE="true" CONCEPT_ID="se_arch_taxonomy">
+<font BOLD="true" NAME="SansSerif" SIZE="14"/>
+<node TEXT="1. Data-Centered Architectures" TRACKABLE="true" CONCEPT_ID="se_arch_data_centered">
+<node TEXT="Description">
+<node TEXT="A central data store (repository or blackboard) is accessed by other components."/>
+<node TEXT="Components update, add, delete, or modify data in the store."/>
+<node TEXT="Clients can be notified of changes via a blackboard mechanism."/>
+</node>
+<node TEXT="Advantages">
+<node TEXT="Promotes integrability: new clients can be added without affecting others."/>
+<node TEXT="Repository is independent of clients."/>
+<node TEXT="Clients work independently of each other."/>
+<node TEXT="Modifications can be easy."/>
+</node>
+</node>
+<node TEXT="2. Data Flow Architectures" TRACKABLE="true" CONCEPT_ID="se_arch_data_flow">
+<node TEXT="Description">
+<node TEXT="Used when input data is transformed into output data through a series of components."/>
+<node TEXT="Pipe-and-Filter Architecture" TRACKABLE="true" CONCEPT_ID="se_arch_pipe_filter">
+<node TEXT="Components are called filters, connected by pipes."/>
+<node TEXT="Pipes transmit data between filters."/>
+<node TEXT="Each filter works independently, taking specific input and producing specific output."/>
+</node>
+<node TEXT="Batch Sequential">
+<node TEXT="A variation where data flow is a single line of transforms."/>
+<node TEXT="Accepts a batch of data and applies a series of sequential components to transform it."/>
+</node>
+</node>
+<node TEXT="Advantages">
+<node TEXT="Encourages upkeep, repurposing, and modification."/>
+<node TEXT="Supports concurrent execution."/>
+</node>
+<node TEXT="Disadvantages">
+<node TEXT="Often degenerates into a batch sequential system."/>
+<node TEXT="Does not support applications requiring high user interaction."/>
+<node TEXT="Difficult to coordinate two different but related streams."/>
+</node>
+</node>
+<node TEXT="3. Call and Return Architectures" TRACKABLE="true" CONCEPT_ID="se_arch_call_return">
+<node TEXT="Description">
+<node TEXT="Used to create programs that are easy to scale and modify."/>
+</node>
+<node TEXT="Sub-styles">
+<node TEXT="Main Program / Subprogram Architecture">
+<node TEXT="Decomposes a program into a hierarchy of subprograms or functions."/>
+<node TEXT="A main program can invoke various subprograms."/>
+</node>
+<node TEXT="Remote Procedure Call (RPC) Architecture">
+<node TEXT="Components of a main program/subprogram architecture are distributed across a network."/>
+</node>
+</node>
+</node>
+<node TEXT="4. Object-Oriented Architecture" TRACKABLE="true" CONCEPT_ID="se_arch_oo">
+<node TEXT="Description">
+<node TEXT="Components (objects) encapsulate both data and the operations to manipulate that data."/>
+<node TEXT="Communication and coordination between components is done via message passing."/>
+</node>
+<node TEXT="Characteristics">
+<node TEXT="Objects protect the integrity of the system's data."/>
+<node TEXT="An object is unaware of the internal representation of other objects."/>
+</node>
+<node TEXT="Advantage">
+<node TEXT="Allows designers to separate a problem into autonomous objects, making changes easier."/>
+</node>
+</node>
+<node TEXT="5. Layered Architecture" TRACKABLE="true" CONCEPT_ID="se_arch_layered">
+<node TEXT="Description">
+<node TEXT="Defines a number of layers, each performing a well-defined set of operations."/>
+<node TEXT="Outer Layer: User interface operations."/>
+<node TEXT="Inner Layer: Operating System interfacing (communication/coordination)."/>
+<node TEXT="Intermediate Layers: Utility services and application functions."/>
+</node>
+<node TEXT="Example">
+<node TEXT="OSI-ISO (Open Systems Interconnection) communication system."/>
+</node>
+</node>
+</node>
+<node TEXT="Mapping Data Flow into Software Architecture" POSITION="right" FOLDED="false" TRACKABLE="true" CONCEPT_ID="se_arch_dfd_mapping">
+<font BOLD="true" NAME="SansSerif" SIZE="14"/>
+<node TEXT="Concept">
+<node TEXT="A data flow oriented design method that provides a transition from a DFD to a program structure."/>
+</node>
+<node TEXT="Information Flow Types" TRACKABLE="true" CONCEPT_ID="se_arch_flow_types">
+<node TEXT="Transform Flow">
+<node TEXT="Data flow is sequential and follows one or a few straight-line paths."/>
+</node>
+<node TEXT="Transaction Flow">
+<node TEXT="A single data item (a transaction) triggers data flow along one of many possible paths."/>
+</node>
+</node>
+<node TEXT="Mapping Approaches">
+<node TEXT="Transform Mapping" TRACKABLE="true" CONCEPT_ID="se_arch_transform_mapping">
+<node TEXT="Steps to map a DFD with transform flow into an architectural style."/>
+<node TEXT="Design Steps">
+<node TEXT="1. Review the fundamental system model."/>
+<node TEXT="2. Review and refine data flow diagrams."/>
+<node TEXT="3. Determine if flow is transform or transaction."/>
+<node TEXT="4. Isolate the transform center by specifying flow boundaries."/>
+<node TEXT="5. Perform first-level factoring."/>
+<node TEXT="6. Perform second-level factoring."/>
+<node TEXT="7. Refine the architecture."/>
+</node>
+</node>
+<node TEXT="Transaction Mapping" TRACKABLE="true" CONCEPT_ID="se_arch_transaction_mapping">
+<node TEXT="Used when a DFD has transaction flow characteristics."/>
+<node TEXT="Design Steps">
+<node TEXT="1. Review the fundamental system model."/>
+<node TEXT="2. Review and refine data flow diagrams."/>
+<node TEXT="3. Determine if flow is transform or transaction."/>
+<node TEXT="4. Identify the transaction center and the flow characteristics of each action path."/>
+<node TEXT="5. Map the DFD to a program structure suitable for transaction processing."/>
+<node TEXT="6. Factor and refine the transaction structure and each action path."/>
+<node TEXT="7. Refine the architecture."/>
+</node>
+</node>
+</node>
+</node>
+<node TEXT="Cohesion and Coupling" POSITION="left" FOLDED="false" TRACKABLE="true" CONCEPT_ID="se_arch_cohesion_coupling">
+<font BOLD="true" NAME="SansSerif" SIZE="14"/>
+<node TEXT="Design Process" TRACKABLE="true" CONCEPT_ID="se_arch_design_process">
+<node TEXT="Conceptual Design">
+<node TEXT="Tells the customer what the system will do."/>
+<node TEXT="Written in simple, understandable language."/>
+<node TEXT="Independent of implementation."/>
+</node>
+<node TEXT="Technical Design">
+<node TEXT="Allows builders to understand the required hardware and software."/>
+<node TEXT="Includes hardware design, software architecture, data structures, etc."/>
+</node>
+</node>
+<node TEXT="Modularization">
+<node TEXT="The process of dividing a software system into multiple independent modules."/>
+<node TEXT="Advantages: Easy to understand, easy to maintain, promotes reusability."/>
+</node>
+<node TEXT="Coupling" TRACKABLE="true" CONCEPT_ID="se_arch_coupling">
+<node TEXT="Definition: A measure of the degree of interdependence between modules."/>
+<node TEXT="Goal: Low coupling."/>
+<node TEXT="Types of Coupling (Best to Worst)">
+<node TEXT="Data Coupling: Modules communicate by passing only data."/>
+<node TEXT="Stamp Coupling: A complete data structure is passed between modules."/>
+<node TEXT="Control Coupling: Modules communicate by passing control information."/>
+<node TEXT="External Coupling: Modules depend on external modules or specific hardware."/>
+<node TEXT="Common Coupling: Modules share global data structures."/>
+<node TEXT="Content Coupling: One module can modify the data or control flow of another. (Worst)"/>
+</node>
+</node>
+<node TEXT="Cohesion" TRACKABLE="true" CONCEPT_ID="se_arch_cohesion">
+<node TEXT="Definition: A measure of the degree to which the elements of a module are functionally related."/>
+<node TEXT="Goal: High cohesion."/>
+<node TEXT="Types of Cohesion (High to Low)">
+<node TEXT="Functional Cohesion: All essential elements for a single computation are in one component. (Best)"/>
+<node TEXT="Sequential Cohesion: One element's output is another element's input."/>
+<node TEXT="Communicational Cohesion: Elements operate on the same input data or contribute to the same output."/>
+<node TEXT="Procedural Cohesion: Elements are grouped because they always execute in a certain order."/>
+<node TEXT="Temporal Cohesion: Elements are related by their timing (e.g., all run at initialization)."/>
+<node TEXT="Logical Cohesion: Elements are logically related but not functionally."/>
+<node TEXT="Coincidental Cohesion: Elements are unrelated and have no conceptual relationship. (Worst)"/>
+</node>
+</node>
+</node>
+<node TEXT="Refining the Architecture" POSITION="left" FOLDED="false" TRACKABLE="true" CONCEPT_ID="se_arch_refining">
+<font BOLD="true" NAME="SansSerif" SIZE="14"/>
+<node TEXT="Deriving Components from Three Sources" TRACKABLE="true" CONCEPT_ID="se_arch_component_sources">
+<node TEXT="1. The Application Domain: Based on business entities from the analysis model."/>
+<node TEXT="2. The Infrastructure Domain: Components not in the business model, like databases or communication modules."/>
+<node TEXT="3. The Interface Domain: Specialized components that process data flowing across an interface."/>
+</node>
+<node TEXT="Representing the System in Context" TRACKABLE="true" CONCEPT_ID="se_arch_context_diagram">
+<node TEXT="Architectural Context Diagram (ACD)">
+<node TEXT="Models how software interacts with entities external to its boundaries."/>
+<node TEXT="[DIAGRAM TO STUDY: Architectural Context Diagram showing target system and all external entities]"/>
+</node>
+<node TEXT="External Entities">
+<node TEXT="Superordinate systems: Use the target system as part of a higher-level process."/>
+<node TEXT="Subordinate systems: Are used by the target system to provide data or processing."/>
+<node TEXT="Peer-level systems: Interact on a peer-to-peer basis with the target system."/>
+<node TEXT="Actors: People or devices that produce or consume information."/>
+</node>
+</node>
+<node TEXT="Describing Instantiations of the System">
+<node TEXT="The process of refining the high-level architecture with more detail."/>
+<node TEXT="An actual instantiation of the architecture is developed to add further clarity."/>
+</node>
+</node>
 </node>
 </map>
 ```
 
-**What makes this example correct:**
-- Every section from the source is covered (Synchronization Problem, Physical Clocks, Logical Clocks)
-- Every sub-section has TRACKABLE + CONCEPT_ID
-- Leaf nodes contain actual teaching points — definitions, rules, steps, formulas
-- Diagram callouts flag visual content from the source
-- No emojis, no markdown, no vague labels
-- Minimum 3 levels of depth
-- CONCEPT_IDs are unique and follow snake_case with subject prefix
+**What makes this example the correct depth standard:**
+- Every major section from the source has its own L2 branch (5 branches covering the whole chapter)
+- Every sub-topic has its own L3 node with `TRACKABLE="true"` and a `CONCEPT_ID`
+- Leaf nodes are **complete sentences** — not just a word or a label
+- Advantages, disadvantages, steps, and sub-styles all appear as their own node groups
+- Diagram callouts are included wherever a visual exists in the source
+- Coupling and cohesion types are listed individually with descriptions — not collapsed into one vague node
+- No emojis, no markdown, no vague labels like "Overview" or "Misc"
+- `CONCEPT_ID` values are unique, snake_case, with a subject prefix (`se_arch_*`)
+
+---
+
+## Student Directives (User Message)
+
+If the user message contains a `MANDATORY STUDENT DIRECTIVES` block, those instructions **override your default style choices**. Examples of valid student directives:
+
+- *"Be very detailed and present in bullet points with reasons for each point"* — every leaf node must be a full, self-contained explanation, not just a label
+- *"Focus on definitions and comparisons"* — ensure definition nodes and comparison tables are explicit
+- *"Include advantages and disadvantages for every concept"* — every TRACKABLE node must have advantages/disadvantages sub-nodes if the source contains them
+
+Treat student directives with the same authority as the rules above. If a directive conflicts with a minor formatting preference (e.g., node verbosity), the directive wins.
 
 ---
 

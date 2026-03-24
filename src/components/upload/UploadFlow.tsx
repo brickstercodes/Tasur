@@ -86,6 +86,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [domain, setDomain] = useState('');
+  const [customInstructions, setCustomInstructions] = useState('');
   const [mode, setMode] = useState<'steady' | 'fast'>('steady');
   const [progressLabel, setProgressLabel] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
@@ -122,6 +123,9 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
     formData.append('file', selectedFile);
     formData.append('domain', domain.trim() || 'general');
     formData.append('mode', mode);
+    if (customInstructions.trim()) {
+      formData.append('customInstructions', customInstructions.trim());
+    }
     if (!existingSessionId) {
       formData.append('title', selectedFile.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
     }
@@ -140,8 +144,15 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
     }
 
     if (!response.ok || !response.body) {
-      setUploadState('error');
-      setErrorMessage(`Server error (${response.status}) — please try again.`);
+      // 422 = guardrail rejection — surface the server's message directly
+      if (response.status === 422) {
+        const reason = await response.text().catch(() => '');
+        setUploadState('error');
+        setErrorMessage(reason || 'Your custom instructions were rejected — please revise them.');
+      } else {
+        setUploadState('error');
+        setErrorMessage(`Server error (${response.status}) — please try again.`);
+      }
       return;
     }
 
@@ -186,7 +197,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         }
       }
     }
-  }, [selectedFile, domain, mode, existingSessionId, router]);
+  }, [selectedFile, domain, customInstructions, mode, existingSessionId, router]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -302,6 +313,49 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         />
         <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
           Helps the AI use the right terminology and examples for your subject.
+        </p>
+      </div>
+
+      {/* ── Custom instructions ────────────────────────────────────────────── */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+          <label style={labelStyle}>Custom instructions (optional)</label>
+          <span
+            style={{
+              fontSize: 11,
+              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+              color: customInstructions.length > 450
+                ? customInstructions.length >= 500 ? '#C25858' : '#C2692A'
+                : 'var(--text-muted)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {customInstructions.length} / 500
+          </span>
+        </div>
+        <textarea
+          value={customInstructions}
+          onChange={(e) => setCustomInstructions(e.target.value.slice(0, 500))}
+          placeholder="e.g. Be very detailed and present information in bullet points, or focus more on definitions and examples"
+          rows={3}
+          style={{
+            width: '100%',
+            padding: '10px 0',
+            border: 'none',
+            borderBottom: `1px solid ${customInstructions.length >= 500 ? '#C25858' : 'var(--border)'}`,
+            borderRadius: 0,
+            fontSize: 14,
+            color: 'var(--text)',
+            outline: 'none',
+            background: 'transparent',
+            fontFamily: 'Inter, sans-serif',
+            boxSizing: 'border-box',
+            resize: 'none',
+            lineHeight: 1.55,
+          }}
+        />
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+          Guide the AI on how to structure or present your study material.
         </p>
       </div>
 
