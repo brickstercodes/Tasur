@@ -104,6 +104,18 @@ function MindmapViewerContent({
   // Set to true after expanding ancestors; cleared once fitView fires.
   const [pendingJumpToResume, setPendingJumpToResume] = useState(false);
 
+  // Lock page scroll while the mindmap is mounted so the document never
+  // overflows its container. main's padding-bottom still contributes to the
+  // scroll height even with negative margins, causing the toolbar (position:
+  // absolute inside the canvas) to scroll off-screen.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   // Memoised confidence map avoids rebuilding on every render.
   const confidenceMap = useMemo(
     () => new Map(Object.entries(confidenceData)),
@@ -376,9 +388,11 @@ function MindmapViewerContent({
       </div>
 
       {/* ── Confidence legend (bottom-right) ─────────────────────────────────── */}
+      {/* position: fixed so it's always viewport-relative and never clipped by
+          the parent overflow: hidden canvas boundary. */}
       <div
         style={{
-          position: 'absolute',
+          position: 'fixed',
           bottom: 20,
           right: 20,
           zIndex: 10,
