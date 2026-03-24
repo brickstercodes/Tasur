@@ -25,104 +25,104 @@
 
   /* Default: light theme */
   --bg: #f9f9f6;
-  --surface: #FDFAF6;
+  --surface: #fdfaf6;
   --surface-elevated: #ffffff;
-  --border: #ECEAE2;
+  --border: #eceae2;
   --border-hover: #d4cfc5;
-  --text: #2D2318;
+  --text: #2d2318;
   --text-muted: #887367;
   --text-faint: #554339;
   --logo: #1a1c1b;
   --logo-filter: none;
-  --scrollbar: #DDD8CC;
+  --scrollbar: #ddd8cc;
   --tab-hover: #eeeeeb;
   --input-bg: #ffffff;
-  --input-border: #ECEAE2;
-  --input-focus: #C2892A;
+  --input-border: #eceae2;
+  --input-focus: #c2892a;
   --error-bg: #fef6f0;
-  --error-border: #F5C4A0;
-  --error-text: #7A3803;
+  --error-border: #f5c4a0;
+  --error-text: #7a3803;
   --primary: #944604;
-  --primary-hover: #C2692A;
+  --primary-hover: #c2692a;
   --nav-bg: #f9f9f6;
-  --nav-border: #ECEAE2;
+  --nav-border: #eceae2;
   --session-card-bg: #ffffff;
-  --session-card-border: #ECEAE2;
+  --session-card-border: #eceae2;
   --mindmap-bg: #f9f9f6;
-  --mindmap-dot: rgba(0,0,0,0.055);
-  --mindmap-node-1: #F4F3EE;
-  --mindmap-node-2: #F0EEE7;
-  --mindmap-node-root: #1C1917;
-  --mindmap-node-text: #2D2318;
-  --mindmap-node-border: #D4CFC5;
-  --mindmap-node-border-hover: #B0A99E;
-  --mindmap-edge: #D4CFC5;
-  --toolbar-bg: rgba(255,255,255,0.95);
-  --toolbar-border: rgba(219,193,180,0.3);
-  --flash-front-bg: #FFFFFF;
-  --flash-back-bg: #FFFFFF;
-  --flash-border: #ECEAE2;
-  --flash-text: #2D2318;
+  --mindmap-dot: rgba(0, 0, 0, 0.055);
+  --mindmap-node-1: #f4f3ee;
+  --mindmap-node-2: #f0eee7;
+  --mindmap-node-root: #1c1917;
+  --mindmap-node-text: #2d2318;
+  --mindmap-node-border: #d4cfc5;
+  --mindmap-node-border-hover: #b0a99e;
+  --mindmap-edge: #d4cfc5;
+  --toolbar-bg: rgba(255, 255, 255, 0.95);
+  --toolbar-border: rgba(219, 193, 180, 0.3);
+  --flash-front-bg: #ffffff;
+  --flash-back-bg: #ffffff;
+  --flash-border: #eceae2;
+  --flash-text: #2d2318;
   --focus-bg: #f4f4f1;
-  --focus-border: #ECEAE2;
-  --dropdown-bg: #FDFAF6;
+  --focus-border: #eceae2;
+  --dropdown-bg: #fdfaf6;
   --sign-out: #554339;
   --glow-color: rgba(194, 105, 42, 0.22);
 
   /* Tailwind compat vars */
   --background: #f9f9f6;
-  --foreground: #2D2318;
+  --foreground: #2d2318;
 }
 
-[data-theme="dark"] {
-  --bg: #18171A;
+[data-theme='dark'] {
+  --bg: #18171a;
   --surface: #232221;
-  --surface-elevated: #2C2B29;
-  --border: #3A3835;
-  --border-hover: #4A4744;
-  --text: #FAFAF7;
-  --text-muted: #9A9390;
-  --text-faint: #78716C;
-  --logo: #FAFAF7;
+  --surface-elevated: #2c2b29;
+  --border: #3a3835;
+  --border-hover: #4a4744;
+  --text: #fafaf7;
+  --text-muted: #9a9390;
+  --text-faint: #78716c;
+  --logo: #fafaf7;
   --logo-filter: invert(1);
-  --scrollbar: #3A3835;
-  --tab-hover: #2C2B29;
-  --input-bg: #2C2B29;
-  --input-border: #3A3835;
-  --input-focus: #C2692A;
-  --error-bg: #2C1A0E;
-  --error-border: #5A3020;
-  --error-text: #E8A878;
-  --primary: #C2692A;
-  --primary-hover: #D4783A;
-  --nav-bg: #18171A;
-  --nav-border: #3A3835;
+  --scrollbar: #3a3835;
+  --tab-hover: #2c2b29;
+  --input-bg: #2c2b29;
+  --input-border: #3a3835;
+  --input-focus: #c2692a;
+  --error-bg: #2c1a0e;
+  --error-border: #5a3020;
+  --error-text: #e8a878;
+  --primary: #c2692a;
+  --primary-hover: #d4783a;
+  --nav-bg: #18171a;
+  --nav-border: #3a3835;
   --session-card-bg: #232221;
-  --session-card-border: #3A3835;
-  --mindmap-bg: #18171A;
-  --mindmap-dot: rgba(255,255,255,0.04);
-  --mindmap-node-1: #2C2B29;
-  --mindmap-node-2: #28271F;
-  --mindmap-node-root: #2C2B29;
-  --mindmap-node-text: #FAFAF7;
-  --mindmap-node-border: #3A3835;
-  --mindmap-node-border-hover: #4A4744;
-  --mindmap-edge: #3A3835;
-  --toolbar-bg: rgba(35,34,33,0.97);
-  --toolbar-border: rgba(58,56,53,0.6);
+  --session-card-border: #3a3835;
+  --mindmap-bg: #18171a;
+  --mindmap-dot: rgba(255, 255, 255, 0.04);
+  --mindmap-node-1: #2c2b29;
+  --mindmap-node-2: #28271f;
+  --mindmap-node-root: #2c2b29;
+  --mindmap-node-text: #fafaf7;
+  --mindmap-node-border: #3a3835;
+  --mindmap-node-border-hover: #4a4744;
+  --mindmap-edge: #3a3835;
+  --toolbar-bg: rgba(35, 34, 33, 0.97);
+  --toolbar-border: rgba(58, 56, 53, 0.6);
   --flash-front-bg: #232221;
-  --flash-back-bg: #2C2B29;
-  --flash-border: #3A3835;
-  --flash-text: #FAFAF7;
+  --flash-back-bg: #2c2b29;
+  --flash-border: #3a3835;
+  --flash-text: #fafaf7;
   --focus-bg: #232221;
-  --focus-border: #3A3835;
-  --dropdown-bg: #2C2B29;
-  --sign-out: #9A9390;
+  --focus-border: #3a3835;
+  --dropdown-bg: #2c2b29;
+  --sign-out: #9a9390;
   --glow-color: rgba(194, 105, 42, 0.38);
 
   /* Tailwind compat vars */
-  --background: #18171A;
-  --foreground: #FAFAF7;
+  --background: #18171a;
+  --foreground: #fafaf7;
 }
 
 @theme inline {
@@ -135,14 +135,23 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.landing-body-text {
+  font-family: var(--font-manrope), var(--font-geist-sans), sans-serif !important;
+  font-weight: 560 !important;
+  letter-spacing: -0.014em;
+  line-height: 1.72;
 }
 
 /* ── Global button / link interaction feel ───────────────────────────────── */
 /* Must be in @layer base so Tailwind v4 doesn't tree-shake element selectors */
 @layer base {
   /* Prevent text selection on double-click */
-  button, a, [role="button"] {
+  button,
+  a,
+  [role='button'] {
     user-select: none;
     -webkit-user-select: none;
   }
@@ -150,7 +159,7 @@ body {
   /* Press-down scale — physical "click" feedback */
   button:active,
   a:active,
-  [role="button"]:active {
+  [role='button']:active {
     transform: scale(0.96) !important;
     transition: transform 0.08s ease !important;
   }

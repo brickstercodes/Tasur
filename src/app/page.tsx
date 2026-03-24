@@ -24,18 +24,22 @@ function Nav() {
         borderBottom: '1px solid color-mix(in srgb, var(--primary) 12%, transparent)',
       }}
     >
-      <div className="max-w-screen-xl mx-auto px-8 md:px-12 py-4 flex items-center justify-between">
+      <div className="max-w-screen-xl mx-auto px-8 md:px-12 py-4 flex items-center justify-between relative">
         {/* Logo */}
         <Link href="/" className="select-none">
           <TasurWordmark size={24} />
         </Link>
 
-        {/* Nav Links (desktop) */}
-        <div className="hidden md:flex items-center gap-10">
-          {['Philosophy', 'Methodology', 'Library'].map((item) => (
+        {/* Nav Links (desktop) — absolutely centered */}
+        <div className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
+          {[
+            { label: 'Philosophy', href: '#philosophy' },
+            { label: 'Methodology', href: '#methodology' },
+            { label: 'Library', href: '#library' },
+          ].map(({ label, href }) => (
             <a
-              key={item}
-              href="#"
+              key={label}
+              href={href}
               className="landing-nav-link"
               style={{
                 fontFamily: 'var(--font-instrument-serif)',
@@ -43,7 +47,7 @@ function Nav() {
                 letterSpacing: '-0.01em',
               }}
             >
-              {item}
+              {label}
             </a>
           ))}
         </div>
@@ -106,14 +110,14 @@ function Hero() {
               Intelligence.
             </em>
           </h1>
-          <p
-            className="text-lg leading-relaxed mb-10 max-w-lg font-bold"
+            <p
+            className="landing-body-text text-lg leading-relaxed mb-10 max-w-lg font-bold"
             style={{ color: 'var(--text-muted)', letterSpacing: '-0.011em' }}
-          >
+            >
             Tasur transforms your notes into interactive mindmaps and
-            personalized tutoring sessions for deep, scholarly focus. The
+            personalized tutoring sessions for deep, focused learning. The
             sanctuary for your intellectual growth.
-          </p>
+            </p>
           <div className="flex flex-wrap items-center gap-6">
             <Link
               href="/signup"
@@ -125,7 +129,7 @@ function Hero() {
                 boxShadow: '0 4px 20px color-mix(in srgb, var(--primary) 30%, transparent)',
               }}
             >
-              Begin Your Research
+              Begin Your Study
             </Link>
             <Link
               href="/login"
@@ -158,7 +162,7 @@ function ScholarsInterface() {
   ];
 
   return (
-    <section className="py-28" style={{ background: 'var(--surface)' }}>
+    <section id="library" className="py-28" style={{ background: 'var(--surface)' }}>
       <div className="max-w-screen-xl mx-auto px-8 md:px-12">
         <div className="mb-16">
           <h2
@@ -367,7 +371,7 @@ function ConceptualMapping() {
             style={{ fontFamily: 'var(--font-instrument-serif)', color: 'var(--text)' }}>
             Conceptual Mapping
           </h2>
-          <p className="text-lg leading-relaxed mb-8 font-bold" style={{ color: 'var(--text-muted)' }}>
+          <p className="landing-body-text text-lg leading-relaxed mb-8 font-bold" style={{ color: 'var(--text-muted)' }}>
             Stop viewing your notes as linear files. Tasur&apos;s engine analyzes
             semantic relationships across your entire library, visualizing how
             distant ideas connect into a cohesive mental model.
@@ -380,7 +384,7 @@ function ConceptualMapping() {
             ].map((item) => (
               <li key={item} className="flex items-start gap-3" style={{ color: 'var(--text)' }}>
                 <span style={{ color: 'var(--primary)', marginTop: '2px', flexShrink: 0 }}>◆</span>
-                <span className="text-base leading-relaxed font-semibold">{item}</span>
+                <span className="landing-body-text text-base leading-relaxed font-semibold">{item}</span>
               </li>
             ))}
           </ul>
@@ -411,7 +415,7 @@ function AiTutor() {
             style={{ fontFamily: 'var(--font-instrument-serif)', color: 'var(--text)' }}>
             The AI Tutor
           </h2>
-          <p className="text-lg leading-relaxed mb-8 font-bold" style={{ color: 'var(--text-muted)' }}>
+          <p className="landing-body-text text-lg leading-relaxed mb-8 font-bold" style={{ color: 'var(--text-muted)' }}>
             Imagine a brilliant polymath who has read every word you&apos;ve ever
             written. Engage in deep, Socratic dialogues with an AI that
             challenges your assumptions and clarifies complex topics.
@@ -666,9 +670,196 @@ function AdaptiveFlashcards() {
               style={{ fontFamily: 'var(--font-instrument-serif)', color: 'var(--text)' }}>
               {title}
             </h4>
-            <p className="text-base leading-relaxed font-bold" style={{ color: 'var(--text-muted)' }}>
+            <p className="landing-body-text text-base leading-relaxed font-bold" style={{ color: 'var(--text-muted)' }}>
               {body}
             </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ------------------------------------------------------------------
+// Philosophy
+// ------------------------------------------------------------------
+
+function Philosophy() {
+  return (
+    <section id="philosophy" className="py-28" style={{ background: 'var(--surface)' }}>
+      <div className="max-w-screen-xl mx-auto px-8 md:px-12">
+        <div className="max-w-3xl mx-auto text-center mb-20">
+          <span
+            className="text-xs font-bold tracking-[0.2em] uppercase block mb-4"
+            style={{ fontFamily: 'var(--font-geist-mono)', color: 'var(--primary)' }}
+          >
+            Why We Exist
+          </span>
+          <h2
+            className="text-5xl md:text-6xl leading-tight mb-8"
+            style={{ fontFamily: 'var(--font-instrument-serif)', color: 'var(--text)' }}
+          >
+            The Science of Understanding
+          </h2>
+          <p className="landing-body-text text-xl leading-relaxed font-bold" style={{ color: 'var(--text-muted)' }}>
+            Humans retain information through{' '}
+            <em style={{ color: 'var(--primary)', fontStyle: 'italic' }}>encoding richness</em>
+            {' '}— the more pathways (visual, verbal, spatial, experiential) through which a
+            concept is processed, the stronger and more retrievable the memory.
+            Tasur&apos;s architecture is built around this principle.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            {
+              icon: '◈',
+              title: 'Visual Learning',
+              body: 'Mindmaps, flow diagrams, and concept sketches activate spatial memory — creating structures your brain naturally navigates rather than text it has to parse.',
+            },
+            {
+              icon: '◉',
+              title: 'Active Recall',
+              body: 'Flashcards, teach-back exercises, and Socratic dialogue force your brain to retrieve — not just recognize — information. Retrieval is the act that builds the memory.',
+              elevated: true,
+            },
+            {
+              icon: '◎',
+              title: 'Spaced Repetition',
+              body: 'An AI orchestrator schedules reviews at the precise moment before you would forget, compounding retention without wasting time on concepts you already own.',
+            },
+          ].map(({ icon, title, body, elevated }) => (
+            <div
+              key={title}
+              className="p-8 rounded-xl transition-all duration-200"
+              style={{
+                background: elevated ? 'var(--bg)' : 'var(--surface)',
+                marginTop: elevated ? '-2rem' : '0',
+                boxShadow: elevated
+                  ? '0 8px 32px rgba(0,0,0,0.10), 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent)'
+                  : 'none',
+              }}
+            >
+              <div
+                className="w-11 h-11 flex items-center justify-center rounded-sm mb-6 text-xl"
+                style={{
+                  background: elevated
+                    ? 'var(--primary)'
+                    : 'color-mix(in srgb, var(--primary) 12%, transparent)',
+                  color: elevated ? '#ffffff' : 'var(--primary)',
+                }}
+              >
+                {icon}
+              </div>
+              <h3
+                className="text-2xl mb-3"
+                style={{ fontFamily: 'var(--font-instrument-serif)', color: 'var(--text)' }}
+              >
+                {title}
+              </h3>
+              <p className="landing-body-text text-base leading-relaxed font-bold" style={{ color: 'var(--text-muted)' }}>
+                {body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ------------------------------------------------------------------
+// Methodology — Five-Phase Learning Flow
+// ------------------------------------------------------------------
+
+function Methodology() {
+  const phases = [
+    {
+      number: '01',
+      title: 'Ingest & Orient',
+      description:
+        'Upload your notes, slides, or PDFs. In a single step, Tasur generates a comprehensive Freeplane mindmap — the single source of truth from which your entire learning experience flows. You see the full landscape before diving in.',
+    },
+    {
+      number: '02',
+      title: 'Concept Breakdown',
+      description:
+        'The AI study partner walks through concepts following the mindmap\'s natural structure — foundational ideas first, complex ones after prerequisites are solid. Analogies, real-world examples, and micro-assessments after each concept feed your understanding back to the orchestrator.',
+    },
+    {
+      number: '03',
+      title: 'Connect & Visualize',
+      description:
+        'Interactive visual artifacts — mindmaps, flow diagrams, concept sketches — that you manipulate. Fill in missing nodes. Drag concepts to where they connect. The act of constructing the visual is itself a learning event. This phase also includes teach-back: explain a concept, and the AI evaluates your understanding.',
+    },
+    {
+      number: '04',
+      title: 'Retrieval Practice',
+      description:
+        'Spaced repetition flashcards weighted by the orchestrator\'s model of your understanding. Multiple formats: pure recall, application scenarios, "explain this simply," compare-and-contrast. The system knows what you struggled with and weights accordingly.',
+    },
+    {
+      number: '05',
+      title: 'Exam Simulation',
+      description:
+        'Timed, exam-style questions with detailed feedback. For coding subjects, this includes "write code to solve this" challenges with automated evaluation. Builds confidence and surfaces last-minute gaps before it matters.',
+    },
+  ];
+
+  return (
+    <section id="methodology" className="py-28 max-w-screen-xl mx-auto px-8 md:px-12">
+      <div className="mb-16">
+        <span
+          className="text-xs font-bold tracking-[0.2em] uppercase block mb-4"
+          style={{ fontFamily: 'var(--font-geist-mono)', color: 'var(--primary)' }}
+        >
+          How It Works
+        </span>
+        <h2
+          className="text-5xl md:text-6xl"
+          style={{ fontFamily: 'var(--font-instrument-serif)', color: 'var(--text)' }}
+        >
+          The Five-Phase Flow
+        </h2>
+        <div className="h-0.5 w-20 mt-4" style={{ background: 'var(--primary)' }} />
+      </div>
+
+      <div className="space-y-4">
+        {phases.map((phase) => (
+          <div
+            key={phase.number}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start p-8 rounded-xl group transition-all duration-200 hover:shadow-lg"
+            style={{ background: 'var(--surface)' }}
+          >
+            <div className="lg:col-span-1">
+              <span
+                style={{
+                  fontFamily: 'var(--font-geist-mono)',
+                  color: 'var(--primary)',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {phase.number}
+              </span>
+            </div>
+            <div className="lg:col-span-3">
+              <h3
+                className="text-2xl"
+                style={{ fontFamily: 'var(--font-instrument-serif)', color: 'var(--text)' }}
+              >
+                {phase.title}
+              </h3>
+            </div>
+            <div className="lg:col-span-8">
+              <p
+                className="landing-body-text text-base leading-relaxed font-semibold"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {phase.description}
+              </p>
+            </div>
           </div>
         ))}
       </div>
@@ -695,14 +886,18 @@ function Cta() {
           className="text-6xl md:text-7xl leading-tight mb-12 text-white"
           style={{ fontFamily: 'var(--font-instrument-serif)' }}
         >
-          Ready to cultivate your scholarly mind?
+          Ready to cultivate
+          <br />
+            <em style={{ fontStyle: 'italic', textDecoration: 'underline', textDecorationColor: '#ffffff', textDecorationThickness: '3px', textUnderlineOffset: '8px' }}>
+            deep understanding?
+            </em>
         </h2>
         <Link
           href="/signup"
           className="inline-block px-12 py-5 text-lg font-bold transition-all duration-200 hover:scale-[1.03] hover:shadow-2xl"
           style={{ background: '#ffffff', color: 'var(--primary)', borderRadius: '3px' }}
         >
-          Begin Your Research
+          Begin Your Study
         </Link>
         <p
           className="mt-8 text-sm tracking-[0.15em] uppercase opacity-75 text-white font-bold"
@@ -762,10 +957,12 @@ export default function LandingPage() {
       <Nav />
       <main>
         <Hero />
+        <Philosophy />
         <ScholarsInterface />
         <ConceptualMapping />
         <AiTutor />
         <AdaptiveFlashcards />
+        <Methodology />
         <Cta />
       </main>
       <Footer />

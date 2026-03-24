@@ -7,7 +7,7 @@
  */
 
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
+import { Geist, Geist_Mono, Instrument_Serif, Manrope } from 'next/font/google';
 import './globals.css';
 import { CustomCursor } from '@/components/ui/CustomCursor';
 import { ClickRipple } from '@/components/ui/ClickRipple';
@@ -31,6 +31,12 @@ const instrumentSerif = Instrument_Serif({
   style: ['normal', 'italic'],
 });
 
+const manrope = Manrope({
+  variable: '--font-manrope',
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+});
+
 export const metadata: Metadata = {
   title: 'Tasur',
   description: 'AI-powered study platform for college students',
@@ -43,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${manrope.variable} antialiased`}>
         <ThemeProvider>
           <GlowBackground />
           <CustomCursor />
