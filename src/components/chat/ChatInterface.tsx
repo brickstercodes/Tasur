@@ -468,13 +468,20 @@ export function ChatInterface({
             </div>
           )}
 
-          {messages.map((message) => (
+          {messages.map((message, idx) => (
             <MessageBubble
               key={message.id}
               message={message}
               learningMode={learningMode}
               userInitial={userInitial}
               onAssessmentSubmit={handleAssessmentSubmit}
+              assessmentSubmitted={
+                // Mark as submitted if a user message follows this one in the history,
+                // meaning the student already answered this assessment.
+                message.microAssessment != null &&
+                idx < messages.length - 1 &&
+                messages[idx + 1].role === 'user'
+              }
             />
           ))}
 
@@ -616,11 +623,13 @@ function MessageBubble({
   learningMode,
   userInitial,
   onAssessmentSubmit,
+  assessmentSubmitted = false,
 }: {
   message: ChatMessage;
   learningMode: 'fast' | 'steady';
   userInitial: string;
   onAssessmentSubmit: (answer: string) => void;
+  assessmentSubmitted?: boolean;
 }) {
   const isUser = message.role === 'user';
   const accent = message.messageType
@@ -777,6 +786,7 @@ function MessageBubble({
             difficulty={message.microAssessment.difficulty}
             learningMode={learningMode}
             questionType={message.microAssessment.question_type}
+            initialSubmitted={assessmentSubmitted}
             onSubmit={onAssessmentSubmit}
           />
         </div>

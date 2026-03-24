@@ -21,6 +21,8 @@ interface MicroAssessmentProps {
   difficulty: 'easy' | 'intermediate' | 'hard';
   learningMode: 'fast' | 'steady';
   questionType?: 'self_check' | 'open';
+  /** True when loaded from history and the student already answered. */
+  initialSubmitted?: boolean;
   onSubmit: (answer: string) => void;
 }
 
@@ -49,10 +51,11 @@ export function MicroAssessment({
   difficulty,
   learningMode,
   questionType = 'open',
+  initialSubmitted = false,
   onSubmit,
 }: MicroAssessmentProps) {
   const [answer, setAnswer] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(initialSubmitted);
 
   function handleFastSubmit(value: string) {
     setSubmitted(true);
