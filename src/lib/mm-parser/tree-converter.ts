@@ -7,12 +7,11 @@
  *
  * Mapping rules:
  * - Root MmNode → title + subject fields of MindmapTreeOutput
- * - TRACKABLE MmNode → MindmapNode with concept_id, label, content
- * - Non-TRACKABLE children of a TRACKABLE node → first one becomes `content`,
- *   additional ones become leaf MindmapNode children (label only, no concept_id)
- * - Non-TRACKABLE nodes at the top level (between root and first TRACKABLE)
- *   are treated the same as non-TRACKABLE children
- * - The [DIAGRAM TO STUDY:] leaf nodes become their own children with label
+ * - TRACKABLE MmNode → MindmapNode with concept_id and label
+ * - Non-TRACKABLE children (leaf or branch) → recursively converted to MindmapNode
+ *   children, preserving full sub-tree depth at every level
+ * - TRACKABLE children → recursively converted with concept_id
+ * - Leaf MmNodes (no children) → label-only MindmapNode (visible tree leaf)
  *
  * This preserves the existing MindmapTreeOutput schema so the frontend rendering
  * code requires zero changes — only the producer changes from LLM to code.
@@ -22,11 +21,6 @@
 
 import type { MindmapNode, MindmapTreeOutput } from '@/lib/schemas/mindmap-tree-output';
 import type { MmNode, ParsedMindmap } from './types';
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-/** Max leaf nodes to promote to `content` vs. keep as children. */
-const CONTENT_LEAF_LIMIT = 2;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -66,36 +60,16 @@ export function toMindmapTreeOutput(tree: ParsedMindmap, subject?: string): Mind
 /**
  * Converts a single MmNode (and its subtree) into a MindmapNode.
  *
- * For TRACKABLE nodes:
- * - `label` ← node.TEXT
- * - `concept_id` ← node.CONCEPT_ID
- * - `content` ← first 1-2 non-TRACKABLE child texts (the key teaching points)
- * - `children` ← TRACKABLE children (recursed) + remaining leaf texts as bullet nodes
+ * Every child — TRACKABLE or not, leaf or branch — is recursively converted
+ * into a visible MindmapNode. This preserves the full depth of the .mm XML
+ * in the frontend tree.
  *
- * For non-TRACKABLE nodes (used when roots / intermediate non-trackable branches exist):
- * - `label` ← node.TEXT
- * - `children` ← all children recursed
- * - No concept_id
+ * - TRACKABLE nodes get concept_id set; non-TRACKABLE nodes do not.
+ * - Leaf MmNodes (no children) become label-only MindmapNodes.
  */
 function convertMmNode(node: MmNode): MindmapNode {
-  const nonTrackableChildren = node.children.filter((c) => !c.TRACKABLE);
-  const trackableChildren = node.children.filter((c) => c.TRACKABLE);
-
-  const leafTexts = nonTrackableChildren
-    .map((c) => c.TEXT)
-    .filter((t) => t.length > 0);
-
-  // First 1-2 leaf texts become the inline `content` field shown on expand
-  const contentLeaves = leafTexts.slice(0, CONTENT_LEAF_LIMIT);
-  const remainingLeaves = leafTexts.slice(CONTENT_LEAF_LIMIT);
-
-  // Remaining leaf texts become bullet MindmapNodes (label only, no concept_id)
-  const leafChildren: MindmapNode[] = remainingLeaves.map((text) => ({ label: text }));
-
-  // Recursive TRACKABLE children
-  const trackableChildNodes: MindmapNode[] = trackableChildren.map(convertMmNode);
-
-  const children: MindmapNode[] = [...trackableChildNodes, ...leafChildren];
+  // Recursively convert all children, preserving their order and full sub-tree.
+  const children: MindmapNode[] = node.children.map(convertMmNode);
 
   const result: MindmapNode = {
     label: node.TEXT,
@@ -105,10 +79,6 @@ function convertMmNode(node: MmNode): MindmapNode {
   if (node.TRACKABLE && node.CONCEPT_ID) {
     result.id = node.CONCEPT_ID;
     result.concept_id = node.CONCEPT_ID;
-  }
-
-  if (contentLeaves.length > 0) {
-    result.content = contentLeaves.join(' ');
   }
 
   return result;
