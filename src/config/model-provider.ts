@@ -6,8 +6,13 @@
  * is selected by LLM_PROVIDER in .env. Switching providers for the entire
  * agent layer is a .env change — no code changes needed anywhere else.
  *
- * Orchestrator model: high-capability, used for complex reasoning (concept explainer).
- * Specialist model:   fast + cheap, used for structured generation (parser, mindmap, etc.).
+ * Orchestrator model:    high-capability, used for complex reasoning (concept explainer).
+ * Specialist model:      fast + cheap, used for structured generation (parser, mindmap, etc.).
+ * .mm Generator model:   separated from the orchestrator because BOTH the PDF-native path and
+ *                        the text path need thinking enabled (thinking forces exhaustive
+ *                        enumeration rather than sequential summarisation). Thinking is a
+ *                        Gemini-specific feature, so this getter always uses Google regardless
+ *                        of LLM_PROVIDER.
  */
 
 import { createAnthropic } from '@ai-sdk/anthropic';
@@ -18,7 +23,7 @@ import type { LanguageModel } from 'ai';
 const DEFAULT_ORCHESTRATOR_MODEL_ID = 'gemini-2.0-pro-exp-02-05';
 const DEFAULT_SPECIALIST_MODEL_ID = 'gemini-2.0-flash';
 /** Gemini model used for PDF-native mindmap generation (needs vision + thinking). */
-const DEFAULT_PDF_MM_MODEL_ID = 'gemini-2.5-pro-preview-05-06';
+const DEFAULT_PDF_MM_MODEL_ID = 'gemini-3.1-pro-preview';
 
 function buildModel(modelId: string): LanguageModel {
   const provider = process.env.LLM_PROVIDER ?? 'gemini';
@@ -65,6 +70,21 @@ export function getOrchestratorModel(): LanguageModel {
 export function getSpecialistModel(): LanguageModel {
   const modelId = process.env.SPECIALIST_MODEL ?? DEFAULT_SPECIALIST_MODEL_ID;
   return buildModel(modelId);
+}
+
+/**
+ * Returns the Gemini model used for .mm generation on the text-based path.
+ *
+ * Always uses Google regardless of LLM_PROVIDER — thinking is Gemini-specific
+ * and is required for exhaustive content coverage on both the PDF and text paths.
+ * Reads MM_GENERATOR_MODEL from env, falls back to Gemini 2.5 Pro.
+ */
+export function getMmGeneratorModel(): LanguageModel {
+  const modelId = process.env.MM_GENERATOR_MODEL ?? DEFAULT_PDF_MM_MODEL_ID;
+  const google = createGoogleGenerativeAI({
+    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  });
+  return google(modelId);
 }
 
 /**

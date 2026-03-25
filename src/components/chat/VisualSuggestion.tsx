@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 /**
  * WHY: Renders inline visual aids that the Concept Explainer agent produces
  * alongside its text response.
@@ -142,12 +144,12 @@ function ComparisonVisual({ data }: { data: Record<string, unknown> }) {
   const leftLabel = typeof data.left === 'string' ? data.left : 'A';
   const rightLabel = typeof data.right === 'string' ? data.right : 'B';
 
-  // Support three possible shapes the LLM may emit:
+  // Support several possible shapes the LLM may emit:
   //   1. { items: [{ attribute, left, right }] }  ← canonical
   //   2. { attributes[], left_values[], right_values[] }
   //   3. { rows: [[attribute, left, right], ...] } ← LLM sometimes uses table format
   let items = Array.isArray(data.items)
-    ? (data.items as Array<{ attribute: string; left: string; right: string }>)
+    ? normalizeComparisonItems(data.items as Array<Record<string, unknown>>)
     : buildComparisonItems(data);
 
   if (items.length === 0 && Array.isArray(data.rows)) {
@@ -188,6 +190,25 @@ function ComparisonVisual({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+/** Normalize items where the LLM may use field names other than attribute/left/right */
+function normalizeComparisonItems(
+  raw: Array<Record<string, unknown>>,
+): Array<{ attribute: string; left: string; right: string }> {
+  return raw.map((item) => {
+    const keys = Object.keys(item);
+    // attribute: prefer 'attribute', then 'property', 'name', 'feature', first key
+    const attrKey = keys.find(k => /^(attribute|property|name|feature|aspect|criterion)$/i.test(k)) ?? keys[0];
+    // left/right: prefer 'left'/'right', then keys 1 and 2, or any remaining keys
+    const leftKey = keys.find(k => /^left$/i.test(k)) ?? keys[1];
+    const rightKey = keys.find(k => /^right$/i.test(k)) ?? keys[2];
+    return {
+      attribute: String(item[attrKey] ?? ''),
+      left: String(item[leftKey ?? ''] ?? ''),
+      right: String(item[rightKey ?? ''] ?? ''),
+    };
+  });
+}
+
 function buildComparisonItems(
   data: Record<string, unknown>,
 ): Array<{ attribute: string; left: string; right: string }> {
@@ -216,51 +237,103 @@ function DiagramVisual({ data }: { data: Record<string, unknown> }) {
     ? (data.edges as Array<{ from: string; to: string; label?: string }>)
     : [];
 
+  // Build chains: sequences of nodes connected by edges
+  const chains: Array<Array<{ label: string; edgeLabel?: string }>> = [];
+  if (edges.length > 0) {
+    // Find nodes that are only sources (chain starts)
+    const hasIncoming = new Set(edges.map(e => e.to));
+    const starts = edges.map(e => e.from).filter(n => !hasIncoming.has(n));
+    const uniqueStarts = [...new Set(starts.length > 0 ? starts : edges.map(e => e.from))];
+
+    // Build adjacency map
+    const adj = new Map<string, { to: string; label?: string }>();
+    for (const e of edges) adj.set(e.from, { to: e.to, label: e.label });
+
+    const visited = new Set<string>();
+    for (const start of uniqueStarts) {
+      if (visited.has(start)) continue;
+      const chain: Array<{ label: string; edgeLabel?: string }> = [{ label: start }];
+      visited.add(start);
+      let cur = start;
+      while (adj.has(cur)) {
+        const next = adj.get(cur)!;
+        if (visited.has(next.to)) break;
+        chain[chain.length - 1].edgeLabel = next.label;
+        chain.push({ label: next.to });
+        visited.add(next.to);
+        cur = next.to;
+      }
+      chains.push(chain);
+    }
+
+    // Any edges not covered by chains (e.g. cycles or multi-source)
+    for (const e of edges) {
+      if (!visited.has(e.from) || !visited.has(e.to)) {
+        chains.push([
+          { label: e.from, edgeLabel: e.label },
+          { label: e.to },
+        ]);
+        visited.add(e.from);
+        visited.add(e.to);
+      }
+    }
+  }
+
+  // Nodes that don't appear in any edge
+  const edgeNodes = new Set([...edges.map(e => e.from), ...edges.map(e => e.to)]);
+  const orphans = nodes.filter(n => !edgeNodes.has(n));
+
+  const nodeBox: React.CSSProperties = {
+    background: 'var(--surface-elevated)',
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    padding: '5px 10px',
+    fontSize: 12,
+    color: 'var(--text)',
+  };
+
   return (
     <div style={{ color: 'var(--text)', lineHeight: 1.6 }}>
       {description && (
-        <p style={{ margin: '0 0 10px', color: 'var(--text-muted)' }}>{description}</p>
+        <p style={{ margin: '0 0 12px', color: 'var(--text-muted)', fontSize: 12 }}>{description}</p>
       )}
 
-      {nodes.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-            Nodes
-          </span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-            {nodes.map((node, i) => (
-              <span
-                key={i}
-                style={{
-                  background: 'var(--surface-elevated)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 4,
-                  padding: '2px 8px',
-                  fontSize: 12,
-                  color: 'var(--text)',
-                }}
-              >
-                {node}
-              </span>
-            ))}
-          </div>
+      {chains.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: orphans.length > 0 ? 12 : 0 }}>
+          {chains.map((chain, ci) => (
+            <div key={ci} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+              {chain.map((step, si) => (
+                <React.Fragment key={si}>
+                  <span style={nodeBox} title={step.label}>{step.label}</span>
+                  {si < chain.length - 1 && (
+                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--text-muted)', fontSize: 11, gap: 1 }}>
+                      {step.edgeLabel && (
+                        <span style={{ fontSize: 10, color: 'var(--accent)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                          {step.edgeLabel}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 14, lineHeight: 1 }}>→</span>
+                    </span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          ))}
         </div>
       )}
 
-      {edges.length > 0 && (
+      {orphans.length > 0 && (
         <div>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-            Relationships
-          </span>
-          <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
-            {edges.map((edge, i) => (
-              <li key={i} style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 2 }}>
-                <strong>{edge.from}</strong>
-                {edge.label ? ` —[${edge.label}]→ ` : ' → '}
-                <strong>{edge.to}</strong>
-              </li>
+          {chains.length > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+              Nodes
+            </span>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {orphans.map((node, i) => (
+              <span key={i} style={nodeBox}>{node}</span>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 

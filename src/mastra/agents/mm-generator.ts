@@ -13,8 +13,10 @@
  *       text extraction to describe visuals.
  *
  *   Text-based path  (all other file types, or PDF without a buffer)
- *     → Sends the extracted raw text to the orchestrator model. Used for DOCX, TXT,
- *       and image OCR results where multimodal vision adds no value.
+ *     → Sends the extracted raw text to the dedicated mm-generator model (Gemini 2.5 Pro
+ *       with thinking enabled). Used for DOCX, TXT, and image OCR results where
+ *       multimodal vision adds no value. Thinking is enabled here too — it forces
+ *       exhaustive enumeration rather than sequential summarisation.
  *
  * Both paths validate the output with validateMmOutput() and retry once on failure.
  * The PDF path always retries with PDF-native (Gemini 2.5 Pro + file bytes) — it
@@ -29,16 +31,17 @@
 
 import { generateText } from 'ai';
 
-import { getOrchestratorModel, getPdfMmModel } from '@/config/model-provider';
+import { getMmGeneratorModel, getPdfMmModel } from '@/config/model-provider';
 import type { AgentResult, TasurAgent } from '@/interfaces/agents';
 import type { MmGeneratorInput } from '@/interfaces/registry';
 import { validateMmOutput } from '@/lib/schemas/mm-generator-output';
-import { loadPrompt } from '@/prompts/loader';
+import { loadPrompt, loadPromptFile } from '@/prompts/loader';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** Low temperature for structural consistency — the .mm format is strict. */
-const TEXT_TEMPERATURE = 0.1;
+/** Thinking models require temperature = 1. Even for the text path, we use a thinking-enabled
+ *  model for exhaustive content coverage. */
+const TEXT_TEMPERATURE = 1;
 /** Thinking models require temperature = 1. */
 const PDF_TEMPERATURE = 1;
 
@@ -64,7 +67,8 @@ async function executeTextBased(
   input: MmGeneratorInput,
   startTime: number,
 ): Promise<AgentResult<string>> {
-  const systemPrompt = loadPrompt('mm-generator', input.subjectHint ?? null);
+  const systemPrompt = loadPrompt('mm-generator-system', input.subjectHint ?? null);
+  const exampleMmXml = loadPromptFile('base/mm-generator-example.xml');
   const userMessage = buildTextUserMessage(input);
 
   if (process.env.DEBUG_PROMPTS) {
@@ -74,10 +78,31 @@ async function executeTextBased(
   }
 
   const { text, usage } = await generateText({
-    model: getOrchestratorModel(),
+    model: getMmGeneratorModel(),
     system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
+    messages: [
+      {
+        role: 'user',
+        content:
+          'Generate a complete and exhaustive Freeplane .mm mindmap for the following study material about Synchronization in Distributed Computing.',
+      },
+      {
+        role: 'assistant',
+        content: exampleMmXml,
+      },
+      {
+        role: 'user',
+        content: userMessage,
+      },
+    ],
     temperature: TEXT_TEMPERATURE,
+    providerOptions: {
+      google: {
+        thinkingConfig: {
+          thinkingLevel: 'high' as const,
+        },
+      },
+    },
   });
 
   const mmXml = extractXmlFromResponse(text);
@@ -86,10 +111,29 @@ async function executeTextBased(
   if (!validationResult.valid) {
     const retryMessage = buildTextRetryMessage(input, mmXml, validationResult.errors);
     const retryResult = await generateText({
-      model: getOrchestratorModel(),
+      model: getMmGeneratorModel(),
       system: systemPrompt,
-      messages: [{ role: 'user', content: retryMessage }],
-      temperature: 0,
+      messages: [
+        {
+          role: 'user',
+          content:
+            'Generate a complete and exhaustive Freeplane .mm mindmap for the following study material about Synchronization in Distributed Computing.',
+        },
+        {
+          role: 'assistant',
+          content: exampleMmXml,
+        },
+        {
+          role: 'user',
+          content: retryMessage,
+        },
+      ],
+      temperature: TEXT_TEMPERATURE,
+      providerOptions: {
+        google: {
+          thinkingConfig: { thinkingLevel: 'medium' as const },
+        },
+      },
     });
 
     const retriedXml = extractXmlFromResponse(retryResult.text);
@@ -127,7 +171,8 @@ async function executePdfNative(
   input: MmGeneratorInput,
   startTime: number,
 ): Promise<AgentResult<string>> {
-  const systemPrompt = loadPrompt('mm-generator', input.subjectHint ?? null);
+  const systemPrompt = loadPrompt('mm-generator-system', input.subjectHint ?? null);
+  const exampleMmXml = loadPromptFile('base/mm-generator-example.xml');
   const userTextPart = buildPdfUserTextPart(input);
 
   if (process.env.DEBUG_PROMPTS) {
@@ -140,6 +185,15 @@ async function executePdfNative(
     model: getPdfMmModel(),
     system: systemPrompt,
     messages: [
+      {
+        role: 'user',
+        content:
+          'Generate a complete and exhaustive Freeplane .mm mindmap for the following study material about Synchronization in Distributed Computing.',
+      },
+      {
+        role: 'assistant',
+        content: exampleMmXml,
+      },
       {
         role: 'user',
         content: [
@@ -177,8 +231,17 @@ async function executePdfNative(
     // whole reason we're on this path. Retry with the same file + explicit error list.
     const retryResult = await generateText({
       model: getPdfMmModel(),
-      system: loadPrompt('mm-generator', input.subjectHint ?? null),
+      system: loadPrompt('mm-generator-system', input.subjectHint ?? null),
       messages: [
+        {
+          role: 'user',
+          content:
+            'Generate a complete and exhaustive Freeplane .mm mindmap for the following study material about Synchronization in Distributed Computing.',
+        },
+        {
+          role: 'assistant',
+          content: exampleMmXml,
+        },
         {
           role: 'user',
           content: [

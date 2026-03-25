@@ -41,3 +41,15 @@ export function loadPrompt(agentName: string, domain?: string | null): string {
   const domainPrompt = fs.readFileSync(domainFilePath, 'utf-8');
   return `${basePrompt}\n\n---\n\n## Domain Context\n\n${domainPrompt}`;
 }
+
+/**
+ * Loads a raw file from the prompts directory.
+ * Used for loading example outputs that are injected as assistant turns
+ * rather than embedded in system prompts.
+ *
+ * @param relativePath - Path relative to src/prompts/ (e.g. "base/mm-generator-example.xml").
+ */
+export function loadPromptFile(relativePath: string): string {
+  const filePath = path.join(PROMPTS_DIRECTORY, relativePath);
+  return fs.readFileSync(filePath, 'utf-8');
+}

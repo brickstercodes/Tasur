@@ -10,18 +10,21 @@
 
 import { generateText } from 'ai';
 
-import { getOrchestratorModel } from '@/config/model-provider';
+import { getMmGeneratorModel } from '@/config/model-provider';
 import type { AgentResult, TasurAgent } from '@/interfaces/agents';
 import type { MmGeneratorInput } from '@/interfaces/registry';
 import { validateMmOutput } from '@/lib/schemas/mm-generator-output';
-import { loadPrompt } from '@/prompts/loader';
+import { loadPrompt, loadPromptFile } from '@/prompts/loader';
 
-const MM_GENERATOR_TEMPERATURE = 0.1;
+/** Thinking models require temperature = 1. Even for the text path, we use a thinking-enabled
+ *  model for exhaustive content coverage. */
+const MM_GENERATOR_TEMPERATURE = 1;
 
 export class ManualMmGeneratorAgent implements TasurAgent<MmGeneratorInput, string> {
   async execute(input: MmGeneratorInput): Promise<AgentResult<string>> {
     const startTime = Date.now();
-    const systemPrompt = loadPrompt('mm-generator', input.subjectHint ?? null);
+    const systemPrompt = loadPrompt('mm-generator-system', input.subjectHint ?? null);
+    const exampleMmXml = loadPromptFile('base/mm-generator-example.xml');
     const userMessage = buildUserMessage(input);
 
     if (process.env.DEBUG_PROMPTS) {
@@ -31,10 +34,31 @@ export class ManualMmGeneratorAgent implements TasurAgent<MmGeneratorInput, stri
     }
 
     const { text, usage } = await generateText({
-      model: getOrchestratorModel(),
+      model: getMmGeneratorModel(),
       system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
+      messages: [
+        {
+          role: 'user',
+          content:
+            'Generate a complete and exhaustive Freeplane .mm mindmap for the following study material about Synchronization in Distributed Computing.',
+        },
+        {
+          role: 'assistant',
+          content: exampleMmXml,
+        },
+        {
+          role: 'user',
+          content: userMessage,
+        },
+      ],
       temperature: MM_GENERATOR_TEMPERATURE,
+      providerOptions: {
+        google: {
+          thinkingConfig: {
+            thinkingLevel: 'high' as const,
+          },
+        },
+      },
     });
 
     const mmXml = extractXmlFromResponse(text);
@@ -43,10 +67,29 @@ export class ManualMmGeneratorAgent implements TasurAgent<MmGeneratorInput, stri
     if (!validationResult.valid) {
       const retryMessage = buildRetryUserMessage(input, mmXml, validationResult.errors);
       const retryResult = await generateText({
-        model: getOrchestratorModel(),
+        model: getMmGeneratorModel(),
         system: systemPrompt,
-        messages: [{ role: 'user', content: retryMessage }],
-        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content:
+              'Generate a complete and exhaustive Freeplane .mm mindmap for the following study material about Synchronization in Distributed Computing.',
+          },
+          {
+            role: 'assistant',
+            content: exampleMmXml,
+          },
+          {
+            role: 'user',
+            content: retryMessage,
+          },
+        ],
+        temperature: MM_GENERATOR_TEMPERATURE,
+        providerOptions: {
+          google: {
+            thinkingConfig: { thinkingLevel: 'medium' as const },
+          },
+        },
       });
 
       const retriedXml = extractXmlFromResponse(retryResult.text);
