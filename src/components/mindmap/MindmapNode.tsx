@@ -106,11 +106,26 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
     event.stopPropagation();
   }, []);
 
-  const handleConceptClick = useCallback(() => {
+  const handleConceptClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (hasChildren) {
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const x = event.clientX - bounds.left;
+      const y = event.clientY - bounds.top;
+
+      // Ignore node-clicks in the bubble overlap zone so expand intent doesn't
+      // accidentally route the user into concept chat.
+      const nearBubbleX = direction === 'left'
+        ? x <= 16
+        : x >= bounds.width - 16;
+      const nearBubbleY = Math.abs(y - bounds.height / 2) <= 14;
+
+      if (nearBubbleX && nearBubbleY) return;
+    }
+
     if (isConcept && concept_id) {
       onConceptClick(concept_id);
     }
-  }, [isConcept, concept_id, onConceptClick]);
+  }, [hasChildren, direction, isConcept, concept_id, onConceptClick]);
 
   // ── Root node ───────────────────────────────────────────────────────────────
   if (isRoot) {
