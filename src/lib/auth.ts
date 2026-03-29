@@ -35,7 +35,7 @@ export const auth = betterAuth({
   // As of v1.5.5, generateId lives under advanced.database (not advanced directly).
   advanced: {
     database: {
-      generateId: 'uuid',
+      generateId: () => crypto.randomUUID(),
     },
   },
 

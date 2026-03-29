@@ -24,6 +24,8 @@
  * Returns: text/event-stream
  */
 
+export const maxDuration = 300; // SSE upload pipeline can take 2-3 min on large docs
+
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';

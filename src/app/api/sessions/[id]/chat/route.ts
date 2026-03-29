@@ -22,6 +22,8 @@
  * No mock agents — all calls use real LLM API keys.
  */
 
+export const maxDuration = 300; // SSE chat stream — LLM calls can be slow
+
 import { type NextRequest } from 'next/server';
 import { revalidatePath } from 'next/cache';
 

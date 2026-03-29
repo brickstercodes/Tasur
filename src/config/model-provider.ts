@@ -32,11 +32,17 @@ const DEFAULT_PDF_MM_MODEL_ID = 'gemini-2.5-pro';
 
 /** Shared Vertex AI client — reused across all Gemini model getters. */
 function getVertexClient(locationOverride?: string) {
+  // On Vercel, file-based GOOGLE_APPLICATION_CREDENTIALS is not available.
+  // GOOGLE_APPLICATION_CREDENTIALS_JSON holds the raw JSON string instead.
+  const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+  const googleAuthOptions = credentialsJson
+    ? { credentials: JSON.parse(credentialsJson) }
+    : undefined;
+
   return createVertex({
     project: process.env.GOOGLE_CLOUD_PROJECT ?? 'gen-lang-client-0468294301',
     location: locationOverride ?? process.env.GOOGLE_CLOUD_LOCATION ?? 'us-central1',
-    // Auth is handled automatically via GOOGLE_APPLICATION_CREDENTIALS env var
-    // pointing to the service account JSON key file.
+    googleAuthOptions,
   });
 }
 
