@@ -88,6 +88,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
   const [domain, setDomain] = useState('');
   const [customInstructions, setCustomInstructions] = useState('');
   const [mode, setMode] = useState<'steady' | 'fast'>('steady');
+  const [generateFlashcards, setGenerateFlashcards] = useState(true);
   const [progressLabel, setProgressLabel] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
@@ -123,6 +124,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
     formData.append('file', selectedFile);
     formData.append('domain', domain.trim() || 'general');
     formData.append('mode', mode);
+    formData.append('generateFlashcards', String(generateFlashcards));
     if (customInstructions.trim()) {
       formData.append('customInstructions', customInstructions.trim());
     }
@@ -202,7 +204,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (uploadState === 'processing') {
-    return <ProcessingView label={progressLabel} percent={progressPercent} />;
+    return <ProcessingView label={progressLabel} percent={progressPercent} showFlashcardStep={generateFlashcards} />;
   }
 
   if (uploadState === 'error') {
@@ -425,6 +427,42 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         </div>
       </div>
 
+      {/* ── Flashcard toggle ───────────────────────────────────────────────── */}
+      <div style={{ marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Generate flashcards</p>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+            {generateFlashcards ? 'Flashcards will be created for review.' : 'Mindmap only — flashcards skipped.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setGenerateFlashcards((v) => !v)}
+          style={{
+            width: 44,
+            height: 24,
+            borderRadius: 12,
+            border: 'none',
+            background: generateFlashcards ? 'var(--primary)' : 'var(--border)',
+            cursor: 'pointer',
+            position: 'relative',
+            flexShrink: 0,
+            transition: 'background 0.15s ease',
+          }}
+        >
+          <span style={{
+            position: 'absolute',
+            top: 3,
+            left: generateFlashcards ? 23 : 3,
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            background: 'white',
+            transition: 'left 0.15s ease',
+          }} />
+        </button>
+      </div>
+
       {/* ── Actions ────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 10 }}>
         <button
@@ -506,7 +544,8 @@ const BUFFER_PHRASES = [
   'Calibrating the compass…',
 ];
 
-function ProcessingView({ label, percent }: { label: string; percent: number }) {
+function ProcessingView({ label, percent, showFlashcardStep }: { label: string; percent: number; showFlashcardStep: boolean }) {
+  const visibleStepLabels = showFlashcardStep ? STEP_LABELS : STEP_LABELS.filter((s) => s.key !== 'flashcards');
   const activeStepIndex = STEP_ORDER.findIndex((s) => label.toLowerCase().includes(s.split('_')[0]));
 
   // Cycle through buffer phrases independently of SSE labels
@@ -576,7 +615,7 @@ function ProcessingView({ label, percent }: { label: string; percent: number }) 
 
       {/* Step indicators */}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
-        {STEP_LABELS.map(({ key, label: stepLabel }, i) => {
+        {visibleStepLabels.map(({ key, label: stepLabel }, i) => {
           const isDone = i < activeStepIndex;
           const isActive = i === activeStepIndex;
           return (

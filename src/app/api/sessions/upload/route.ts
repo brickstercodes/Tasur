@@ -24,7 +24,7 @@
  * Returns: text/event-stream
  */
 
-export const maxDuration = 300; // SSE upload pipeline can take 2-3 min on large docs
+export const maxDuration = 60; // Hobby plan max — upgrade to Pro for longer uploads
 
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
@@ -48,6 +48,7 @@ import {
   incrementSessionTokenUsage,
 } from '@/lib/session-persistence';
 import type { LearningMode } from '@/types/sessions';
+import type { FlashcardOutput } from '@/lib/schemas/flashcard-output';
 import { validateCustomInstructions } from '@/lib/guardrails';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -91,6 +92,8 @@ export async function POST(req: Request) {
   const title =
     (formData.get('title') as string | null)?.trim() ||
     file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+
+  const generateFlashcards = formData.get('generateFlashcards') !== 'false';
 
   const guardrail = validateCustomInstructions(formData.get('customInstructions') as string | null);
   if (!guardrail.ok) {
@@ -188,13 +191,19 @@ export async function POST(req: Request) {
           flashcardInputContent = mergeAugmentations(richParsedContent, webResult.data);
         }
 
-        // ── Phase 4: Flashcard generation ─────────────────────────────────
-        emit({ type: 'progress', step: 'flashcards', label: 'Creating flashcards…', percent: 72 });
-        const flashcardResult = await agents.get('flashcard-generator').execute({
-          parsedContent: flashcardInputContent,
-          domain,
-          learningMode: mode,
-        });
+        // ── Phase 4: Flashcard generation (optional) ───────────────────────
+        let flashcardData: FlashcardOutput = { cards: [] };
+        let flashcardUsage = { inputTokens: 0, outputTokens: 0 };
+        if (generateFlashcards) {
+          emit({ type: 'progress', step: 'flashcards', label: 'Creating flashcards…', percent: 72 });
+          const flashcardResult = await agents.get('flashcard-generator').execute({
+            parsedContent: flashcardInputContent,
+            domain,
+            learningMode: mode,
+          });
+          flashcardData = flashcardResult.data;
+          flashcardUsage = flashcardResult.usage;
+        }
 
         // ── Phase 5: DB persistence ────────────────────────────────────────
         emit({ type: 'progress', step: 'saving', label: 'Saving your study session…', percent: 88 });
@@ -206,7 +215,7 @@ export async function POST(req: Request) {
           derivedConcepts,
           graphEdges,
           mindmapTree,
-          flashcardOutput: flashcardResult.data,
+          flashcardOutput: flashcardData,
           graphState: { ...graphState, sessionId },
           mmXml,
           rawText,
@@ -218,8 +227,8 @@ export async function POST(req: Request) {
 
         await incrementSessionTokenUsage(
           sessionId,
-          mmResult.usage.inputTokens + webSearchUsage.inputTokens + flashcardResult.usage.inputTokens,
-          mmResult.usage.outputTokens + webSearchUsage.outputTokens + flashcardResult.usage.outputTokens,
+          mmResult.usage.inputTokens + webSearchUsage.inputTokens + flashcardUsage.inputTokens,
+          mmResult.usage.outputTokens + webSearchUsage.outputTokens + flashcardUsage.outputTokens,
         );
 
         emit({ type: 'done', sessionId, label: "Ready! Let's study." });
