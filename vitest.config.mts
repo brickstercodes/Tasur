@@ -7,7 +7,7 @@
  * to 15 s to accommodate Tesseract.js worker initialisation in OCR tests, which
  * downloads language data on first run.
  *
- * loadEnv() from vite picks up .env.local (and .env) so GOOGLE_GENERATIVE_AI_API_KEY
+ * loadEnv() from vite picks up .env.local (and .env) so GOOGLE_APPLICATION_CREDENTIALS
  * is available in integration tests without manually exporting env vars.
  */
 

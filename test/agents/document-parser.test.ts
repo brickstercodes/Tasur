@@ -3,8 +3,8 @@
  *
  * Each test passes a hardcoded DBMS normalization paragraph as a Buffer (simulating
  * a .txt upload) and asserts that the output passes Zod schema validation.
- * These tests require LLM_PROVIDER=gemini and GOOGLE_GENERATIVE_AI_API_KEY to be set
- * in .env.local. They are skipped automatically when the API key is absent so the
+ * These tests require LLM_PROVIDER=gemini and GOOGLE_APPLICATION_CREDENTIALS to be set
+ * in .env. They are skipped automatically when credentials are absent so the
  * CI pipeline can run without live credentials.
  */
 
@@ -48,7 +48,7 @@ const TEST_INPUT: DocumentParserInput = {
   filename: 'dbms-normalization.txt',
 };
 
-const hasApiKey = Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+const hasApiKey = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
 describe.skipIf(!hasApiKey)('Document Parser Agent — Mastra path', () => {
   it('produces output that passes Zod schema validation', async () => {

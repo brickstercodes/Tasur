@@ -167,9 +167,9 @@ function demoValidationGate() {
 // ── Section 3: Real LLM orchestrator (if API key is present) ──────────────────
 
 async function demoRealOrchestrator() {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!apiKey) {
-    console.log('\n  [skipped] Set GOOGLE_GENERATIVE_AI_API_KEY in .env to test real LLM orchestrator');
+  const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (!credentials) {
+    console.log('\n  [skipped] Set GOOGLE_APPLICATION_CREDENTIALS in .env to test real LLM orchestrator');
     return;
   }
 

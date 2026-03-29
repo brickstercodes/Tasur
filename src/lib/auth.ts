@@ -41,6 +41,10 @@ export const auth = betterAuth({
     // Supabase's pooler uses a self-signed cert in the chain. Disabling
     // rejectUnauthorized lets pg connect without verifying the CA.
     ssl: { rejectUnauthorized: false, checkServerIdentity: () => undefined },
+    // Prevent stale connections from causing ETIMEDOUT on session lookups.
+    max: 5,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
   }),
 
   emailAndPassword: {

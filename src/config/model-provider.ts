@@ -2,9 +2,14 @@
  * WHY: Single source of truth for LLM model instance creation.
  *
  * Both Mastra and manual agent adapters call getOrchestratorModel() or
- * getSpecialistModel() here. The actual provider (Gemini, Anthropic, OpenAI)
- * is selected by LLM_PROVIDER in .env. Switching providers for the entire
- * agent layer is a .env change — no code changes needed anywhere else.
+ * getSpecialistModel() here. The actual provider (Gemini via Vertex AI,
+ * Anthropic, OpenAI) is selected by LLM_PROVIDER in .env. Switching
+ * providers for the entire agent layer is a .env change — no code changes
+ * needed anywhere else.
+ *
+ * Vertex AI auth: uses a service account JSON key file. Set
+ * GOOGLE_APPLICATION_CREDENTIALS to the absolute path of the key file,
+ * and GOOGLE_CLOUD_PROJECT / GOOGLE_CLOUD_LOCATION for project/region.
  *
  * Orchestrator model:    high-capability, used for complex reasoning (concept explainer).
  * Specialist model:      fast + cheap, used for structured generation (parser, mindmap, etc.).
@@ -16,23 +21,33 @@
  */
 
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createVertex } from '@ai-sdk/google-vertex';
 import { createOpenAI } from '@ai-sdk/openai';
 import type { LanguageModel } from 'ai';
 
-const DEFAULT_ORCHESTRATOR_MODEL_ID = 'gemini-2.0-pro-exp-02-05';
-const DEFAULT_SPECIALIST_MODEL_ID = 'gemini-2.0-flash';
+const DEFAULT_ORCHESTRATOR_MODEL_ID = 'gemini-2.5-pro';
+const DEFAULT_SPECIALIST_MODEL_ID = 'gemini-2.5-flash';
 /** Gemini model used for PDF-native mindmap generation (needs vision + thinking). */
-const DEFAULT_PDF_MM_MODEL_ID = 'gemini-3.1-pro-preview';
+const DEFAULT_PDF_MM_MODEL_ID = 'gemini-2.5-pro';
+
+/** Shared Vertex AI client — reused across all Gemini model getters. */
+function getVertexClient(locationOverride?: string) {
+  return createVertex({
+    project: process.env.GOOGLE_CLOUD_PROJECT ?? 'gen-lang-client-0468294301',
+    location: locationOverride ?? process.env.GOOGLE_CLOUD_LOCATION ?? 'us-central1',
+    // Auth is handled automatically via GOOGLE_APPLICATION_CREDENTIALS env var
+    // pointing to the service account JSON key file.
+  });
+}
 
 function buildModel(modelId: string): LanguageModel {
   const provider = process.env.LLM_PROVIDER ?? 'gemini';
 
   if (provider === 'gemini') {
-    const google = createGoogleGenerativeAI({
-      apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-    });
-    return google(modelId);
+    // Gemini 3.x preview models are only available in the "global" location.
+    const location = modelId.startsWith('gemini-3') ? 'global' : undefined;
+    const vertex = getVertexClient(location);
+    return vertex(modelId);
   }
 
   if (provider === 'anthropic') {
@@ -81,10 +96,10 @@ export function getSpecialistModel(): LanguageModel {
  */
 export function getMmGeneratorModel(): LanguageModel {
   const modelId = process.env.MM_GENERATOR_MODEL ?? DEFAULT_PDF_MM_MODEL_ID;
-  const google = createGoogleGenerativeAI({
-    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-  });
-  return google(modelId);
+  // Gemini 3.x preview models are only available in the "global" location.
+  const location = modelId.startsWith('gemini-3') ? 'global' : undefined;
+  const vertex = getVertexClient(location);
+  return vertex(modelId);
 }
 
 /**
@@ -96,8 +111,8 @@ export function getMmGeneratorModel(): LanguageModel {
  */
 export function getPdfMmModel(): LanguageModel {
   const modelId = process.env.PDF_MM_MODEL ?? DEFAULT_PDF_MM_MODEL_ID;
-  const google = createGoogleGenerativeAI({
-    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-  });
-  return google(modelId);
+  // Gemini 3.x preview models are only available in the "global" location.
+  const location = modelId.startsWith('gemini-3') ? 'global' : undefined;
+  const vertex = getVertexClient(location);
+  return vertex(modelId);
 }

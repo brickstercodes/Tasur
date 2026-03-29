@@ -14,7 +14,9 @@ describe('model-provider', () => {
 
   beforeEach(() => {
     // Reset env before each test to avoid state leakage.
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY = 'test-key';
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = '/tmp/fake-sa-key.json';
+    process.env.GOOGLE_CLOUD_PROJECT = 'test-project';
+    process.env.GOOGLE_CLOUD_LOCATION = 'us-central1';
     process.env.ANTHROPIC_API_KEY = 'test-key';
     process.env.OPENAI_API_KEY = 'test-key';
   });

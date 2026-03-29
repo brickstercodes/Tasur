@@ -4,7 +4,7 @@
  * Validates that both Mastra and manual paths:
  * 1. Produce ExplainerOutput that passes Zod schema validation via execute().
  * 2. Yield at least one text chunk via stream() — confirming SSE delivery works.
- * Tests are skipped when GOOGLE_GENERATIVE_AI_API_KEY is absent (CI without credentials).
+ * Tests are skipped when GOOGLE_APPLICATION_CREDENTIALS is absent (CI without credentials).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -24,7 +24,7 @@ const TEST_INPUT: ConceptExplainerInput = {
   currentMessage: 'Can you explain what Third Normal Form (3NF) is?',
 };
 
-const hasApiKey = Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+const hasApiKey = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
 describe.skipIf(!hasApiKey)('Concept Explainer Agent — Mastra path', () => {
   it('execute() produces valid ExplainerOutput', async () => {
