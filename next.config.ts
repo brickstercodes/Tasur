@@ -2,6 +2,9 @@ import path from 'path';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // Enables src/instrumentation.ts — needed to polyfill DOMMatrix/ImageData/Path2D
+  // for pdfjs-dist (used by pdf-parse) on Vercel's serverless Node runtime.
+  instrumentationHook: true,
   // WHY: pdf-parse (via pdfjs-dist), tesseract.js, and mammoth all dynamically
   // load worker files or native bindings at runtime. Turbopack/webpack bundling
   // them into the server chunk breaks those relative-path resolutions. Marking
