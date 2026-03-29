@@ -412,7 +412,7 @@ async function insertStudentGraph(
   graphState: StudentGraphState,
 ): Promise<void> {
   const { error } = await supabase.from('student_graphs').upsert(
-    { session_id: sessionId, graph_state: graphState, updated_at: new Date().toISOString() },
+    { session_id: sessionId, graph_state: graphState as unknown as import('@/types/database').Json, updated_at: new Date().toISOString() },
     { onConflict: 'session_id' },
   );
   if (error) throw new Error(`Failed to upsert student_graph: ${error.message}`);

@@ -18,7 +18,15 @@
  * No imports from Mastra, Vercel AI SDK, or Supabase.
  */
 
-import type { SM2State } from '@/types/database';
+// ── SM-2 state ────────────────────────────────────────────────────────────────
+
+/** Serialised SM-2 state stored in flashcards.sr_state (JSONB). */
+export interface SM2State {
+  interval: number;      // days until next review
+  ease_factor: number;   // difficulty multiplier (min 1.3)
+  repetitions: number;   // consecutive successful reviews
+  next_review: string;   // ISO date string
+}
 
 // ── Rating type ───────────────────────────────────────────────────────────────
 

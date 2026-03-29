@@ -32,8 +32,11 @@ const googleOAuthProviders =
 export const auth = betterAuth({
   // BetterAuth defaults to nanoid IDs. Override to UUID so user_id columns
   // (typed as uuid in Postgres) accept the value without a cast error.
+  // As of v1.5.5, generateId lives under advanced.database (not advanced directly).
   advanced: {
-    generateId: () => crypto.randomUUID(),
+    database: {
+      generateId: 'uuid',
+    },
   },
 
   database: new Pool({

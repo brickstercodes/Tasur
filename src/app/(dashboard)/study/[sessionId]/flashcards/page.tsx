@@ -22,7 +22,7 @@ import { resolveAppUserId } from '@/lib/app-user';
 import { createServerClient } from '@/lib/supabase';
 import { isDue } from '@/lib/sr-algorithm';
 import { FlashcardDeck, type DeckCard } from '@/components/flashcards/FlashcardDeck';
-import type { SM2State } from '@/types/database';
+import type { SM2State } from '@/lib/sr-algorithm';
 
 // ── Page props ────────────────────────────────────────────────────────────────
 

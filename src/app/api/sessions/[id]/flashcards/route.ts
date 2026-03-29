@@ -29,7 +29,7 @@ import {
   sortByPriority,
   type FlashcardRating,
 } from '@/lib/sr-algorithm';
-import type { SM2State } from '@/types/database';
+import type { SM2State } from '@/lib/sr-algorithm';
 
 // ── GET: due flashcards ───────────────────────────────────────────────────────
 

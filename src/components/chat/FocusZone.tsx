@@ -46,7 +46,7 @@ export function FocusZone({
   const [isHandleHovered, setIsHandleHovered] = useState(false);
   const { theme } = useTheme();
   const [blobUrl, setBlobUrl] = useState<string | undefined>();
-  const blobRef = useRef<string | undefined>();
+  const blobRef = useRef<string | undefined>(undefined);
   const panelRef = useRef<HTMLElement | null>(null);
   const isResizingRef = useRef(false);
   const resizeStartXRef = useRef(0);
