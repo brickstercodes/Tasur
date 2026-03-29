@@ -199,6 +199,10 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         }
       }
     }
+
+    // Stream closed without a done or error event — server timed out or connection dropped.
+    setUploadState('error');
+    setErrorMessage('Processing timed out — please try again. Large files may take longer.');
   }, [selectedFile, domain, customInstructions, mode, generateFlashcards, existingSessionId, router]);
 
   // ── Render ─────────────────────────────────────────────────────────────────

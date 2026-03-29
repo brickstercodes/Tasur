@@ -2,6 +2,10 @@ import path from 'path';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // WHY: Required for the Railway Docker deployment — generates a minimal
+  // standalone server bundle that doesn't need node_modules at runtime.
+  output: 'standalone',
+
   // WHY: pdf-parse (via pdfjs-dist), tesseract.js, and mammoth all dynamically
   // load worker files or native bindings at runtime. Turbopack/webpack bundling
   // them into the server chunk breaks those relative-path resolutions. Marking

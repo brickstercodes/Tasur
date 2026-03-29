@@ -39,7 +39,15 @@
       "Bash(xargs ls:*)",
       "Bash(grep -r \"color\\\\|background\\\\|#[0-9A-Fa-f]\\\\{3,6\\\\}\" /Users/anugrahshetty/Documents/Tasur/src/app/globals.css)",
       "Bash(ls /Users/anugrahshetty/Documents/Tasur/src/app/\\\\\\(dashboard\\\\\\)/dashboard/)",
-      "WebFetch(domain:docs.cloud.google.com)"
+      "WebFetch(domain:docs.cloud.google.com)",
+      "Bash(go build:*)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"Build exit: $?\")",
+      "Bash(go vet:*)",
+      "Bash(echo \"vet exit: $?\")",
+      "Bash(echo \"Build+vet exit: $?\")",
+      "Bash(echo \"Final exit: $?\")",
+      "Bash(echo \"RESULT: $?\")"
     ]
   }
 }

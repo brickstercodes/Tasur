@@ -1,0 +1,190 @@
+<map version="freeplane 1.11.9">
+<node TEXT="Unit 3: Synchronization in Distributed Computing" FOLDED="false">
+<font BOLD="true" NAME="SansSerif" SIZE="16"/>
+
+<!-- INTRODUCTION -->
+<node TEXT="1. Introduction" POSITION="right" FOLDED="false">
+<font BOLD="true" NAME="SansSerif" SIZE="14"/>
+<node TEXT="Challenges in Distributed Systems">
+<node TEXT="Synchronization is much more difficult compared to uniprocessor/multiprocessor systems."/>
+<node TEXT="Two clocks do not agree perfectly."/>
+<node TEXT="Time synchronization is required for Correctness and Fairness."/>
+<node TEXT="Needed for sender-receiver sync and coordination of joint activity."/>
+<node TEXT="[DIAGRAM TO STUDY: Clock Synchronization issue - output.c vs output.o compile mismatch due to clock differences]"/>
+</node>
+<node TEXT="Clock Skew vs. Clock Drift">
+<node TEXT="Clock Skew: Relative difference in clock values of two processes (like distance between two vehicles)."/>
+<node TEXT="Clock Drift: Relative difference in clock frequencies of two processes (like difference in speeds)."/>
+<node TEXT="A non-zero clock skew implies clocks are not synchronized."/>
+<node TEXT="A non-zero clock drift causes skew to increase."/>
+<node TEXT="For a perfect clock, skew = drift = 0."/>
+</node>
+<node TEXT="Handling Skew">
+<node TEXT="If clock is behind: run it faster."/>
+<node TEXT="If clock is ahead: run it slower."/>
+<node TEXT="Must check and adjust periodically."/>
+<node TEXT="Inaccuracies arise from delays in message transmission, processing time, and server inaccuracy."/>
+</node>
+<node TEXT="External vs. Internal Synchronization">
+<node TEXT="External Synchronization: Each process clock is within a bound D of a well-known external clock S (e.g., UTC). Examples: Cristian's Algorithm, NTP."/>
+<node TEXT="Internal Synchronization: Every pair of processes in a group have clocks within bound D of each other. Example: Berkeley Algorithm."/>
+</node>
+</node>
+
+<!-- PHYSICAL CLOCKS -->
+<node TEXT="2. Physical Clocks" POSITION="right" FOLDED="false">
+<font BOLD="true" NAME="SansSerif" SIZE="14"/>
+<node TEXT="Basic Concepts">
+<node TEXT="Computer timer uses a machined quartz crystal oscillating at a well-defined frequency."/>
+<node TEXT="Components: 2 registers (a counter and a holding register). Oscillation decrements counter. At zero, interrupt generated (one clock tick), and counter reloads."/>
+<node TEXT="Drift Rate (rho): The rate at which a computer clock deviates from a perfect reference clock."/>
+<node TEXT="Specification constraint: 1 - rho &lt;= dC/dt &lt;= 1 + rho."/>
+<node TEXT="To guarantee no two clocks differ by more than delta, resynchronize every delta / (2 * rho) seconds."/>
+<node TEXT="[DIAGRAM TO STUDY: Relation between clock time and UTC when clocks tick at different rates]"/>
+</node>
+<node TEXT="Time Standards">
+<node TEXT="Astronomical Time: Solar day / Solar second."/>
+<node TEXT="International Atomic Time (TAI): Based on cesium 133 atom transitions. Introduces leap seconds to align with solar time."/>
+<node TEXT="Universal Coordinated Time (UTC): Basis of modern civil timekeeping. Broadcasted via shortwave radio and GPS."/>
+</node>
+<node TEXT="Cristian's Algorithm (1989)">
+<node TEXT="Attempt to compensate for network delays."/>
+<node TEXT="Client requests time, server replies with Ts."/>
+<node TEXT="Client notes local time before sending (T0) and after receiving (T1)."/>
+<node TEXT="Correct time estimate: Ts + (T1 - T0) / 2 (Assumes symmetric network delay)."/>
+<node TEXT="[DIAGRAM TO STUDY: Cristian's Algorithm client-server exchange and example calculation]"/>
+</node>
+<node TEXT="The Berkeley Algorithm">
+<node TEXT="Time server (time daemon) is ACTIVE, unlike NTP/Cristian's where it is passive."/>
+<node TEXT="Daemon polls every machine to ask their time, calculates average, and tells everyone how to adjust."/>
+<node TEXT="Suitable when no machine has an accurate/reference clock."/>
+<node TEXT="Daemon's time must be manually set periodically by operator."/>
+<node TEXT="[DIAGRAM TO STUDY: 3-part Berkeley algorithm diagram (daemon asks, machines answer, daemon tells adjustment)]"/>
+</node>
+<node TEXT="Network Time Protocol (NTP)">
+<node TEXT="Based on Cristian's algorithm but protocol is setup pair-wise between servers."/>
+<node TEXT="Finds good estimate for message delays without making the clock go backward."/>
+<node TEXT="Message flow: A requests at T1, B receives at T2, B responds at T3, A receives at T4."/>
+<node TEXT="Offset (theta): (T2 - T1) + (T3 - T4) / 2."/>
+<node TEXT="Delay (delta): (T2 - T1) + (T4 - T3) / 2."/>
+<node TEXT="Buffers eight pairs of (theta, delta) and takes minimal values as best estimation."/>
+<node TEXT="Divides servers into STRATA. Stratum-1 has reference clock. A contacts B and adjusts only if A's stratum is higher (lower priority) than B's."/>
+</node>
+</node>
+
+<!-- LOGICAL CLOCKS -->
+<node TEXT="3. Logical Clocks" POSITION="left" FOLDED="false">
+<font BOLD="true" NAME="SansSerif" SIZE="14"/>
+<node TEXT="Concept">
+<node TEXT="Focus is on internal consistency: agreeing on the ORDER in which events occur, not the actual real time."/>
+</node>
+<node TEXT="Lamport's Logical Clocks">
+<node TEXT="Defines happens-before relation (a -&gt; b)."/>
+<node TEXT="Rules">
+<node TEXT="1. If events a and b are in the same process, and a occurs before b, then a -&gt; b."/>
+<node TEXT="2. If a is a message sent and b is message received, a -&gt; b."/>
+<node TEXT="3. Transitive: If a -&gt; b and b -&gt; c, then a -&gt; c."/>
+</node>
+<node TEXT="Properties: If a -&gt; b, then C(a) &lt; C(b). Clock C must always go forward."/>
+<node TEXT="Implementation">
+<node TEXT="1. Before executing an event, process Pi executes Ci = Ci + 1."/>
+<node TEXT="2. Pi sends message m with timestamp ts(m) = Ci."/>
+<node TEXT="3. Pj receives m, updates clock: Cj = max(Cj, ts(m)), then executes Cj = Cj + 1 and delivers."/>
+</node>
+<node TEXT="[DIAGRAM TO STUDY: Lamport logical clocks examples (events a-g, correction of clocks running at different rates, and middleware layer positioning)]"/>
+<node TEXT="Example: Totally Ordered Multicasting">
+<node TEXT="Ensures all messages are delivered in the same order to each receiver (e.g., replicated database updates A=100, B=100)."/>
+<node TEXT="Process multicasts timestamped message. Receiver puts it in local queue ordered by timestamp."/>
+<node TEXT="Receiver multicasts an acknowledgement."/>
+<node TEXT="Message delivered to application only when at head of queue AND fully acknowledged."/>
+</node>
+</node>
+<node TEXT="Vector Clocks">
+<node TEXT="Lamport clocks drawback: C(a) &lt; C(b) does not guarantee that a causally preceded b."/>
+<node TEXT="Vector clock property: If VC(a) &lt; VC(b), then 'a' is known to causally precede 'b'."/>
+<node TEXT="Construction">
+<node TEXT="Process Pi maintains vector VCi."/>
+<node TEXT="VCi[i] = local logical clock of Pi (number of events at Pi)."/>
+<node TEXT="VCi[j] = Pi's knowledge of the local time at Pj."/>
+</node>
+<node TEXT="Implementation Steps">
+<node TEXT="1. Before event, Pi executes VCi[i] = VCi[i] + 1."/>
+<node TEXT="2. Pi sends message m with vector timestamp ts(m) = VCi."/>
+<node TEXT="3. Pj receives m, updates: VCj[k] = max(VCj[k], ts(m)[k]) for each k, then executes first step."/>
+</node>
+<node TEXT="[DIAGRAM TO STUDY: Vector Clocks Example tracking p1, p2, p3 arrays (e.g., (1,0,0), (2,1,0), etc.)]"/>
+</node>
+</node>
+
+<!-- MUTUAL EXCLUSION -->
+<node TEXT="4. Mutual Exclusion" POSITION="left" FOLDED="false">
+<font BOLD="true" NAME="SansSerif" SIZE="14"/>
+<node TEXT="Overview">
+<node TEXT="Ensures concurrent processes access shared resources in a serialized way (no overlapping critical sections)."/>
+<node TEXT="Two Categories">
+<node TEXT="Token-based solutions: Token holder accesses resource. Avoids starvation and deadlocks. Drawback: Token loss."/>
+<node TEXT="Permission-based approach: Requires permission from other processes first."/>
+</node>
+</node>
+<node TEXT="Types of Algorithms">
+<node TEXT="Centralized Algorithm">
+<node TEXT="One process is coordinator. Request -> OK -> Access -> Release."/>
+<node TEXT="Advantages: Guarantees mutual exclusion, fair (queue), no starvation, easy to implement, needs only 3 messages."/>
+<node TEXT="Shortcomings: Single point of failure, dead coordinator vs permission denied confusion, performance bottleneck."/>
+<node TEXT="[DIAGRAM TO STUDY: Centralized Mutual Exclusion]"/>
+</node>
+<node TEXT="Decentralized Algorithm">
+<node TEXT="Voting based on DHT system. Resource replicated n times."/>
+<node TEXT="Needs majority vote from m &gt; n/2 coordinators."/>
+<node TEXT="If denied, back off for random time and retry."/>
+<node TEXT="Drawback: Starvation/low efficiency if many nodes want access simultaneously (no one gets majority)."/>
+</node>
+<node TEXT="Distributed Algorithm (Ricart and Agrawala's)">
+<node TEXT="Requires total ordering of events."/>
+<node TEXT="Process broadcasts request (resource name, process number, logical time)."/>
+<node TEXT="Receiver action based on 3 cases:">
+<node TEXT="1. Not accessing &amp; doesn't want: Sends OK."/>
+<node TEXT="2. Already has access: No reply, queues the request."/>
+<node TEXT="3. Wants access but hasn't yet: Compares timestamps. Lowest timestamp wins (sender gets OK if lower, else receiver queues)."/>
+</node>
+<node TEXT="Advantages: Deadlock-free, Starvation-free, no single point of failure. Messages per entry: 2(n-1)."/>
+<node TEXT="Disadvantages: n points of failure, complicated, slower, group membership maintenance required."/>
+<node TEXT="[DIAGRAM TO STUDY: Distributed Algorithm 3-node example]"/>
+</node>
+<node TEXT="Token Ring Algorithm">
+<node TEXT="Logical ring constructed (ordering doesn't matter, just needs successor)."/>
+<node TEXT="Token circulates. If acquired and needs access -> executes, then passes. If no access needed -> just passes."/>
+<node TEXT="Advantages: Simple, deadlock-free. Messages: 1 to infinity. Delay: 0 to n-1."/>
+<node TEXT="Disadvantages: Token loss needs regeneration, process crash breaks ring (recovery needed)."/>
+<node TEXT="[DIAGRAM TO STUDY: Unordered network vs Logical ring constructed in software]"/>
+</node>
+<node TEXT="[DIAGRAM TO STUDY: Comparison table of four mutual exclusion algorithms]"/>
+</node>
+</node>
+
+<!-- ELECTION ALGORITHMS -->
+<node TEXT="5. Election Algorithms" POSITION="left" FOLDED="false">
+<font BOLD="true" NAME="SansSerif" SIZE="14"/>
+<node TEXT="Concept">
+<node TEXT="Needed when distributed algorithms require a coordinator process."/>
+<node TEXT="Assumes each process has a unique number. Locates process with highest number to be coordinator."/>
+<node TEXT="Assumes every process knows the process number of every other process."/>
+</node>
+<node TEXT="The Bully Algorithm">
+<node TEXT="Triggered when coordinator stops responding."/>
+<node TEXT="Process P sends ELECTION message to all processes with HIGHER numbers."/>
+<node TEXT="If no one responds, P wins and becomes coordinator."/>
+<node TEXT="If a higher-up answers, it takes over the election process, and P's job is done."/>
+<node TEXT="[DIAGRAM TO STUDY: Bully Algorithm steps (nodes 0-6 holding elections, node 6 wins and tells everyone)]"/>
+</node>
+<node TEXT="A Ring Algorithm">
+<node TEXT="Processes are physically or logically ordered (knows successor). Does NOT use a token."/>
+<node TEXT="Notices crash -> Builds ELECTION message with own ID -> Sends to successor."/>
+<node TEXT="Each step: process adds its own ID to the message list."/>
+<node TEXT="When message returns to starter, message type changed to COORDINATOR."/>
+<node TEXT="Circulates again to inform everyone of the new coordinator (member in the list with highest ID), then message is removed."/>
+<node TEXT="[DIAGRAM TO STUDY: Election algorithm using a ring (nodes converting ELECTION to COORDINATOR messages)]"/>
+</node>
+</node>
+</node>
+</map>
