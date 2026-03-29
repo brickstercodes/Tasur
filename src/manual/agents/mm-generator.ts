@@ -52,9 +52,9 @@ export class ManualMmGeneratorAgent implements TasurAgent<MmGeneratorInput, stri
       ],
       temperature: MM_GENERATOR_TEMPERATURE,
       providerOptions: {
-        google: {
+        vertex: {
           thinkingConfig: {
-            thinkingLevel: 'high' as const,
+            thinkingBudget: 8000,
           },
         },
       },
@@ -85,8 +85,8 @@ export class ManualMmGeneratorAgent implements TasurAgent<MmGeneratorInput, stri
         ],
         temperature: MM_GENERATOR_TEMPERATURE,
         providerOptions: {
-          google: {
-            thinkingConfig: { thinkingLevel: 'medium' as const },
+          vertex: {
+            thinkingConfig: { thinkingBudget: 5000 },
           },
         },
       });
