@@ -47,7 +47,8 @@
       "Bash(echo \"vet exit: $?\")",
       "Bash(echo \"Build+vet exit: $?\")",
       "Bash(echo \"Final exit: $?\")",
-      "Bash(echo \"RESULT: $?\")"
+      "Bash(echo \"RESULT: $?\")",
+      "WebFetch(domain:docs.railway.com)"
     ]
   }
 }
