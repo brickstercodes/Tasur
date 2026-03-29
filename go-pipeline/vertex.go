@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -71,9 +72,16 @@ func (v *vertexClient) generateContent(
 		return "", 0, 0, fmt.Errorf("marshal request: %w", err)
 	}
 
+	// Gemini 3.x preview models are only available in the "global" location.
+	// Mirrors the same logic in TypeScript model-provider.ts: getMmGeneratorModel().
+	location := v.location
+	if strings.HasPrefix(modelID, "gemini-3") {
+		location = "global"
+	}
+
 	url := fmt.Sprintf(
 		"https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent",
-		v.location, v.project, v.location, modelID,
+		location, v.project, location, modelID,
 	)
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
