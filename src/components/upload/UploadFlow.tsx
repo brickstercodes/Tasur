@@ -199,7 +199,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         }
       }
     }
-  }, [selectedFile, domain, customInstructions, mode, existingSessionId, router]);
+  }, [selectedFile, domain, customInstructions, mode, generateFlashcards, existingSessionId, router]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
