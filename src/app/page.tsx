@@ -19,8 +19,9 @@ import { LandingMindmapPreview } from './LandingMindmapPreview';
 function Nav() {
   return (
     <nav
-      className="fixed top-0 w-full z-50 backdrop-blur-md"
+      className="fixed w-full z-50 backdrop-blur-md"
       style={{
+        top: 38,
         background: 'color-mix(in srgb, var(--bg) 88%, transparent)',
         borderBottom: '1px solid color-mix(in srgb, var(--primary) 12%, transparent)',
       }}
@@ -86,7 +87,7 @@ function Nav() {
 
 function Hero() {
   return (
-    <section data-scroll-reveal className="reveal-delay-1 max-w-screen-xl mx-auto px-8 md:px-12 pt-36 pb-24">
+    <section data-scroll-reveal className="reveal-delay-1 max-w-screen-xl mx-auto px-8 md:px-12 pt-52 pb-24">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
         {/* Left — Copy */}
         <div className="lg:col-span-6 flex flex-col">
@@ -996,9 +997,41 @@ function Footer() {
 // Page
 // ------------------------------------------------------------------
 
+function BetaBanner() {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 60,
+        background: 'color-mix(in srgb, var(--primary) 10%, var(--surface))',
+        borderBottom: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
+        padding: '9px 24px',
+        textAlign: 'center',
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          fontFamily: 'var(--font-geist-mono)',
+          fontSize: '0.72rem',
+          letterSpacing: '0.12em',
+          color: 'var(--primary)',
+          textTransform: 'uppercase',
+        }}
+      >
+        ✦ &nbsp; Open Beta &nbsp;·&nbsp; Free for early birds &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; No commitment &nbsp; ✦
+      </p>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   return (
     <>
+      <BetaBanner />
       <Nav />
       <main className="landing-parchment">
         <ScrollRevealController />
