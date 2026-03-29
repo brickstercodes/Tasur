@@ -20,7 +20,12 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 
-const BETTER_AUTH_SESSION_COOKIE = 'better-auth.session_token';
+// BetterAuth prefixes the cookie with __Secure- on HTTPS (production).
+// Check both so local dev (http) and production (https) both work.
+const SESSION_COOKIE_NAMES = [
+  'better-auth.session_token',
+  '__Secure-better-auth.session_token',
+];
 
 const PROTECTED_PATH_PREFIXES = ['/dashboard'];
 const AUTH_PATH_PREFIXES = ['/login', '/signup'];
@@ -34,8 +39,7 @@ function isAuthPath(pathname: string): boolean {
 }
 
 export function middleware(request: NextRequest) {
-  const sessionCookie = request.cookies.get(BETTER_AUTH_SESSION_COOKIE);
-  const hasSession = sessionCookie !== undefined;
+  const hasSession = SESSION_COOKIE_NAMES.some((name) => request.cookies.has(name));
   const { pathname } = request.nextUrl;
 
   if (isProtectedPath(pathname) && !hasSession) {
