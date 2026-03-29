@@ -25,7 +25,7 @@ export interface AgentResult<T> {
 
 /**
  * Base contract for all Tasur specialist agents.
- * Implementations live in src/mastra/ (Mastra) or src/manual/ (Vercel AI SDK).
+ * Implementations live in src/manual/ (Vercel AI SDK).
  */
 export interface TasurAgent<TInput, TOutput> {
   execute(input: TInput): Promise<AgentResult<TOutput>>;

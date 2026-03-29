@@ -5,7 +5,6 @@
  * the Vercel AI SDK directly (which is also what the Mastra version does —
  * the distinction here is which registry instantiates this class).
  *
- * See src/mastra/agents/mm-generator.ts for full design rationale.
  */
 
 import { generateText } from 'ai';

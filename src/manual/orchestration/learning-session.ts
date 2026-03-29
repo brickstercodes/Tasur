@@ -1,11 +1,7 @@
 /**
  * WHY: Manual (Vercel AI SDK) path learning session orchestration — .mm-first pipeline.
  *
- * Structurally identical to src/mastra/workflows/learning-session.ts.
- * Both implement the same phases, same pipeline, same LearningSessionResult shape.
- * The distinction is which agent registry is injected (manual vs. mastra).
- *
- * See the Mastra version for full design rationale and pipeline comments.
+ * Implements the .mm-first pipeline phases using the Vercel AI SDK directly.
  */
 
 import type { AgentRegistry, DocumentParserInput } from '@/interfaces/registry';

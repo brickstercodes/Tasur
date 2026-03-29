@@ -411,9 +411,7 @@ async function insertStudentGraph(
   sessionId: string,
   graphState: StudentGraphState,
 ): Promise<void> {
-  // student_graphs is not in the generated DB types — cast to bypass
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('student_graphs').upsert(
+  const { error } = await supabase.from('student_graphs').upsert(
     { session_id: sessionId, graph_state: graphState, updated_at: new Date().toISOString() },
     { onConflict: 'session_id' },
   );
@@ -602,4 +600,50 @@ function depthToExamPriority(depth: number): number {
   if (depth <= 2) return 3;
   if (depth === 3) return 2;
   return 1;
+}
+
+// ── Cost tracking ─────────────────────────────────────────────────────────────
+
+/**
+ * Returns the number of study sessions owned by a user.
+ * Used by the upload route to enforce MAX_SESSIONS_PER_USER.
+ */
+export async function getSessionCount(userId: string): Promise<number> {
+  const supabase = createServerClient();
+  const { count } = await supabase
+    .from('study_sessions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  return count ?? 0;
+}
+
+/**
+ * Increments the cumulative token usage for a session.
+ * Called after every upload pipeline and every chat message.
+ * Uses read-modify-write — safe for beta; not suitable for high concurrency.
+ */
+export async function incrementSessionTokenUsage(
+  sessionId: string,
+  inputTokens: number,
+  outputTokens: number,
+): Promise<void> {
+  if (inputTokens === 0 && outputTokens === 0) return;
+  const supabase = createServerClient();
+
+  const { data } = await supabase
+    .from('study_sessions')
+    .select('token_usage')
+    .eq('id', sessionId)
+    .single();
+
+  const existing = (data?.token_usage as { inputTokens?: number; outputTokens?: number } | null) ?? {};
+  await supabase
+    .from('study_sessions')
+    // token_usage is not in the generated types until migration 4 types are regenerated — cast required
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ token_usage: {
+      inputTokens: (existing.inputTokens ?? 0) + inputTokens,
+      outputTokens: (existing.outputTokens ?? 0) + outputTokens,
+    } } as any)
+    .eq('id', sessionId);
 }

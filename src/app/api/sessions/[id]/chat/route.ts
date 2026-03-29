@@ -30,12 +30,14 @@ import { resolveAppUserId } from '@/lib/app-user';
 import { createServerClient } from '@/lib/supabase';
 import { getAgentRegistry } from '@/config/agent-provider';
 import { loadFromSupabase, syncToSupabase } from '@/lib/graph/sync';
+import { incrementSessionTokenUsage } from '@/lib/session-persistence';
 import type { ConceptExplainerInput } from '@/interfaces/registry';
 import type { ExplainerOutput } from '@/lib/schemas/explainer-output';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const CHAT_HISTORY_LIMIT = 15;
+const MAX_MESSAGE_LENGTH = 4000;
 
 // ── SSE helpers ───────────────────────────────────────────────────────────────
 
@@ -123,6 +125,13 @@ export async function POST(
   const body: ChatRequestBody = await request.json();
   const { conceptId, message, isNewConcept, isAssessmentSubmit, domain, learningMode } = body;
 
+  if (!message || typeof message !== 'string' || message.length > MAX_MESSAGE_LENGTH) {
+    return Response.json(
+      { error: `Message must be a non-empty string under ${MAX_MESSAGE_LENGTH} characters` },
+      { status: 400 },
+    );
+  }
+
   const supabase = createServerClient();
 
   const { data: sessionRow } = await supabase
@@ -202,6 +211,8 @@ export async function POST(
     async start(controller) {
       try {
         const registry = getAgentRegistry();
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
 
         // ── Orchestrator call (on new concept or assessment) ─────────────────
         if (isNewConcept || isAssessmentSubmit) {
@@ -223,6 +234,8 @@ export async function POST(
               });
 
               const orchestratorData = orchestratorResult.data;
+              totalInputTokens += orchestratorResult.usage.inputTokens;
+              totalOutputTokens += orchestratorResult.usage.outputTokens;
 
               // Persist the understanding update when the orchestrator evaluates an answer.
               if (isAssessmentSubmit && orchestratorData.understanding_update) {
@@ -265,6 +278,8 @@ export async function POST(
         const explainer = registry.get('concept-explainer');
         const result = await explainer.execute(explainerInput);
         const output: ExplainerOutput = result.data;
+        totalInputTokens += result.usage.inputTokens;
+        totalOutputTokens += result.usage.outputTokens;
 
         // Temporary diagnostic log — remove after visual_suggestion is confirmed working.
         console.log('[explainer] visual_suggestion raw:', JSON.stringify(output.visual_suggestion, null, 2));
@@ -326,6 +341,7 @@ export async function POST(
 
         controller.enqueue(encodeSSE('done', {}));
         controller.close();
+        await incrementSessionTokenUsage(sessionId, totalInputTokens, totalOutputTokens);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error';
         controller.enqueue(encodeSSE('error', { message }));

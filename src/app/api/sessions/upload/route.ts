@@ -42,6 +42,8 @@ import {
 import {
   createStudySession,
   persistPipelineResults,
+  getSessionCount,
+  incrementSessionTokenUsage,
 } from '@/lib/session-persistence';
 import type { LearningMode } from '@/types/sessions';
 import { validateCustomInstructions } from '@/lib/guardrails';
@@ -55,6 +57,7 @@ const SSE_HEADERS = {
 };
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
+const MAX_DOMAIN_LENGTH = 100;
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
@@ -80,7 +83,7 @@ export async function POST(req: Request) {
     return new Response('File exceeds 50 MB limit', { status: 413 });
   }
 
-  const domain = (formData.get('domain') as string | null)?.trim() || 'general';
+  const domain = sanitizeDomain((formData.get('domain') as string | null)?.trim() || 'general');
   const rawMode = formData.get('mode') as string | null;
   const mode: LearningMode = rawMode === 'fast' ? 'fast' : 'steady';
   const title =
@@ -99,6 +102,16 @@ export async function POST(req: Request) {
   const fileType = resolveFileType(mimeType, filename);
 
   const userId = await resolveAppUserId(session.user);
+
+  const maxSessions = parseInt(process.env.MAX_SESSIONS_PER_USER ?? '10', 10);
+  const sessionCount = await getSessionCount(userId);
+  if (sessionCount >= maxSessions) {
+    return new Response(
+      `Session limit reached (${maxSessions} sessions per user during beta)`,
+      { status: 429 },
+    );
+  }
+
   const agents = getAgentRegistry();
 
   // SSE ReadableStream — all pipeline work happens inside start()
@@ -161,6 +174,7 @@ export async function POST(req: Request) {
         );
 
         // ── Phase 3: Web search augmentation (conditional) ─────────────────
+        let webSearchUsage = { inputTokens: 0, outputTokens: 0 };
         let flashcardInputContent = richParsedContent;
         if (richParsedContent.gaps_detected.length > 0) {
           emit({ type: 'progress', step: 'searching', label: 'Filling in gaps…', percent: 60 });
@@ -168,6 +182,7 @@ export async function POST(req: Request) {
             gaps: richParsedContent.gaps_detected,
             domain,
           });
+          webSearchUsage = webResult.usage;
           flashcardInputContent = mergeAugmentations(richParsedContent, webResult.data);
         }
 
@@ -199,6 +214,12 @@ export async function POST(req: Request) {
           mimeType,
         });
 
+        await incrementSessionTokenUsage(
+          sessionId,
+          mmResult.usage.inputTokens + webSearchUsage.inputTokens + flashcardResult.usage.inputTokens,
+          mmResult.usage.outputTokens + webSearchUsage.outputTokens + flashcardResult.usage.outputTokens,
+        );
+
         emit({ type: 'done', sessionId, label: "Ready! Let's study." });
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Upload failed — please try again.';
@@ -213,6 +234,12 @@ export async function POST(req: Request) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function sanitizeDomain(input: string): string {
+  // Keep only word characters, spaces, and hyphens. Prevents prompt injection
+  // into the web-search agent query via the domain field.
+  return input.replace(/[^\w\s-]/g, '').slice(0, MAX_DOMAIN_LENGTH).trim() || 'general';
+}
 
 function resolveFileType(mimeType: string, filename: string): FileType {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
