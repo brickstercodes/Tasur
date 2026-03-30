@@ -231,7 +231,8 @@ type vertexGenerationConfig struct {
 }
 
 type vertexThinkingConfig struct {
-	ThinkingBudget int `json:"thinkingBudget"`
+	ThinkingBudget int    `json:"thinkingBudget,omitempty"` // gemini-2.5 and earlier
+	ThinkingLevel  string `json:"thinkingLevel,omitempty"`  // gemini-3.x and later
 }
 
 type vertexResponse struct {

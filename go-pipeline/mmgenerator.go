@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"embed"
 	"encoding/base64"
 	"fmt"
 	"strings"
@@ -17,12 +18,25 @@ var mmGeneratorSystemPrompt string
 //go:embed prompts/mm-generator-example.xml
 var mmGeneratorExampleXml string
 
+//go:embed prompts/domains
+var domainsFS embed.FS
+
 // ── mm-generator ──────────────────────────────────────────────────────────────
 // Mirrors src/manual/agents/mm-generator.ts: ManualMmGeneratorAgent.execute()
 
 const mmGeneratorThinkingBudget = 5000
 const mmGeneratorRetryBudget = 4096
 const mmGeneratorTemperature = 1.0
+
+// mmThinkingConfig returns the appropriate ThinkingConfig for the given model ID.
+// gemini-3.x uses thinkingLevel; gemini-2.5 and earlier use thinkingBudget.
+func mmThinkingConfig(budget int) *vertexThinkingConfig {
+	model := mmGeneratorModelID()
+	if strings.HasPrefix(model, "gemini-3") {
+		return &vertexThinkingConfig{ThinkingLevel: "HIGH"}
+	}
+	return &vertexThinkingConfig{ThinkingBudget: budget}
+}
 
 // MmGeneratorResult is the output of generateMm.
 type MmGeneratorResult struct {
@@ -49,7 +63,6 @@ func generateMm(
 	model := mmGeneratorModelID()
 
 	systemContent := &vertexContent{
-		Role: "user",
 		Parts: []vertexPart{
 			{Text: buildSystemInstruction(subjectHint)},
 		},
@@ -74,10 +87,8 @@ func generateMm(
 			},
 		},
 		GenerationConfig: vertexGenerationConfig{
-			Temperature: mmGeneratorTemperature,
-			ThinkingConfig: &vertexThinkingConfig{
-				ThinkingBudget: mmGeneratorThinkingBudget,
-			},
+			Temperature:    mmGeneratorTemperature,
+			ThinkingConfig: mmThinkingConfig(mmGeneratorThinkingBudget),
 		},
 	}
 
@@ -110,10 +121,8 @@ func generateMm(
 				},
 			},
 			GenerationConfig: vertexGenerationConfig{
-				Temperature: mmGeneratorTemperature,
-				ThinkingConfig: &vertexThinkingConfig{
-					ThinkingBudget: mmGeneratorRetryBudget,
-				},
+				Temperature:    mmGeneratorTemperature,
+				ThinkingConfig: mmThinkingConfig(mmGeneratorRetryBudget),
 			},
 		}
 
@@ -147,13 +156,18 @@ func generateMm(
 
 // ── Message builders ──────────────────────────────────────────────────────────
 
-// buildSystemInstruction composes the system prompt, optionally loading a domain file.
-// For simplicity we use only the base system prompt (domain overlays are small).
+// buildSystemInstruction composes the system prompt with an optional domain overlay.
+// Mirrors TypeScript loadPrompt('mm-generator-system', domain) in src/prompts/loader.ts.
 func buildSystemInstruction(subjectHint string) string {
-	// The base system prompt is embedded. Domain-specific additions could be added
-	// here by embedding additional files, but the base prompt is sufficient.
-	_ = subjectHint
-	return mmGeneratorSystemPrompt
+	if subjectHint == "" {
+		return mmGeneratorSystemPrompt
+	}
+	domainBytes, err := domainsFS.ReadFile("prompts/domains/" + subjectHint + ".md")
+	if err != nil {
+		// No domain file for this subject — base prompt is sufficient.
+		return mmGeneratorSystemPrompt
+	}
+	return mmGeneratorSystemPrompt + "\n\n---\n\n## Domain Context\n\n" + string(domainBytes)
 }
 
 // buildFirstUserParts builds the user parts for the initial mm-generation request.

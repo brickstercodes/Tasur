@@ -49,7 +49,9 @@
       "Bash(echo \"Final exit: $?\")",
       "Bash(echo \"RESULT: $?\")",
       "WebFetch(domain:docs.railway.com)",
-      "Bash(find /Users/anugrahshetty/Documents/Tasur -type f \\\\\\(-name .env* \\\\\\) ! -path */go-pipeline/*)"
+      "Bash(find /Users/anugrahshetty/Documents/Tasur -type f \\\\\\(-name .env* \\\\\\) ! -path */go-pipeline/*)",
+      "Bash(/opt/homebrew/bin/go build:*)",
+      "Bash(/usr/local/go/bin/go build:*)"
     ]
   }
 }
