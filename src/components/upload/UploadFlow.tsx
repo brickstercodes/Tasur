@@ -240,9 +240,10 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
   }
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="upload-flow-shell" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* ── File dropzone ──────────────────────────────────────────────────── */}
       <div
+        className={`upload-dropzone${dragOver ? ' is-dragging' : ''}${selectedFile ? ' has-file' : ''}`}
         onDrop={handleDrop}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -267,7 +268,9 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         />
         {selectedFile ? (
           <>
-            <p style={{ fontSize: 24, margin: '0 0 8px', color: 'var(--primary)' }}>↑</p>
+            <p style={{ fontSize: 24, margin: '0 0 8px', color: 'var(--primary)' }}>
+              <span className="upload-dropzone-icon">↑</span>
+            </p>
             <p
               style={{
                 margin: 0,
@@ -293,7 +296,9 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
           </>
         ) : (
           <>
-            <p style={{ fontSize: 28, margin: '0 0 10px', color: 'var(--text-muted)' }}>↑</p>
+            <p style={{ fontSize: 28, margin: '0 0 10px', color: 'var(--text-muted)' }}>
+              <span className="upload-dropzone-icon">↑</span>
+            </p>
             <p
               style={{
                 margin: 0,
@@ -325,6 +330,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
       <div style={{ marginBottom: 20 }}>
         <label style={labelStyle}>Subject (optional)</label>
         <input
+          className="upload-input-line"
           type="text"
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
@@ -354,6 +360,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
           </span>
         </div>
         <textarea
+          className="upload-input-line"
           value={customInstructions}
           onChange={(e) => setCustomInstructions(e.target.value.slice(0, 500))}
           placeholder="e.g. Be very detailed and present information in bullet points, or focus more on definitions and examples"
@@ -390,6 +397,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
                 key={value}
                 type="button"
                 onClick={() => setMode(value)}
+                className={`upload-mode-card${isSelected ? ' is-selected' : ''}`}
                 style={{
                   flex: 1,
                   padding: '20px 18px',
@@ -454,6 +462,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
           </p>
         </div>
         <button
+          className={`upload-toggle${generateFlashcards ? ' is-on' : ''}`}
           type="button"
           onClick={() => setGenerateFlashcards((v) => !v)}
           style={{
@@ -468,7 +477,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
             transition: 'background 0.15s ease',
           }}
         >
-          <span style={{
+          <span className="upload-toggle-knob" style={{
             position: 'absolute',
             top: 3,
             left: generateFlashcards ? 23 : 3,
@@ -484,14 +493,15 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
       {/* ── Actions ────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 10 }}>
         <button
+          className="upload-primary-action"
           type="button"
           disabled={!selectedFile}
           onClick={handleSubmit}
           style={{
             flex: 1,
             padding: '13px 20px',
-            background: selectedFile ? 'var(--primary)' : 'var(--border)',
-            color: 'var(--text)',
+            background: selectedFile ? undefined : 'var(--border)',
+            color: selectedFile ? undefined : 'var(--text)',
             border: 'none',
             borderRadius: 8,
             fontWeight: 600,
@@ -585,9 +595,10 @@ function ProcessingView({ label, percent, showFlashcardStep, queuePosition, queu
   }, []);
 
   return (
-    <div style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '24px 0', fontFamily: 'Inter, sans-serif' }}>
+    <div className="upload-processing-shell" style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '24px 0', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ marginBottom: 20 }}>
         <div
+          className="upload-spinner"
           style={{
             width: 48,
             height: 48,
@@ -640,6 +651,7 @@ function ProcessingView({ label, percent, showFlashcardStep, queuePosition, queu
 
       {/* Progress bar — thin 3px line */}
       <div
+        className="upload-progress-track"
         style={{
           height: 3,
           background: 'var(--border)',
@@ -649,6 +661,7 @@ function ProcessingView({ label, percent, showFlashcardStep, queuePosition, queu
         }}
       >
         <div
+          className="upload-progress-fill"
           style={{
             height: '100%',
             width: `${percent}%`,
@@ -667,6 +680,7 @@ function ProcessingView({ label, percent, showFlashcardStep, queuePosition, queu
           return (
             <div key={key} style={{ flex: 1, textAlign: 'center' }}>
               <div
+                className={`upload-step-dot${isActive ? ' is-active' : ''}`}
                 style={{
                   width: 7,
                   height: 7,
@@ -707,7 +721,7 @@ const STEP_LABELS = [
 
 function ErrorView({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '24px 0', fontFamily: 'Inter, sans-serif' }}>
+    <div className="upload-error-shell" style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '24px 0', fontFamily: 'Inter, sans-serif' }}>
       <p
         style={{
           fontFamily: "'Instrument Serif', Georgia, serif",

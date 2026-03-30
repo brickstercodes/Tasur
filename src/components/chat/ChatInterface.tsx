@@ -182,6 +182,18 @@ const MESSAGE_TYPE_ACCENT: Record<string, string> = {
   clarification:   '#944604',  // amber
 };
 
+const THINKING_PHRASES = [
+  'Grabbing some context...',
+  'Pouring thoughts in...',
+  'Mixing the magic...',
+  'Tracing concept threads...',
+  'Sharpening the explanation...',
+  'Lining up examples...',
+  'Connecting the dots...',
+  'Drafting your response...',
+  'Polishing the answer...',
+] as const;
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ChatInterface({
@@ -198,6 +210,7 @@ export function ChatInterface({
   const [inputText, setInputText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [thinkingPhraseIndex, setThinkingPhraseIndex] = useState(0);
 
   // True when the latest assistant message signals the concept is fully covered.
   const isConversationComplete = messages
@@ -251,6 +264,16 @@ export function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (!isStreaming) return;
+
+    const id = setInterval(() => {
+      setThinkingPhraseIndex((i) => (i + 1) % THINKING_PHRASES.length);
+    }, 1700);
+
+    return () => clearInterval(id);
+  }, [isStreaming]);
+
   // ── Send message ───────────────────────────────────────────────────────────
 
   const sendMessage = useCallback(
@@ -259,6 +282,7 @@ export function ChatInterface({
 
       setError(null);
       setIsStreaming(true);
+      setThinkingPhraseIndex(0);
 
       const userMessage: ChatMessage = {
         id: `user-${Date.now()}`,
@@ -451,17 +475,20 @@ export function ChatInterface({
           50% { transform: scale(0.9) rotate(18deg); }
           100% { transform: scale(1) rotate(0deg); }
         }
+        @keyframes thinking-phrase-fade {
+          0%, 100% { opacity: 0.95; }
+          50% { opacity: 0.48; }
+        }
         .chat-scroll::-webkit-scrollbar { width: 4px; }
         .chat-scroll::-webkit-scrollbar-track { background: transparent; }
         .chat-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 10px; }
-        .send-btn:hover:not(:disabled) { background: #7A3803 !important; }
-        .moveon-btn:hover { opacity: 0.88; transform: translateY(-1px); }
         .bubble-enter-user { animation: bubble-in-user 260ms cubic-bezier(0.2, 0.78, 0.28, 1) both; }
         .bubble-enter-assistant { animation: bubble-in-assistant 280ms cubic-bezier(0.2, 0.78, 0.28, 1) both; }
         .assistant-paper-stream-complete { animation: ink-settle 420ms ease-out both; }
         .assistant-avatar-thinking { animation: thinking-pulse 1.25s ease-in-out infinite; }
         .message-type-label { animation: bubble-in-assistant 220ms cubic-bezier(0.2, 0.78, 0.28, 1) both; }
         .send-btn-streaming .send-icon { animation: send-spin 700ms ease-in-out infinite; }
+        .assistant-thinking-phrase { animation: thinking-phrase-fade 1.7s ease-in-out infinite; }
 
         @media (prefers-reduced-motion: reduce) {
           .bubble-enter-user,
@@ -469,13 +496,15 @@ export function ChatInterface({
           .assistant-paper-stream-complete,
           .assistant-avatar-thinking,
           .message-type-label,
-          .send-btn-streaming .send-icon {
+          .send-btn-streaming .send-icon,
+          .assistant-thinking-phrase {
             animation: none !important;
           }
         }
       `}</style>
 
       <div
+        className="chat-shell"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -485,7 +514,7 @@ export function ChatInterface({
       >
         {/* Message list */}
         <div
-          className="chat-scroll"
+          className="chat-scroll chat-messages-layer"
           style={{
             flex: 1,
             overflowY: 'auto',
@@ -497,6 +526,7 @@ export function ChatInterface({
         >
           {messages.length === 0 && !isStreaming && (
             <div
+              className="chat-empty-state"
               style={{
                 textAlign: 'center',
                 marginTop: 48,
@@ -522,6 +552,7 @@ export function ChatInterface({
               key={message.id}
               message={message}
               learningMode={learningMode}
+              thinkingPhrase={THINKING_PHRASES[thinkingPhraseIndex]}
               userInitial={userInitial}
               onAssessmentSubmit={handleAssessmentSubmit}
               assessmentSubmitted={
@@ -536,6 +567,7 @@ export function ChatInterface({
 
           {error && (
             <div
+              className="chat-error-banner"
               style={{
                 background: 'var(--error-bg)',
                 border: '1px solid var(--error-border)',
@@ -559,7 +591,7 @@ export function ChatInterface({
         {isConversationComplete && (
           <div style={{ padding: '12px 0 4px' }}>
             <button
-              className="moveon-btn"
+              className="moveon-btn chat-moveon-btn"
               onClick={() => {
                 // router.refresh() purges the RSC cache for the current tree so
                 // the mindmap page re-fetches fresh confidence scores from the DB.
@@ -571,14 +603,12 @@ export function ChatInterface({
                 padding: '13px 24px',
                 border: 'none',
                 borderRadius: 10,
-                background: 'var(--primary)',
                 color: '#fff',
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: 'pointer',
                 fontFamily: 'Inter, sans-serif',
                 letterSpacing: '0.02em',
-                boxShadow: '0 2px 12px rgba(148,70,4,0.28)',
                 transition: 'opacity 0.15s ease, transform 0.12s ease',
                 display: 'flex',
                 alignItems: 'center',
@@ -593,8 +623,8 @@ export function ChatInterface({
 
         {/* Input area */}
         <div
+          className="chat-composer"
           style={{
-            borderTop: '1px solid var(--border)',
             padding: '14px 0 4px',
             display: 'flex',
             gap: 10,
@@ -602,13 +632,14 @@ export function ChatInterface({
           }}
         >
           <textarea
+            className="chat-composer-input"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isStreaming}
             placeholder={
               isStreaming
-                ? 'Thinking…'
+                ? THINKING_PHRASES[thinkingPhraseIndex]
                 : 'Ask a question… (Enter to send, Shift+Enter for newline)'
             }
             rows={2}
@@ -634,7 +665,7 @@ export function ChatInterface({
             }}
           />
           <button
-            className={`send-btn ${isStreaming ? 'send-btn-streaming' : ''}`}
+            className={`send-btn chat-send-btn ${isStreaming ? 'send-btn-streaming' : ''}`}
             onClick={() => sendMessage(inputText)}
             disabled={!inputText.trim() || isStreaming}
             style={{
@@ -670,12 +701,14 @@ const AVATAR_SIZE = 30;
 function MessageBubble({
   message,
   learningMode,
+  thinkingPhrase,
   userInitial,
   onAssessmentSubmit,
   assessmentSubmitted = false,
 }: {
   message: ChatMessage;
   learningMode: 'fast' | 'steady';
+  thinkingPhrase: string;
   userInitial: string;
   onAssessmentSubmit: (answer: string) => void;
   assessmentSubmitted?: boolean;
@@ -689,15 +722,14 @@ function MessageBubble({
   if (isUser) {
     // ── User bubble: parchment float, right-aligned with avatar ──────────────
     return (
-      <div className="bubble-enter-user" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 10, margin: '10px 0' }}>
+      <div className="bubble-enter-user chat-message-row" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 10, margin: '10px 0' }}>
         <div
+          className="chat-user-bubble"
           style={{
             maxWidth: '72%',
             padding: '11px 16px',
             borderRadius: '16px 16px 4px 16px',
-            background: 'var(--surface-elevated)',
             border: '1px solid var(--border)',
-            boxShadow: '0 2px 8px rgba(28,25,23,0.08)',
             color: 'var(--text)',
             fontSize: 13.5,
             lineHeight: 1.65,
@@ -710,6 +742,7 @@ function MessageBubble({
         </div>
         {/* User avatar */}
         <div
+          className="chat-avatar-orb"
           style={{
             width: AVATAR_SIZE,
             height: AVATAR_SIZE,
@@ -735,10 +768,10 @@ function MessageBubble({
 
   // ── Assistant message: manuscript block with Tasur logo avatar ────────────
   return (
-    <div className="bubble-enter-assistant" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, margin: '14px 0' }}>
+    <div className="bubble-enter-assistant chat-message-row" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, margin: '14px 0' }}>
       {/* Tasur logo avatar */}
       <div
-        className={message.isStreaming && message.content.length === 0 ? 'assistant-avatar-thinking' : undefined}
+        className={`chat-avatar-orb${message.isStreaming && message.content.length === 0 ? ' assistant-avatar-thinking' : ''}`}
         style={{
           width: AVATAR_SIZE,
           height: AVATAR_SIZE,
@@ -761,7 +794,7 @@ function MessageBubble({
         {/* Message type label */}
         {message.messageType && (
           <div
-            className="message-type-label"
+            className="message-type-label chat-type-label"
             style={{
               fontSize: 11,
               fontFamily: "'JetBrains Mono', 'Courier New', monospace",
@@ -778,18 +811,13 @@ function MessageBubble({
 
       {/* Manuscript block */}
       <div
-        className={!message.isStreaming && message.streamCompleteTick ? 'assistant-paper-stream-complete' : undefined}
+        className={`chat-assistant-bubble${message.isStreaming ? ' is-streaming' : ''}${!message.isStreaming && message.streamCompleteTick ? ' assistant-paper-stream-complete' : ''}`}
         style={{
           width: '100%',
           padding: '18px 20px 18px 20px',
-          background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderLeft: `3px solid ${accent}`,
           borderRadius: '0 8px 8px 0',
-          boxShadow: `
-            0 2px 12px rgba(28,25,23,0.07),
-            0 1px 3px rgba(28,25,23,0.05)
-          `,
           fontSize: 13.5,
           lineHeight: 1.78,
           color: 'var(--text)',
@@ -799,22 +827,51 @@ function MessageBubble({
         }}
       >
         {message.isStreaming ? (
-          <>
-            <span style={{ whiteSpace: 'pre-wrap' }}>{message.content}</span>
-            <span
+          message.content.length > 0 ? (
+            <>
+              <span style={{ whiteSpace: 'pre-wrap' }}>{message.content}</span>
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: 2,
+                  height: 16,
+                  background: accent,
+                  borderRadius: 1,
+                  marginLeft: 3,
+                  verticalAlign: 'text-bottom',
+                  opacity: 0.7,
+                  animation: 'cursor-fade 0.9s ease-in-out infinite',
+                }}
+              />
+            </>
+          ) : (
+            <div
               style={{
-                display: 'inline-block',
-                width: 2,
-                height: 16,
-                background: accent,
-                borderRadius: 1,
-                marginLeft: 3,
-                verticalAlign: 'text-bottom',
-                opacity: 0.7,
-                animation: 'cursor-fade 0.9s ease-in-out infinite',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+                fontSize: 11.5,
+                letterSpacing: '0.04em',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
               }}
-            />
-          </>
+            >
+              <span className="assistant-thinking-phrase">{thinkingPhrase}</span>
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: 2,
+                  height: 14,
+                  background: accent,
+                  borderRadius: 1,
+                  verticalAlign: 'text-bottom',
+                  opacity: 0.65,
+                  animation: 'cursor-fade 0.9s ease-in-out infinite',
+                }}
+              />
+            </div>
+          )
         ) : (
           renderMarkdown(message.content)
         )}

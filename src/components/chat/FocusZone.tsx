@@ -161,7 +161,7 @@ export function FocusZone({
       `}</style>
       <aside
         ref={panelRef}
-        className="focus-zone-scroll"
+        className="focus-zone-scroll focus-zone-shell"
         style={{
           position: 'relative',
           width: panelWidth === null ? '50%' : `${panelWidth}px`,
@@ -252,6 +252,7 @@ export function FocusZone({
         <div style={{ padding: '28px 28px 24px' }}>
           {/* ── Section 1: Header ─────────────────────────────────────────────── */}
           <div
+            className="focus-zone-header"
             style={{
               display: 'flex',
               flexDirection: 'row',
@@ -262,6 +263,8 @@ export function FocusZone({
           >
             <div>
               <h2
+                key={conceptName}
+                className="focus-zone-concept-title"
                 style={{
                   fontFamily: "'Instrument Serif', Georgia, serif",
                   fontSize: 30,
@@ -328,6 +331,7 @@ export function FocusZone({
                 {prerequisites.map((prereq) => (
                   <span
                     key={prereq}
+                    className="focus-zone-pill"
                     style={{
                       padding: '4px 10px',
                       background: 'var(--surface-elevated)',
@@ -349,8 +353,10 @@ export function FocusZone({
           {studyCue && (
             <div style={{ marginBottom: 28 }}>
               <div
+                className="focus-zone-card"
                 style={{
                   background: 'var(--surface-elevated)',
+                  border: '1px solid var(--border)',
                   borderRadius: 10,
                   padding: '14px 18px',
                 }}
@@ -393,7 +399,7 @@ export function FocusZone({
                 </div>
               )}
               {themedDocumentUrl ? (
-                <div style={{ position: 'relative', width: '100%', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                <div className="focus-zone-doc-frame" style={{ position: 'relative', width: '100%', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
                   <iframe
                     src={themedDocumentUrl}
                     style={{
@@ -408,6 +414,7 @@ export function FocusZone({
                 </div>
               ) : documentText ? (
                 <div
+                  className="focus-zone-doc-frame"
                   style={{
                     background: 'var(--surface-elevated)',
                     border: '1px solid var(--border)',

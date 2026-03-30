@@ -78,6 +78,7 @@ export function MicroAssessment({
       `}</style>
 
       <div
+        className="micro-assessment-shell"
         style={{
           margin: '4px 0 0',
           padding: '20px 20px 18px',

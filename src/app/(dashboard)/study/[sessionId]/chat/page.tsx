@@ -202,6 +202,8 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
       >
         {/* Breadcrumb */}
         <nav
+          key={`crumb-${conceptId}`}
+          className="chat-concept-breadcrumb"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -224,11 +226,15 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
             {sessionTitle}
           </Link>
           <span>›</span>
-          <span style={{ color: 'var(--text)', fontWeight: 500 }}>{conceptName}</span>
+          <span className="chat-concept-name" style={{ color: 'var(--text)', fontWeight: 500 }}>
+            {conceptName}
+          </span>
         </nav>
 
         {/* Concept header — simplified */}
         <div
+          key={`header-${conceptId}`}
+          className="chat-concept-header"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -239,7 +245,7 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="chat-concept-meta" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span
               style={{
                 fontSize: 11,
@@ -267,6 +273,7 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
           </div>
           <Link
             href={`/study/${sessionId}/mindmap`}
+            className="chat-concept-backlink"
             style={{
               fontSize: 12,
               color: 'var(--text-muted)',

@@ -599,13 +599,884 @@ body {
   }
 }
 
+/* ── Upload flow manuscript motion layer ───────────────────────────────── */
+
+.upload-flow-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.upload-flow-shell::before,
+.upload-flow-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.upload-flow-shell::before {
+  z-index: -2;
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      120% 80% at 8% 12%,
+      color-mix(in srgb, var(--primary) 14%, transparent),
+      transparent 64%
+    ),
+    radial-gradient(
+      120% 80% at 92% 88%,
+      color-mix(in srgb, var(--text) 10%, transparent),
+      transparent 66%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--text) 2.2%, transparent) 0,
+      color-mix(in srgb, var(--text) 2.2%, transparent) 1px,
+      transparent 1px,
+      transparent 6px
+    );
+  opacity: 0.6;
+  animation: uploadPaperBreath 9s ease-in-out infinite alternate;
+}
+
+.upload-flow-shell::after {
+  z-index: -1;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--primary) 14%, transparent),
+    inset 0 24px 34px color-mix(in srgb, var(--primary) 7%, transparent);
+  opacity: 0.7;
+}
+
+.upload-dropzone {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.24s ease,
+    box-shadow 0.24s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.upload-dropzone::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(
+    110deg,
+    transparent 8%,
+    color-mix(in srgb, var(--primary) 16%, transparent) 36%,
+    transparent 56%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.9s ease;
+  pointer-events: none;
+}
+
+.upload-dropzone:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 9px 20px rgba(36, 22, 11, 0.08);
+}
+
+.upload-dropzone.is-dragging,
+.upload-dropzone.has-file {
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--primary) 18%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.upload-dropzone.is-dragging::before,
+.upload-dropzone.has-file::before,
+.upload-dropzone:hover::before {
+  transform: translateX(120%);
+}
+
+.upload-dropzone-icon {
+  display: inline-block;
+  transform-origin: 50% 68%;
+  animation: quillBob 3.2s ease-in-out infinite;
+}
+
+.upload-input-line {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.upload-input-line:focus-within {
+  border-color: color-mix(in srgb, var(--primary) 60%, var(--border));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--primary) 58%, transparent);
+}
+
+.upload-mode-card {
+  position: relative;
+  overflow: hidden;
+  transform: translateY(0);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.upload-mode-card::after {
+  content: '';
+  position: absolute;
+  inset: auto 12% -50% 12%;
+  height: 56%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--primary) 18%, transparent),
+    transparent 78%
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.upload-mode-card:hover {
+  transform: translateY(-1px);
+}
+
+.upload-mode-card.is-selected::after,
+.upload-mode-card:hover::after {
+  opacity: 0.68;
+}
+
+.upload-toggle {
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.upload-toggle:hover {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 26%, transparent) inset;
+}
+
+.upload-toggle-knob {
+  transition:
+    left 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.1),
+    box-shadow 0.2s ease;
+}
+
+.upload-toggle.is-on .upload-toggle-knob {
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 26%, transparent);
+}
+
+.upload-primary-action {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary-hover) 76%, var(--primary) 24%),
+    var(--primary)
+  );
+  color: #fff;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 22%, transparent);
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.12s ease;
+}
+
+.upload-primary-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+.upload-processing-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-processing-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 18% 14%,
+      color-mix(in srgb, var(--primary) 16%, transparent),
+      transparent 44%
+    ),
+    radial-gradient(
+      circle at 84% 84%,
+      color-mix(in srgb, var(--text) 9%, transparent),
+      transparent 48%
+    );
+  opacity: 0.56;
+  animation: uploadPaperBreath 8s ease-in-out infinite alternate;
+}
+
+.upload-spinner {
+  position: relative;
+  border-color: color-mix(in srgb, var(--border) 90%, var(--primary));
+}
+
+.upload-spinner::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in srgb, var(--primary) 24%, transparent);
+  animation: spinReverse 5.2s linear infinite;
+}
+
+.upload-progress-track {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 9%, transparent);
+}
+
+.upload-progress-fill {
+  position: relative;
+}
+
+.upload-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 8%,
+    rgba(255, 255, 255, 0.26) 40%,
+    transparent 68%
+  );
+  animation: uploadProgressSheen 1.8s linear infinite;
+}
+
+.upload-step-dot {
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent);
+}
+
+.upload-step-dot.is-active {
+  animation: uploadPulse 1.35s ease-out infinite;
+}
+
+.upload-error-shell {
+  position: relative;
+}
+
+.upload-error-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 4%,
+    color-mix(in srgb, var(--error-border) 28%, transparent),
+    transparent 48%
+  );
+  opacity: 0.7;
+}
+
+@keyframes uploadProgressSheen {
+  from {
+    transform: translateX(-130%);
+  }
+  to {
+    transform: translateX(130%);
+  }
+}
+
+@keyframes uploadPulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 34%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--primary) 0%, transparent);
+  }
+}
+
+@keyframes uploadPaperBreath {
+  from {
+    opacity: 0.46;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.72;
+    transform: scale(1.015);
+  }
+}
+
+@keyframes quillBob {
+  0%,
+  100% {
+    transform: rotate(-2deg) translateY(0);
+  }
+  50% {
+    transform: rotate(2deg) translateY(-2px);
+  }
+}
+
+@keyframes spinReverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-fade-up,
-  .stagger-list > * {
+  .stagger-list > *,
+  .upload-flow-shell::before,
+  .upload-processing-shell::before,
+  .upload-dropzone-icon,
+  .upload-step-dot.is-active,
+  .upload-progress-fill::after,
+  .upload-spinner::after {
     animation: none;
     opacity: 1;
     transform: none;
     filter: none;
+  }
+
+  .upload-dropzone,
+  .upload-mode-card,
+  .upload-primary-action,
+  .upload-input-line,
+  .upload-toggle,
+  .upload-toggle-knob {
+    transition: none;
+  }
+}
+
+/* ── Chat + Focus manuscript richness layer ─────────────────────────────── */
+
+.chat-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.chat-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      140% 84% at 8% 10%,
+      color-mix(in srgb, var(--primary) 11%, transparent),
+      transparent 64%
+    ),
+    radial-gradient(
+      130% 82% at 88% 86%,
+      color-mix(in srgb, var(--text) 8%, transparent),
+      transparent 66%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--text) 1.8%, transparent) 0,
+      color-mix(in srgb, var(--text) 1.8%, transparent) 1px,
+      transparent 1px,
+      transparent 7px
+    );
+  opacity: 0.44;
+  animation: chatPaperDrift 13s ease-in-out infinite alternate;
+}
+
+.chat-messages-layer {
+  position: relative;
+}
+
+.chat-messages-layer::after {
+  content: '';
+  position: absolute;
+  inset: 10px 0 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 78%, transparent), transparent 12%),
+    linear-gradient(0deg, color-mix(in srgb, var(--bg) 92%, transparent), transparent 16%);
+  opacity: 0.32;
+}
+
+.chat-empty-state {
+  animation: appFadeUp 0.55s cubic-bezier(0.2, 0.76, 0.3, 1) both;
+}
+
+.chat-message-row {
+  position: relative;
+}
+
+.chat-message-row::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  right: 15px;
+  top: -6px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--primary) 10%, transparent),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.chat-message-row:hover::before {
+  opacity: 0.6;
+}
+
+.chat-user-bubble,
+.chat-assistant-bubble {
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.chat-user-bubble:hover,
+.chat-assistant-bubble:hover {
+  transform: translateY(-1px);
+}
+
+.chat-user-bubble {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-elevated) 88%, var(--bg)),
+    color-mix(in srgb, var(--surface) 93%, var(--bg))
+  );
+  box-shadow:
+    0 4px 14px rgba(28, 25, 23, 0.08),
+    0 0 0 1px color-mix(in srgb, var(--primary) 8%, transparent) inset;
+}
+
+.chat-assistant-bubble {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface) 93%, var(--bg)),
+    color-mix(in srgb, var(--surface-elevated) 88%, var(--bg))
+  );
+  box-shadow:
+    0 4px 16px rgba(28, 25, 23, 0.08),
+    0 0 0 1px color-mix(in srgb, var(--primary) 8%, transparent) inset;
+}
+
+.chat-assistant-bubble::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 14%,
+    color-mix(in srgb, var(--primary) 10%, transparent) 40%,
+    transparent 66%
+  );
+  transform: translateX(-125%);
+  opacity: 0.68;
+}
+
+.chat-assistant-bubble.is-streaming::after,
+.chat-assistant-bubble:hover::after {
+  animation: chatSheenSweep 1.6s ease;
+}
+
+.chat-avatar-orb {
+  box-shadow:
+    0 2px 8px rgba(28, 25, 23, 0.12),
+    0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent) inset;
+}
+
+.chat-type-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chat-type-label::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.8;
+}
+
+.chat-error-banner {
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-error-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.2) 48%,
+    transparent 66%
+  );
+  transform: translateX(-130%);
+  animation: chatSheenSweep 2.4s ease;
+}
+
+.chat-moveon-btn {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary-hover) 76%, var(--primary) 24%),
+    var(--primary)
+  );
+  box-shadow:
+    0 8px 18px color-mix(in srgb, var(--primary) 24%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent) inset;
+  transition:
+    transform 0.18s ease,
+    filter 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.15s ease;
+}
+
+.chat-moveon-btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+.chat-composer {
+  position: relative;
+  border-top: 1px solid color-mix(in srgb, var(--border) 84%, var(--primary) 16%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg) 82%, transparent),
+    transparent 42%
+  );
+}
+
+.chat-composer::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--primary) 24%, transparent),
+    transparent
+  );
+}
+
+.chat-composer-input {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.chat-composer-input:focus {
+  border-color: color-mix(in srgb, var(--input-focus) 70%, var(--border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--input-focus) 40%, transparent),
+    0 5px 14px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.chat-send-btn {
+  box-shadow: 0 4px 11px color-mix(in srgb, var(--primary) 18%, transparent);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease,
+    background 0.12s ease;
+}
+
+.chat-send-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.chat-send-btn:disabled {
+  box-shadow: none;
+}
+
+.chat-concept-breadcrumb {
+  animation: conceptHeaderFadeIn 0.3s ease-out both;
+}
+
+.chat-concept-header {
+  position: relative;
+  animation: conceptHeaderLiftIn 0.36s cubic-bezier(0.2, 0.76, 0.3, 1) both;
+}
+
+.chat-concept-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--primary) 32%, transparent),
+    transparent
+  );
+  transform-origin: 50% 50%;
+  animation: conceptHeaderLineIn 0.42s ease-out both;
+}
+
+.chat-concept-name {
+  display: inline-block;
+  animation: conceptNameInkIn 0.42s cubic-bezier(0.22, 0.84, 0.34, 1) both;
+}
+
+.chat-concept-meta {
+  animation: conceptMetaIn 0.4s cubic-bezier(0.22, 0.84, 0.34, 1) both;
+}
+
+.chat-concept-backlink {
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.chat-concept-backlink:hover {
+  transform: translateY(-1px);
+  color: var(--text) !important;
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border)) !important;
+  background: color-mix(in srgb, var(--surface-elevated) 88%, var(--surface));
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.focus-zone-concept-title {
+  animation: conceptNameInkIn 0.45s cubic-bezier(0.22, 0.84, 0.34, 1) both;
+}
+
+@keyframes conceptHeaderFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes conceptHeaderLiftIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+    filter: blur(1.6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes conceptHeaderLineIn {
+  from {
+    opacity: 0;
+    transform: scaleX(0.78);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes conceptNameInkIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(1.8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes conceptMetaIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.focus-zone-shell {
+  position: relative;
+}
+
+.focus-zone-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 12% 8%,
+      color-mix(in srgb, var(--primary) 14%, transparent),
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 90% 90%,
+      color-mix(in srgb, var(--text) 9%, transparent),
+      transparent 52%
+    );
+  opacity: 0.38;
+}
+
+.focus-zone-header {
+  position: relative;
+}
+
+.focus-zone-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -12px;
+  width: 84px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--primary) 40%, transparent),
+    transparent
+  );
+}
+
+.focus-zone-pill,
+.focus-zone-card,
+.focus-zone-doc-frame {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.focus-zone-pill:hover,
+.focus-zone-card:hover,
+.focus-zone-doc-frame:hover {
+  transform: translateY(-1px);
+}
+
+.focus-zone-pill:hover {
+  border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.focus-zone-card:hover,
+.focus-zone-doc-frame:hover {
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+  box-shadow: 0 7px 16px color-mix(in srgb, var(--primary) 15%, transparent);
+}
+
+.micro-assessment-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.micro-assessment-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    112deg,
+    transparent 22%,
+    rgba(255, 255, 255, 0.2) 40%,
+    transparent 58%
+  );
+  transform: translateX(-125%);
+}
+
+.micro-assessment-shell:hover::after {
+  animation: chatSheenSweep 1.5s ease;
+}
+
+.visual-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.visual-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 6% 10%,
+      color-mix(in srgb, var(--primary) 9%, transparent),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 90% 92%,
+      color-mix(in srgb, var(--text) 6%, transparent),
+      transparent 46%
+    );
+  opacity: 0.55;
+}
+
+@keyframes chatSheenSweep {
+  from {
+    transform: translateX(-125%);
+  }
+  to {
+    transform: translateX(125%);
+  }
+}
+
+@keyframes chatPaperDrift {
+  from {
+    opacity: 0.34;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.54;
+    transform: scale(1.018);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-shell::before,
+  .chat-empty-state,
+  .chat-assistant-bubble.is-streaming::after,
+  .chat-assistant-bubble:hover::after,
+  .chat-error-banner::after,
+  .micro-assessment-shell:hover::after,
+  .chat-concept-breadcrumb,
+  .chat-concept-header,
+  .chat-concept-header::after,
+  .chat-concept-name,
+  .chat-concept-meta,
+  .focus-zone-concept-title {
+    animation: none !important;
+  }
+
+  .chat-user-bubble,
+  .chat-assistant-bubble,
+  .chat-moveon-btn,
+  .chat-composer-input,
+  .chat-send-btn,
+  .focus-zone-pill,
+  .focus-zone-card,
+  .focus-zone-doc-frame,
+  .chat-concept-backlink {
+    transition: none !important;
   }
 }
 

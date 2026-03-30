@@ -29,6 +29,7 @@ interface VisualSuggestionProps {
 export function VisualSuggestion({ type, data }: VisualSuggestionProps) {
   return (
     <div
+      className="visual-shell"
       style={{
         margin: '12px 0',
         border: '1px solid var(--border)',
