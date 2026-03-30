@@ -20,7 +20,7 @@ var mmGeneratorExampleXml string
 // ── mm-generator ──────────────────────────────────────────────────────────────
 // Mirrors src/manual/agents/mm-generator.ts: ManualMmGeneratorAgent.execute()
 
-const mmGeneratorThinkingBudget = 3500
+const mmGeneratorThinkingBudget = 5000
 const mmGeneratorRetryBudget = 4096
 const mmGeneratorTemperature = 1.0
 
