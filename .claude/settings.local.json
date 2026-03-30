@@ -53,7 +53,10 @@
       "Bash(/opt/homebrew/bin/go build:*)",
       "Bash(/usr/local/go/bin/go build:*)",
       "Bash(/usr/local/bin/node_modules/.bin/tsc --noEmit)",
-      "Bash(./node_modules/.bin/tsc --noEmit)"
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(python3 -c \":*)",
+      "Bash(git stash:*)",
+      "Bash(/usr/local/bin/node node_modules/.bin/next build)"
     ]
   }
 }

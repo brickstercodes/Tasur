@@ -34,9 +34,9 @@ export async function POST(req: Request, { params }: RouteParams) {
   const userId = await resolveAppUserId(session.user);
 
   // ── Forward to Go service ─────────────────────────────────────────────────
-  const goServiceUrl = process.env.GO_SERVICE_URL;
+  const goServiceUrl = process.env.GO_SERVICE_URL?.trim();
   if (!goServiceUrl) {
-    return new Response('Pipeline service unavailable', { status: 503 });
+    return new Response('Pipeline service unavailable: GO_SERVICE_URL is not configured in the Nextjs service runtime.', { status: 503 });
   }
 
   const contentType = req.headers.get('content-type') ?? '';
