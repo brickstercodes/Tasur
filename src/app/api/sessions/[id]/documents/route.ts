@@ -18,14 +18,30 @@ const SSE_HEADERS = {
   Connection: 'keep-alive',
 };
 
+function normalizeGoServiceUrl(rawUrl: string): string {
+  const value = rawUrl.trim();
+  try {
+    const parsed = new URL(value);
+    // Railway can expose the same private service as "<name>.railway.internal"
+    // and as the short alias "<name>". Some runtimes resolve only the short alias.
+    if (parsed.hostname.endsWith('.railway.internal')) {
+      parsed.hostname = parsed.hostname.replace(/\.railway\.internal$/, '');
+      return parsed.toString().replace(/\/$/, '');
+    }
+  } catch {
+    // Keep original value if URL parsing fails.
+  }
+  return value;
+}
+
 function resolveGoServiceUrl(): string | undefined {
   const configured = process.env.GO_SERVICE_URL?.trim();
-  if (configured) return configured;
+  if (configured) return normalizeGoServiceUrl(configured);
 
   // Production fallback: in Railway this private DNS reaches the Go service.
   // We keep this behind NODE_ENV=production so local dev isn't silently rerouted.
   if (process.env.NODE_ENV === 'production') {
-    return 'http://tasur.railway.internal:8080';
+    return 'http://tasur:8080';
   }
 
   return undefined;
