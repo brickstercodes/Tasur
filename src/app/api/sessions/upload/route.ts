@@ -27,6 +27,18 @@ const SSE_HEADERS = {
   Connection: 'keep-alive',
 };
 
+function resolveGoServiceUrl(): string | undefined {
+  const configured = process.env.GO_SERVICE_URL?.trim();
+  if (configured) return configured;
+
+  // Railway private DNS fallback keeps uploads alive even if env injection is delayed.
+  if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID) {
+    return 'http://tasur.railway.internal:8080';
+  }
+
+  return undefined;
+}
+
 export async function POST(req: Request) {
   // ── Auth (handled entirely in Next.js) ──────────────────────────────────────
   const session = await auth.api.getSession({ headers: await headers() });
@@ -37,7 +49,7 @@ export async function POST(req: Request) {
   const userId = await resolveAppUserId(session.user);
 
   // ── Forward to Go service ─────────────────────────────────────────────────
-  const goServiceUrl = process.env.GO_SERVICE_URL?.trim();
+  const goServiceUrl = resolveGoServiceUrl();
   if (!goServiceUrl) {
     return new Response('Pipeline service unavailable: GO_SERVICE_URL is not configured in the Nextjs service runtime.', { status: 503 });
   }
