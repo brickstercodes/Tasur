@@ -79,10 +79,18 @@ func (v *vertexClient) generateContent(
 		location = "global"
 	}
 
-	url := fmt.Sprintf(
-		"https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent",
-		location, v.project, location, modelID,
-	)
+	var url string
+	if location == "global" {
+		url = fmt.Sprintf(
+			"https://aiplatform.googleapis.com/v1/projects/%s/locations/global/publishers/google/models/%s:generateContent",
+			v.project, modelID,
+		)
+	} else {
+		url = fmt.Sprintf(
+			"https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent",
+			location, v.project, location, modelID,
+		)
+	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	if err != nil {

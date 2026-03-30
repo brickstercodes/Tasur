@@ -48,7 +48,8 @@
       "Bash(echo \"Build+vet exit: $?\")",
       "Bash(echo \"Final exit: $?\")",
       "Bash(echo \"RESULT: $?\")",
-      "WebFetch(domain:docs.railway.com)"
+      "WebFetch(domain:docs.railway.com)",
+      "Bash(find /Users/anugrahshetty/Documents/Tasur -type f \\\\\\(-name .env* \\\\\\) ! -path */go-pipeline/*)"
     ]
   }
 }
