@@ -8,6 +8,8 @@
  *   Returns: text/event-stream (identical SSE events to the primary upload)
  */
 
+export const maxDuration = 300;
+
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';

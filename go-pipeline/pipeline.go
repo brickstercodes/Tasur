@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -19,6 +20,7 @@ import (
 type sseEmitter struct {
 	w       http.ResponseWriter
 	flusher http.Flusher
+	mu      sync.Mutex
 }
 
 func newSSEEmitter(w http.ResponseWriter) (*sseEmitter, bool) {
@@ -38,8 +40,31 @@ func (e *sseEmitter) emit(v interface{}) {
 	if err != nil {
 		return
 	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	fmt.Fprintf(e.w, "data: %s\n\n", data)
 	e.flusher.Flush()
+}
+
+// startHeartbeat emits lightweight keepalive events so intermediate proxies
+// don't terminate long-running uploads during quiet phases (e.g. model calls).
+func (e *sseEmitter) startHeartbeat(ctx context.Context, interval time.Duration) func() {
+	stop := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-stop:
+				return
+			case t := <-ticker.C:
+				e.emit(map[string]interface{}{"type": "heartbeat", "ts": t.Unix()})
+			}
+		}
+	}()
+	return func() { close(stop) }
 }
 
 func (e *sseEmitter) progress(step, label string, percent int) {
@@ -73,6 +98,9 @@ func makeUploadHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient) 
 		}
 
 		// ── Auth / metadata from Next.js proxy ──────────────────────────────
+		stopHeartbeat := sse.startHeartbeat(r.Context(), 12*time.Second)
+		defer stopHeartbeat()
+
 		userID := r.Header.Get("X-User-Id")
 		if userID == "" {
 			sse.error("Unauthorized")
@@ -176,6 +204,9 @@ func makeDocumentHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient
 		}
 
 		userID := r.Header.Get("X-User-Id")
+		stopHeartbeat := sse.startHeartbeat(r.Context(), 12*time.Second)
+		defer stopHeartbeat()
+
 		if userID == "" {
 			sse.error("Unauthorized")
 			return

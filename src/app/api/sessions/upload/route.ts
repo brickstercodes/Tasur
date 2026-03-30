@@ -15,7 +15,7 @@
  * open connection; Next.js is just piping bytes end-to-end.
  */
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
