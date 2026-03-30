@@ -199,6 +199,13 @@ type ErrorEvent struct {
 	Message string `json:"message"`
 }
 
+// QueuedEvent is emitted when a request is waiting for an API rate-limit slot.
+type QueuedEvent struct {
+	Type     string `json:"type"`
+	Position int    `json:"position"`
+	Label    string `json:"label"`
+}
+
 // ── Vertex AI REST types ──────────────────────────────────────────────────────
 
 // vertexRequest is the JSON body sent to the Vertex AI generateContent endpoint.

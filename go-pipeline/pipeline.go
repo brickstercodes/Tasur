@@ -54,6 +54,14 @@ func (e *sseEmitter) error(message string) {
 	e.emit(ErrorEvent{Type: "error", Message: message})
 }
 
+func (e *sseEmitter) queued(position int) {
+	label := "You're in the queue — Tasur is in beta and processes one mindmap at a time."
+	if position > 1 {
+		label = fmt.Sprintf("You're in the queue (position %d) — Tasur is in beta and processes requests in order.", position)
+	}
+	e.emit(QueuedEvent{Type: "queued", Position: position, Label: label})
+}
+
 // ── Handler: POST /pipeline/upload ───────────────────────────────────────────
 
 func makeUploadHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient) http.HandlerFunc {
@@ -265,8 +273,13 @@ func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, s
 		extraction = ExtractionResult{RawText: "", NeedsVision: true}
 	}
 
-	// Phase 1b: mm-generator
-	sse.progress("generating_mm", "Generating study mindmap…", 25)
+	// Phase 1b: mm-generator (rate-limited)
+	if pos, err := mmRateLimit.Wait(ctx); err != nil {
+		return // client disconnected while waiting in queue
+	} else if pos > 1 || mmRateLimit.QueueDepth() > 0 {
+		sse.queued(pos)
+	}
+	sse.progress("generating_mm", "Generating study mindmap… (beta: this may take a moment)", 25)
 	mmResult, err := generateMm(
 		ctx, vc,
 		extraction.RawText,
@@ -382,8 +395,13 @@ func runDocumentPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient,
 		extraction = ExtractionResult{RawText: "", NeedsVision: true}
 	}
 
-	// Phase 1b: mm-generator
-	sse.progress("generating_mm", "Generating study mindmap…", 30)
+	// Phase 1b: mm-generator (rate-limited)
+	if pos, err := mmRateLimit.Wait(ctx); err != nil {
+		return // client disconnected while waiting in queue
+	} else if pos > 1 || mmRateLimit.QueueDepth() > 0 {
+		sse.queued(pos)
+	}
+	sse.progress("generating_mm", "Generating study mindmap… (beta: this may take a moment)", 30)
 	mmResult, err := generateMm(
 		ctx, vc,
 		extraction.RawText,
@@ -539,8 +557,11 @@ func startServer() error {
 		return fmt.Errorf("init supabase client: %w", err)
 	}
 
-	// Worker pool: max 5 concurrent Gemini calls
+	// Worker pool: max 5 concurrent pipeline runs
 	sem := make(chan struct{}, 5)
+
+	// Rate limiter: caps Vertex AI calls to MM_RATE_LIMIT_PER_MINUTE (default 8/min)
+	mmRateLimit = newAPIRateLimiter(mmRatePerMinute())
 
 	port := os.Getenv("PORT")
 	if port == "" {
