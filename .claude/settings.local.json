@@ -51,7 +51,9 @@
       "WebFetch(domain:docs.railway.com)",
       "Bash(find /Users/anugrahshetty/Documents/Tasur -type f \\\\\\(-name .env* \\\\\\) ! -path */go-pipeline/*)",
       "Bash(/opt/homebrew/bin/go build:*)",
-      "Bash(/usr/local/go/bin/go build:*)"
+      "Bash(/usr/local/go/bin/go build:*)",
+      "Bash(/usr/local/bin/node_modules/.bin/tsc --noEmit)",
+      "Bash(./node_modules/.bin/tsc --noEmit)"
     ]
   }
 }

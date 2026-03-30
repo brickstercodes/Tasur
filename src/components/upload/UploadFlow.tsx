@@ -45,7 +45,13 @@ interface ErrorEvent {
   message: string;
 }
 
-type SseEvent = ProgressEvent | DoneEvent | ErrorEvent;
+interface QueuedEvent {
+  type: 'queued';
+  position: number;
+  label: string;
+}
+
+type SseEvent = ProgressEvent | DoneEvent | ErrorEvent | QueuedEvent;
 
 interface UploadFlowProps {
   /** If provided, adds a document to this session instead of creating a new one. */
@@ -92,6 +98,8 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
   const [progressLabel, setProgressLabel] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
+  const [queuePosition, setQueuePosition] = useState(0);
+  const [queueLabel, setQueueLabel] = useState('');
 
   // ── File selection ─────────────────────────────────────────────────────────
 
@@ -182,7 +190,11 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
           continue;
         }
 
-        if (parsed.type === 'progress') {
+        if (parsed.type === 'queued') {
+          setQueuePosition(parsed.position);
+          setQueueLabel(parsed.label);
+        } else if (parsed.type === 'progress') {
+          setQueuePosition(0);
           setProgressLabel(parsed.label);
           setProgressPercent(parsed.percent);
         } else if (parsed.type === 'done') {
@@ -208,7 +220,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (uploadState === 'processing') {
-    return <ProcessingView label={progressLabel} percent={progressPercent} showFlashcardStep={generateFlashcards} />;
+    return <ProcessingView label={progressLabel} percent={progressPercent} showFlashcardStep={generateFlashcards} queuePosition={queuePosition} queueLabel={queueLabel} />;
   }
 
   if (uploadState === 'error') {
@@ -220,6 +232,8 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
           setProgressPercent(0);
           setProgressLabel('');
           setErrorMessage('');
+          setQueuePosition(0);
+          setQueueLabel('');
         }}
       />
     );
@@ -548,9 +562,16 @@ const BUFFER_PHRASES = [
   'Calibrating the compass…',
 ];
 
-function ProcessingView({ label, percent, showFlashcardStep }: { label: string; percent: number; showFlashcardStep: boolean }) {
+function ProcessingView({ label, percent, showFlashcardStep, queuePosition, queueLabel }: {
+  label: string;
+  percent: number;
+  showFlashcardStep: boolean;
+  queuePosition: number;
+  queueLabel: string;
+}) {
   const visibleStepLabels = showFlashcardStep ? STEP_LABELS : STEP_LABELS.filter((s) => s.key !== 'flashcards');
   const activeStepIndex = STEP_ORDER.findIndex((s) => label.toLowerCase().includes(s.split('_')[0]));
+  const isQueued = queuePosition > 0;
 
   // Cycle through buffer phrases independently of SSE labels
   const [phraseIndex, setPhraseIndex] = useState(() =>
@@ -573,27 +594,48 @@ function ProcessingView({ label, percent, showFlashcardStep }: { label: string; 
             borderRadius: '50%',
             border: '2px solid var(--border)',
             borderTopColor: 'var(--primary)',
-            animation: 'spin 0.8s linear infinite',
+            animation: isQueued ? 'spin 2.4s linear infinite' : 'spin 0.8s linear infinite',
             margin: '0 auto 16px',
+            opacity: isQueued ? 0.6 : 1,
+            transition: 'opacity 0.3s ease',
           }}
         />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes phrase-fade { 0%,100% { opacity: 1; } 40%,60% { opacity: 0; } }`}</style>
-        <p
-          key={phraseIndex}
-          style={{
-            margin: '0 0 4px',
-            fontSize: 18,
-            fontFamily: "'Instrument Serif', Georgia, serif",
-            fontStyle: 'italic',
-            color: 'var(--text)',
-            animation: 'phrase-fade 1.8s ease-in-out',
-          }}
-        >
-          {BUFFER_PHRASES[phraseIndex]}
-        </p>
-        <p style={{ margin: 0, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          {label || 'Starting…'}
-        </p>
+        {isQueued ? (
+          <>
+            <p style={{
+              margin: '0 0 8px',
+              fontSize: 18,
+              fontFamily: "'Instrument Serif', Georgia, serif",
+              fontStyle: 'italic',
+              color: 'var(--text)',
+            }}>
+              {queuePosition === 1 ? 'Almost there…' : `Position ${queuePosition} in queue`}
+            </p>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', maxWidth: 360, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
+              {queueLabel}
+            </p>
+          </>
+        ) : (
+          <>
+            <p
+              key={phraseIndex}
+              style={{
+                margin: '0 0 4px',
+                fontSize: 18,
+                fontFamily: "'Instrument Serif', Georgia, serif",
+                fontStyle: 'italic',
+                color: 'var(--text)',
+                animation: 'phrase-fade 1.8s ease-in-out',
+              }}
+            >
+              {BUFFER_PHRASES[phraseIndex]}
+            </p>
+            <p style={{ margin: 0, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              {label || 'Starting…'}
+            </p>
+          </>
+        )}
       </div>
 
       {/* Progress bar — thin 3px line */}
