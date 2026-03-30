@@ -31,6 +31,33 @@ function resolveGoServiceUrl(): string | undefined {
   return undefined;
 }
 
+function formatUpstreamError(err: unknown, targetUrl: string): string {
+  if (!(err instanceof Error)) {
+    return `Pipeline service unreachable (${targetUrl})`;
+  }
+
+  const cause = err.cause as
+    | {
+        code?: string;
+        syscall?: string;
+        hostname?: string;
+        address?: string;
+        port?: number;
+        message?: string;
+      }
+    | undefined;
+
+  const extras: string[] = [];
+  if (cause?.code) extras.push(`code=${cause.code}`);
+  if (cause?.syscall) extras.push(`syscall=${cause.syscall}`);
+  if (cause?.hostname) extras.push(`host=${cause.hostname}`);
+  if (cause?.address) extras.push(`address=${cause.address}`);
+  if (cause?.port) extras.push(`port=${cause.port}`);
+
+  const suffix = extras.length > 0 ? ` [${extras.join(', ')}]` : '';
+  return `Pipeline service unreachable (${targetUrl}): ${err.message}${suffix}`;
+}
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -68,8 +95,22 @@ export async function POST(req: Request, { params }: RouteParams) {
       body: req.body,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Pipeline service unreachable';
+    const message = formatUpstreamError(err, `${goServiceUrl}/pipeline/document/${sessionId}`);
     const errorEvent = `data: ${JSON.stringify({ type: 'error', message })}\n\n`;
+    return new Response(errorEvent, { headers: SSE_HEADERS });
+  }
+
+  if (!goResponse.ok) {
+    const upstreamText = await goResponse.text().catch(() => '');
+    const message = upstreamText
+      ? `Pipeline service returned ${goResponse.status}: ${upstreamText}`
+      : `Pipeline service returned ${goResponse.status}`;
+    const errorEvent = `data: ${JSON.stringify({ type: 'error', message })}\n\n`;
+    return new Response(errorEvent, { headers: SSE_HEADERS });
+  }
+
+  if (!goResponse.body) {
+    const errorEvent = `data: ${JSON.stringify({ type: 'error', message: 'Pipeline service returned an empty response body.' })}\n\n`;
     return new Response(errorEvent, { headers: SSE_HEADERS });
   }
 
