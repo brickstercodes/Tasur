@@ -13,8 +13,6 @@
  * Zero LLM dependency — pure file processing.
  */
 
-import { PDFParse, PasswordException } from 'pdf-parse';
-
 import type { ParseResult } from './types';
 
 /** PDFs exceeding this page count are split into chunks for LLM processing. */
@@ -29,6 +27,28 @@ const LARGE_PDF_PAGE_THRESHOLD = 50;
  * - Large PDF (>50 pages) → success with isChunked: true and chunks array
  */
 export async function parsePdf(buffer: Buffer): Promise<ParseResult> {
+  // Lazy-load pdf-parse so Next.js boot does not hard-require optional native
+  // canvas bindings (e.g. @napi-rs/canvas) during module import.
+  let PDFParseCtor: {
+    new (input: { data: Uint8Array; verbosity?: number }): {
+      getText: () => Promise<{ text: string; total: number }>;
+      destroy: () => Promise<void>;
+    };
+  };
+  let PasswordExceptionCtor: (new (...args: unknown[]) => Error) | undefined;
+
+  try {
+    const mod = await import('pdf-parse');
+    PDFParseCtor = mod.PDFParse as typeof PDFParseCtor;
+    PasswordExceptionCtor = mod.PasswordException as typeof PasswordExceptionCtor;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      error: `PDF parser failed to initialize: ${message}`,
+    };
+  }
+
   // Use `new Uint8Array(buffer)` (copy constructor) rather than the shared-memory
   // view `new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)`.
   // When Node.js allocates Buffers from its internal pool, buffer.byteOffset > 0,
@@ -37,11 +57,14 @@ export async function parsePdf(buffer: Buffer): Promise<ParseResult> {
   // A copy guarantees byteOffset === 0 and an isolated ArrayBuffer.
   const data = new Uint8Array(buffer);
 
-  let parser: InstanceType<typeof PDFParse> | null = null;
+  let parser: {
+    getText: () => Promise<{ text: string; total: number }>;
+    destroy: () => Promise<void>;
+  } | null = null;
 
   try {
     // Constructor is now inside try so any synchronous throw is caught.
-    parser = new PDFParse({ data, verbosity: 0 });
+    parser = new PDFParseCtor({ data, verbosity: 0 });
     const result = await parser.getText();
 
     const rawText = result.text.trim();
@@ -71,7 +94,7 @@ export async function parsePdf(buffer: Buffer): Promise<ParseResult> {
       },
     };
   } catch (err) {
-    if (err instanceof PasswordException) {
+    if (PasswordExceptionCtor && err instanceof PasswordExceptionCtor) {
       return {
         success: false,
         error: 'PDF is password-protected. Please remove the password before uploading.',
