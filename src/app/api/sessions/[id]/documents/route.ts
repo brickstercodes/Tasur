@@ -34,13 +34,46 @@ function normalizeGoServiceUrl(rawUrl: string): string {
   return value;
 }
 
+function isRailwayRuntime(): boolean {
+  return Boolean(
+    process.env.RAILWAY_ENVIRONMENT ||
+      process.env.RAILWAY_PROJECT_ID ||
+      process.env.RAILWAY_SERVICE_ID ||
+      process.env.RAILWAY_STATIC_URL,
+  );
+}
+
+function derivePublicApiFallback(): string | undefined {
+  const fromEnv = process.env.GO_SERVICE_PUBLIC_URL?.trim();
+  if (fromEnv) return normalizeGoServiceUrl(fromEnv);
+
+  // If app auth URL is tasur.example.com, infer API as api.tasur.example.com.
+  const authBase = process.env.BETTER_AUTH_URL?.trim() || process.env.NEXT_PUBLIC_BETTER_AUTH_URL?.trim();
+  if (!authBase) return undefined;
+
+  try {
+    const parsed = new URL(authBase);
+    if (parsed.hostname === 'localhost' || parsed.hostname.startsWith('127.')) {
+      return undefined;
+    }
+    if (parsed.hostname.startsWith('api.')) {
+      return parsed.origin;
+    }
+    return `${parsed.protocol}//api.${parsed.hostname}`;
+  } catch {
+    return undefined;
+  }
+}
+
 function resolveGoServiceUrl(): string | undefined {
   const configured = process.env.GO_SERVICE_URL?.trim();
   if (configured) return normalizeGoServiceUrl(configured);
 
-  // Production fallback: in Railway this private DNS reaches the Go service.
-  // We keep this behind NODE_ENV=production so local dev isn't silently rerouted.
-  if (process.env.NODE_ENV === 'production') {
+  const publicFallback = derivePublicApiFallback();
+  if (publicFallback) return publicFallback;
+
+  // Private alias only works from Railway runtime.
+  if (isRailwayRuntime()) {
     return 'http://tasur:8080';
   }
 
@@ -92,7 +125,7 @@ export async function POST(req: Request, { params }: RouteParams) {
   // ── Forward to Go service ─────────────────────────────────────────────────
   const goServiceUrl = resolveGoServiceUrl();
   if (!goServiceUrl) {
-    const debug = `debug(node_env=${process.env.NODE_ENV ?? 'unknown'}, has_go_service_url=${Boolean(process.env.GO_SERVICE_URL)})`;
+    const debug = `debug(node_env=${process.env.NODE_ENV ?? 'unknown'}, has_go_service_url=${Boolean(process.env.GO_SERVICE_URL)}, has_go_service_public_url=${Boolean(process.env.GO_SERVICE_PUBLIC_URL)}, railway_runtime=${isRailwayRuntime()})`;
     return new Response(`Pipeline service unavailable: GO_SERVICE_URL is not configured in the Nextjs service runtime. ${debug}`, { status: 503 });
   }
 
