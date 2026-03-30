@@ -31,8 +31,9 @@ function resolveGoServiceUrl(): string | undefined {
   const configured = process.env.GO_SERVICE_URL?.trim();
   if (configured) return configured;
 
-  // Railway private DNS fallback keeps uploads alive even if env injection is delayed.
-  if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID) {
+  // Production fallback: in Railway this private DNS reaches the Go service.
+  // We keep this behind NODE_ENV=production so local dev isn't silently rerouted.
+  if (process.env.NODE_ENV === 'production') {
     return 'http://tasur.railway.internal:8080';
   }
 
@@ -51,7 +52,8 @@ export async function POST(req: Request) {
   // ── Forward to Go service ─────────────────────────────────────────────────
   const goServiceUrl = resolveGoServiceUrl();
   if (!goServiceUrl) {
-    return new Response('Pipeline service unavailable: GO_SERVICE_URL is not configured in the Nextjs service runtime.', { status: 503 });
+    const debug = `debug(node_env=${process.env.NODE_ENV ?? 'unknown'}, has_go_service_url=${Boolean(process.env.GO_SERVICE_URL)})`;
+    return new Response(`Pipeline service unavailable: GO_SERVICE_URL is not configured in the Nextjs service runtime. ${debug}`, { status: 503 });
   }
 
   const contentType = req.headers.get('content-type') ?? '';
