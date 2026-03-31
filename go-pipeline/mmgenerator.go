@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	_ "embed"
-	"embed"
 	"encoding/base64"
 	"fmt"
 	"strings"
@@ -17,9 +16,6 @@ var mmGeneratorSystemPrompt string
 
 //go:embed prompts/mm-generator-example.xml
 var mmGeneratorExampleXml string
-
-//go:embed prompts/domains
-var domainsFS embed.FS
 
 // ── mm-generator ──────────────────────────────────────────────────────────────
 // Mirrors src/manual/agents/mm-generator.ts: ManualMmGeneratorAgent.execute()
@@ -157,18 +153,11 @@ func generateMm(
 
 // ── Message builders ──────────────────────────────────────────────────────────
 
-// buildSystemInstruction composes the system prompt with an optional domain overlay.
-// Mirrors TypeScript loadPrompt('mm-generator-system', domain) in src/prompts/loader.ts.
-func buildSystemInstruction(subjectHint string) string {
-	if subjectHint == "" {
-		return mmGeneratorSystemPrompt
-	}
-	domainBytes, err := domainsFS.ReadFile("prompts/domains/" + subjectHint + ".md")
-	if err != nil {
-		// No domain file for this subject — base prompt is sufficient.
-		return mmGeneratorSystemPrompt
-	}
-	return mmGeneratorSystemPrompt + "\n\n---\n\n## Domain Context\n\n" + string(domainBytes)
+// buildSystemInstruction returns the base mm-generator system prompt.
+// Domain overlays are intentionally not applied here — the model must derive
+// all content solely from the uploaded document, regardless of subject hint.
+func buildSystemInstruction(_ string) string {
+	return mmGeneratorSystemPrompt
 }
 
 // buildFirstUserParts builds the user parts for the initial mm-generation request.

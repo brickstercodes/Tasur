@@ -22,7 +22,9 @@ const MM_GENERATOR_TEMPERATURE = 1;
 export class ManualMmGeneratorAgent implements TasurAgent<MmGeneratorInput, string> {
   async execute(input: MmGeneratorInput): Promise<AgentResult<string>> {
     const startTime = Date.now();
-    const systemPrompt = loadPrompt('mm-generator-system', input.subjectHint ?? null);
+    // Domain overlays are intentionally not applied — the model must derive all
+    // content solely from the uploaded document, regardless of subject hint.
+    const systemPrompt = loadPrompt('mm-generator-system', null);
     const exampleMmXml = loadPromptFile('base/mm-generator-example.xml');
     const userMessage = buildUserMessage(input);
 
