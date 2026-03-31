@@ -3,6 +3,8 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"context"
+	"encoding/base64"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -53,6 +55,49 @@ func extractText(data []byte, fileType FileType) (ExtractionResult, error) {
 	default:
 		return ExtractionResult{RawText: ""}, nil
 	}
+}
+
+// ── Vision-based text extraction ─────────────────────────────────────────────
+
+// extractTextViaVision calls Gemini (Flash) to extract readable text from a PDF
+// or image file. This replaces the broken heuristic PDF text extractor with a
+// reliable multimodal approach. The extracted text is stored as raw_text in the
+// documents table for use by the chat tutor.
+func extractTextViaVision(ctx context.Context, vc *vertexClient, fileBytes []byte, fileType FileType) (string, error) {
+	if len(fileBytes) == 0 {
+		return "", nil
+	}
+
+	mimeType := mimeTypeForFileType(fileType)
+	model := specialistModelID() // use Flash for cost efficiency
+
+	req := vertexRequest{
+		Contents: []vertexContent{
+			{
+				Role: "user",
+				Parts: []vertexPart{
+					{Text: "Extract ALL text content from this document exactly as it appears. " +
+						"Preserve the original structure: headings, paragraphs, bullet points, numbered lists, and table layouts. " +
+						"Do NOT summarize, paraphrase, or add any commentary. " +
+						"Output ONLY the extracted text, nothing else."},
+					{InlineData: &vertexInlineData{
+						MIMEType: mimeType,
+						Data:     base64.StdEncoding.EncodeToString(fileBytes),
+					}},
+				},
+			},
+		},
+		GenerationConfig: vertexGenerationConfig{
+			Temperature: 0.0,
+		},
+	}
+
+	text, _, _, err := vc.generateContent(ctx, model, req)
+	if err != nil {
+		return "", fmt.Errorf("vision text extraction: %w", err)
+	}
+
+	return strings.TrimSpace(text), nil
 }
 
 // ── DOCX text extraction ──────────────────────────────────────────────────────

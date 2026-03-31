@@ -404,7 +404,25 @@ func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, s
 		extraction = ExtractionResult{RawText: "", NeedsVision: true}
 	}
 
-	// Phase 1b: mm-generator (rate-limited)
+	// Phase 1b: Vision-based text extraction (parallel with mm-generator for PDFs/images)
+	// For PDFs and images, extract readable text via Gemini Vision so the chat
+	// tutor has proper source material. Without this, raw_text is empty and the
+	// tutor hallucinates.
+	var visionTextCh chan string
+	if extraction.NeedsVision && len(input.FileBytes) > 0 {
+		visionTextCh = make(chan string, 1)
+		go func() {
+			text, err := extractTextViaVision(ctx, vc, input.FileBytes, input.FileType)
+			if err != nil {
+				log.Printf("vision text extraction failed (non-fatal): %v", err)
+				visionTextCh <- ""
+				return
+			}
+			visionTextCh <- text
+		}()
+	}
+
+	// Phase 1c: mm-generator (rate-limited)
 	if pos, err := mmRateLimit.Wait(ctx); err != nil {
 		return // client disconnected while waiting in queue
 	} else if pos > 1 || mmRateLimit.QueueDepth() > 0 {
@@ -423,6 +441,12 @@ func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, s
 	if err != nil {
 		sse.error("Mindmap generation failed: " + err.Error())
 		return
+	}
+
+	// Collect vision-extracted text (blocks until the goroutine finishes)
+	rawText := extraction.RawText
+	if visionTextCh != nil {
+		rawText = <-visionTextCh
 	}
 
 	// Phase 2: Deterministic mm-parser
@@ -474,7 +498,7 @@ func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, s
 		Flashcards:  flashcardResult.Output,
 		GraphState:  graphState,
 		MmXml:       mmResult.MmXml,
-		RawText:     extraction.RawText,
+		RawText:     rawText,
 		Filename:    input.Filename,
 		FileType:    input.FileType,
 		FileBytes:   input.FileBytes,
@@ -526,7 +550,22 @@ func runDocumentPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient,
 		extraction = ExtractionResult{RawText: "", NeedsVision: true}
 	}
 
-	// Phase 1b: mm-generator (rate-limited)
+	// Phase 1b: Vision-based text extraction (parallel with mm-generator)
+	var visionTextCh chan string
+	if extraction.NeedsVision && len(input.FileBytes) > 0 {
+		visionTextCh = make(chan string, 1)
+		go func() {
+			text, err := extractTextViaVision(ctx, vc, input.FileBytes, input.FileType)
+			if err != nil {
+				log.Printf("vision text extraction failed (non-fatal): %v", err)
+				visionTextCh <- ""
+				return
+			}
+			visionTextCh <- text
+		}()
+	}
+
+	// Phase 1c: mm-generator (rate-limited)
 	if pos, err := mmRateLimit.Wait(ctx); err != nil {
 		return // client disconnected while waiting in queue
 	} else if pos > 1 || mmRateLimit.QueueDepth() > 0 {
@@ -545,6 +584,12 @@ func runDocumentPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient,
 	if err != nil {
 		sse.error("Mindmap generation failed: " + err.Error())
 		return
+	}
+
+	// Collect vision-extracted text
+	rawText := extraction.RawText
+	if visionTextCh != nil {
+		rawText = <-visionTextCh
 	}
 
 	// Phase 2: Parser
@@ -579,7 +624,7 @@ func runDocumentPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient,
 		NewBranches:   newBranches,
 		NewFlashcards: flashcardResult.Output,
 		ExistingGraph: existingGraph,
-		RawText:       extraction.RawText,
+		RawText:       rawText,
 		Filename:      input.Filename,
 		FileType:      input.FileType,
 		MmXml:         mmResult.MmXml,

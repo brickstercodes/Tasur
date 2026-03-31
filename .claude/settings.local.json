@@ -56,7 +56,8 @@
       "Bash(./node_modules/.bin/tsc --noEmit)",
       "Bash(python3 -c \":*)",
       "Bash(git stash:*)",
-      "Bash(/usr/local/bin/node node_modules/.bin/next build)"
+      "Bash(/usr/local/bin/node node_modules/.bin/next build)",
+      "Bash(grep -r \"NeedsVision\\\\|needsVision\\\\|vision\" /Users/anugrahshetty/Documents/Tasur/go-pipeline/*.go)"
     ]
   }
 }
