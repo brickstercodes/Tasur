@@ -92,7 +92,7 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
-  const { title: sessionTitle, learning_mode: learningMode, subject_domain } = sessionResult.data;
+  const { learning_mode: learningMode, subject_domain } = sessionResult.data;
   const { name: conceptName } = conceptResult.data;
   const domain = subject_domain ?? 'general';
 
@@ -215,15 +215,11 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
             paddingTop: 8,
           }}
         >
-          <Link href="/dashboard" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
-            Dashboard
-          </Link>
-          <span>›</span>
           <Link
             href={`/study/${sessionId}/mindmap`}
             style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
           >
-            {sessionTitle}
+            Mindmap
           </Link>
           <span>›</span>
           <span className="chat-concept-name" style={{ color: 'var(--text)', fontWeight: 500 }}>
@@ -271,21 +267,6 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
               </span>
             )}
           </div>
-          <Link
-            href={`/study/${sessionId}/mindmap`}
-            className="chat-concept-backlink"
-            style={{
-              fontSize: 12,
-              color: 'var(--text-muted)',
-              textDecoration: 'none',
-              fontWeight: 500,
-              padding: '4px 10px',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-            }}
-          >
-            ← Mindmap
-          </Link>
         </div>
 
         {/* ChatInterface */}

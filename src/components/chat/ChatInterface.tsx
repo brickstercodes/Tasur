@@ -194,6 +194,82 @@ const THINKING_PHRASES = [
   'Polishing the answer...',
 ] as const;
 
+const AUTO_SCROLL_BOTTOM_THRESHOLD = 84;
+
+type SlashCommandKey = 'example' | 'analogy' | 'quiz' | 'summarize';
+
+type SlashCommand = {
+  key: SlashCommandKey;
+  label: `/${SlashCommandKey}`;
+  description: string;
+  buildMessage: (args: string, conceptName: string) => string;
+};
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    key: 'example',
+    label: '/example',
+    description: 'Give a concrete worked example.',
+    buildMessage: (args, conceptName) =>
+      args
+        ? `Give me a concrete worked example about ${args}.`
+        : `Give me a concrete worked example of ${conceptName}.`,
+  },
+  {
+    key: 'analogy',
+    label: '/analogy',
+    description: 'Explain with a simple analogy.',
+    buildMessage: (args, conceptName) =>
+      args
+        ? `Explain ${args} using a simple real-world analogy.`
+        : `Explain ${conceptName} using a simple real-world analogy.`,
+  },
+  {
+    key: 'quiz',
+    label: '/quiz',
+    description: 'Ask one short quiz question.',
+    buildMessage: (args, conceptName) =>
+      args
+        ? `Quiz me on ${args} with one short question, then wait for my answer.`
+        : `Quiz me on ${conceptName} with one short question, then wait for my answer.`,
+  },
+  {
+    key: 'summarize',
+    label: '/summarize',
+    description: 'Summarize in concise bullet points.',
+    buildMessage: (args, conceptName) =>
+      args
+        ? `Summarize ${args} in concise exam-ready bullet points.`
+        : `Summarize ${conceptName} in concise exam-ready bullet points.`,
+  },
+];
+
+function resolveSlashCommand(input: string, conceptName: string): {
+  outgoingMessage: string;
+  error?: string;
+} {
+  const trimmed = input.trim();
+  if (!trimmed.startsWith('/')) {
+    return { outgoingMessage: trimmed };
+  }
+
+  const [commandToken, ...rest] = trimmed.split(/\s+/);
+  const commandKey = commandToken.slice(1).toLowerCase() as SlashCommandKey;
+  const args = rest.join(' ').trim();
+  const command = SLASH_COMMANDS.find((item) => item.key === commandKey);
+
+  if (!command) {
+    return {
+      outgoingMessage: '',
+      error: 'Unknown slash command. Try /example, /analogy, /quiz, or /summarize.',
+    };
+  }
+
+  return {
+    outgoingMessage: command.buildMessage(args, conceptName),
+  };
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ChatInterface({
@@ -211,6 +287,7 @@ export function ChatInterface({
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [thinkingPhraseIndex, setThinkingPhraseIndex] = useState(0);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
   // True when the latest assistant message signals the concept is fully covered.
   const isConversationComplete = messages
@@ -219,7 +296,32 @@ export function ChatInterface({
 
   // Tracks whether the next send is the first for this concept (triggers orchestrator).
   const isNewConceptRef = useRef(true);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const trimmedInput = inputText.trimStart();
+  const slashHead = trimmedInput.startsWith('/')
+    ? trimmedInput.slice(1).split(/\s+/)[0].toLowerCase()
+    : '';
+  const isSlashSuggestOpen = trimmedInput.startsWith('/') && !trimmedInput.includes(' ');
+  const filteredSlashCommands = isSlashSuggestOpen
+    ? SLASH_COMMANDS.filter((command) => command.key.startsWith(slashHead as SlashCommandKey))
+    : [];
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior });
+  }, []);
+
+  const handleMessagesScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    setShouldAutoScroll(distanceFromBottom <= AUTO_SCROLL_BOTTOM_THRESHOLD);
+  }, []);
 
   // ── Load history on mount ──────────────────────────────────────────────────
 
@@ -261,8 +363,9 @@ export function ChatInterface({
   // ── Auto-scroll when messages update ──────────────────────────────────────
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!shouldAutoScroll) return;
+    scrollToBottom(isStreaming ? 'auto' : 'smooth');
+  }, [messages, shouldAutoScroll, isStreaming, scrollToBottom]);
 
   useEffect(() => {
     if (!isStreaming) return;
@@ -280,14 +383,26 @@ export function ChatInterface({
     async (text: string, isAssessmentSubmit = false) => {
       if (!text.trim() || isStreaming) return;
 
+      const resolved = isAssessmentSubmit
+        ? { outgoingMessage: text.trim() }
+        : resolveSlashCommand(text, conceptName);
+
+      if (resolved.error) {
+        setError(resolved.error);
+        return;
+      }
+
+      if (!resolved.outgoingMessage.trim()) return;
+
       setError(null);
       setIsStreaming(true);
       setThinkingPhraseIndex(0);
+      setShouldAutoScroll(true);
 
       const userMessage: ChatMessage = {
         id: `user-${Date.now()}`,
         role: 'user',
-        content: text,
+        content: text.trim(),
         createdAt: Date.now(),
       };
 
@@ -312,7 +427,7 @@ export function ChatInterface({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             conceptId,
-            message: text,
+            message: resolved.outgoingMessage,
             isNewConcept,
             isAssessmentSubmit,
             domain,
@@ -335,7 +450,7 @@ export function ChatInterface({
         setIsStreaming(false);
       }
     },
-    [sessionId, conceptId, domain, learningMode, isStreaming],
+    [sessionId, conceptId, domain, learningMode, isStreaming, conceptName],
   );
 
   // ── SSE stream reader ──────────────────────────────────────────────────────
@@ -515,6 +630,8 @@ export function ChatInterface({
         {/* Message list */}
         <div
           className="chat-scroll chat-messages-layer"
+          ref={messagesContainerRef}
+          onScroll={handleMessagesScroll}
           style={{
             flex: 1,
             overflowY: 'auto',
@@ -583,9 +700,39 @@ export function ChatInterface({
               {error}
             </div>
           )}
-
-          <div ref={messagesEndRef} />
         </div>
+
+        {!shouldAutoScroll && messages.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              padding: '4px 0 8px',
+              flexShrink: 0,
+            }}
+          >
+            <button
+              onClick={() => {
+                setShouldAutoScroll(true);
+                scrollToBottom('smooth');
+              }}
+              style={{
+                border: '1px solid color-mix(in srgb, var(--primary) 24%, var(--border))',
+                background: 'color-mix(in srgb, var(--primary) 10%, var(--surface-elevated))',
+                color: 'var(--text)',
+                borderRadius: 999,
+                padding: '5px 12px',
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              Jump to latest ↓
+            </button>
+          </div>
+        )}
 
         {/* Move-on CTA */}
         {isConversationComplete && (
@@ -625,69 +772,163 @@ export function ChatInterface({
         <div
           className="chat-composer"
           style={{
-            padding: '14px 0 4px',
+            padding: '10px 0 4px',
             display: 'flex',
-            gap: 10,
-            alignItems: 'flex-end',
+            flexDirection: 'column',
+            gap: 8,
           }}
         >
-          <textarea
-            className="chat-composer-input"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isStreaming}
-            placeholder={
-              isStreaming
-                ? THINKING_PHRASES[thinkingPhraseIndex]
-                : 'Ask a question… (Enter to send, Shift+Enter for newline)'
-            }
-            rows={2}
+          <div
             style={{
-              flex: 1,
-              padding: '10px 14px',
-              border: '1px solid var(--input-border)',
-              borderRadius: 10,
-              fontSize: 13.5,
-              color: 'var(--text)',
-              background: isStreaming ? 'var(--bg)' : 'var(--input-bg)',
-              resize: 'none',
-              outline: 'none',
-              fontFamily: "'Georgia', serif",
-              lineHeight: 1.55,
-              transition: 'border-color 0.15s ease',
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = 'var(--input-focus)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = 'var(--input-border)';
-            }}
-          />
-          <button
-            className={`send-btn chat-send-btn ${isStreaming ? 'send-btn-streaming' : ''}`}
-            onClick={() => sendMessage(inputText)}
-            disabled={!inputText.trim() || isStreaming}
-            style={{
-              width: 40,
-              height: 40,
-              border: 'none',
-              borderRadius: 10,
-              background: inputText.trim() && !isStreaming ? 'var(--primary)' : 'var(--border)',
-              color: inputText.trim() && !isStreaming ? '#fff' : 'var(--text-muted)',
-              fontSize: 16,
-              cursor: inputText.trim() && !isStreaming ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              alignSelf: 'flex-end',
-              flexShrink: 0,
-              transition: 'background 0.12s ease',
+              gap: 8,
+              flexWrap: 'wrap',
+              fontFamily: 'Inter, sans-serif',
             }}
-            title="Send"
           >
-            <span className="send-icon">↑</span>
-          </button>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
+              Try shortcuts:
+            </span>
+            {SLASH_COMMANDS.map((command) => (
+              <button
+                key={command.key}
+                onClick={() => {
+                  setInputText(`${command.label} `);
+                  composerInputRef.current?.focus();
+                }}
+                disabled={isStreaming}
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface-elevated)',
+                  color: 'var(--text-muted)',
+                  borderRadius: 999,
+                  padding: '2px 8px',
+                  fontSize: 11,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  cursor: isStreaming ? 'not-allowed' : 'pointer',
+                }}
+                title={command.description}
+              >
+                {command.label}
+              </button>
+            ))}
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-end',
+              width: '100%',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {isSlashSuggestOpen && filteredSlashCommands.length > 0 && (
+                <div
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    background: 'var(--surface-elevated)',
+                    padding: '6px 8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  }}
+                >
+                  {filteredSlashCommands.map((command) => (
+                    <button
+                      key={command.key}
+                      onClick={() => {
+                        setInputText(`${command.label} `);
+                        composerInputRef.current?.focus();
+                      }}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--text)',
+                        fontSize: 12,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '4px 2px',
+                        gap: 8,
+                      }}
+                    >
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
+                        {command.label}
+                      </span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                        {command.description}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <textarea
+                ref={composerInputRef}
+                className="chat-composer-input"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={isStreaming}
+                placeholder={
+                  isStreaming
+                    ? THINKING_PHRASES[thinkingPhraseIndex]
+                    : 'Ask a question… or try /example, /analogy, /quiz, /summarize'
+                }
+                rows={2}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  border: '1px solid var(--input-border)',
+                  borderRadius: 10,
+                  fontSize: 13.5,
+                  color: 'var(--text)',
+                  background: isStreaming ? 'var(--bg)' : 'var(--input-bg)',
+                  resize: 'none',
+                  outline: 'none',
+                  fontFamily: "'Georgia', serif",
+                  lineHeight: 1.55,
+                  transition: 'border-color 0.15s ease',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--input-focus)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--input-border)';
+                }}
+              />
+            </div>
+
+            <button
+              className={`send-btn chat-send-btn ${isStreaming ? 'send-btn-streaming' : ''}`}
+              onClick={() => sendMessage(inputText)}
+              disabled={!inputText.trim() || isStreaming}
+              style={{
+                width: 40,
+                height: 40,
+                border: 'none',
+                borderRadius: 10,
+                background: inputText.trim() && !isStreaming ? 'var(--primary)' : 'var(--border)',
+                color: inputText.trim() && !isStreaming ? '#fff' : 'var(--text-muted)',
+                fontSize: 16,
+                cursor: inputText.trim() && !isStreaming ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                alignSelf: 'flex-end',
+                flexShrink: 0,
+                transition: 'background 0.12s ease',
+              }}
+              title="Send"
+            >
+              <span className="send-icon">↑</span>
+            </button>
+          </div>
         </div>
       </div>
     </>

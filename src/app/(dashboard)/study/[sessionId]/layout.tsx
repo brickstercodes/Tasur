@@ -19,11 +19,11 @@
 
 import { notFound, redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import Link from 'next/link';
 
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
 import { createServerClient } from '@/lib/supabase';
+import { StudyBackLink } from '@/components/study/StudyBackLink';
 import { StudyTabs } from '@/components/study/StudyTabs';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -84,19 +84,7 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
       >
         {/* Left: back link + session title + domain */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-          <Link
-            href="/dashboard"
-            style={{
-              fontSize: 12,
-              color: 'var(--text-muted)',
-              textDecoration: 'none',
-              flexShrink: 0,
-              letterSpacing: '0.01em',
-              fontFamily: 'Inter, sans-serif',
-            }}
-          >
-            ←
-          </Link>
+          <StudyBackLink sessionId={sessionId} />
 
           <span
             style={{
