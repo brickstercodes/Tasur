@@ -98,8 +98,10 @@ func generateMm(
 	errs := validateMmOutput(mmXml)
 
 	if len(errs) > 0 {
-		// Retry with validation errors in context
-		retryUserParts := buildRetryUserParts(rawText, mmXml, errs)
+		// Retry with validation errors in context.
+		// Pass fileBytes + needsVision so the retry still has the actual document
+		// content — without this, vision-path retries had no source material.
+		retryUserParts := buildRetryUserParts(rawText, fileType, fileBytes, needsVision, mmXml, errs)
 
 		retryReq := vertexRequest{
 			SystemInstruction: systemContent,
@@ -203,7 +205,16 @@ func buildFirstUserParts(
 }
 
 // buildRetryUserParts builds the user parts for the retry attempt after validation failure.
-func buildRetryUserParts(rawText string, previousOutput string, errors []string) []vertexPart {
+// It re-includes the original document (inline file or raw text) so the model still has
+// access to the source material — critical for vision-path PDFs where rawText is empty.
+func buildRetryUserParts(
+	rawText string,
+	fileType FileType,
+	fileBytes []byte,
+	needsVision bool,
+	previousOutput string,
+	errors []string,
+) []vertexPart {
 	truncated := previousOutput
 	if len(truncated) > 500 {
 		truncated = truncated[:500] + "..."
@@ -224,13 +235,22 @@ func buildRetryUserParts(rawText string, previousOutput string, errors []string)
 		"- Minimum 3 levels of nesting",
 		"- No markdown fencing or extra text outside the XML",
 		"",
-		"Original source material:",
-		rawText,
-		"",
 		"Your previous (failed) output for reference:",
 		truncated,
 	)
 
+	if needsVision && len(fileBytes) > 0 {
+		lines = append(lines, "", "The original source material is provided again as an inline file below.")
+		return []vertexPart{
+			{Text: strings.Join(lines, "\n")},
+			{InlineData: &vertexInlineData{
+				MIMEType: mimeTypeForFileType(fileType),
+				Data:     base64.StdEncoding.EncodeToString(fileBytes),
+			}},
+		}
+	}
+
+	lines = append(lines, "", "Original source material:", rawText)
 	return []vertexPart{{Text: strings.Join(lines, "\n")}}
 }
 

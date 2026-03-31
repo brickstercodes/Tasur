@@ -39,12 +39,12 @@ func extractText(data []byte, fileType FileType) (ExtractionResult, error) {
 		return ExtractionResult{RawText: text}, nil
 
 	case FileTypePDF:
-		text := extractPDFTextHeuristic(data)
-		// If text extraction yields very little, signal that vision is needed.
-		if len(strings.TrimSpace(text)) < 100 {
-			return ExtractionResult{RawText: "", NeedsVision: true}, nil
-		}
-		return ExtractionResult{RawText: text}, nil
+		// Always use Gemini's native PDF vision rather than the heuristic text
+		// extractor. The heuristic frequently returns garbled bytes (> 100 chars
+		// but meaningless) for slide-based or encoded PDFs, which then gets sent
+		// as "source material" and causes the model to hallucinate. Gemini 2.5 Pro
+		// reads PDFs natively and is far more reliable.
+		return ExtractionResult{RawText: "", NeedsVision: true}, nil
 
 	case FileTypePNG, FileTypeJPG:
 		// Images have no extractable text — always use Gemini vision.
