@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -87,32 +90,123 @@ func (e *sseEmitter) queued(position int) {
 	e.emit(QueuedEvent{Type: "queued", Position: position, Label: label})
 }
 
+// ── CORS helpers ──────────────────────────────────────────────────────────────
+
+// setCORSHeaders adds the CORS headers required for direct browser uploads.
+// ALLOWED_ORIGIN must match the frontend origin (e.g. https://tasur.app).
+func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
+	origin := os.Getenv("ALLOWED_ORIGIN")
+	if origin == "" {
+		// Reflect the request origin in dev (no ALLOWED_ORIGIN set).
+		origin = r.Header.Get("Origin")
+	}
+	if origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	}
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Upload-Token, X-User-Id, X-Max-Sessions")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+}
+
+// ── Upload auth ────────────────────────────────────────────────────────────────
+
+// resolveUserID extracts and validates the user ID from the request.
+//
+// If UPLOAD_TOKEN_SECRET is configured the request must carry a valid
+// X-Upload-Token (HMAC-SHA256 signed by Next.js). This is the path taken
+// when the browser uploads directly to Go, bypassing the Vercel proxy.
+//
+// If the secret is not configured the service falls back to trusting the
+// X-User-Id header set by the Next.js proxy (internal Railway traffic only).
+func resolveUserID(r *http.Request) (string, error) {
+	secret := os.Getenv("UPLOAD_TOKEN_SECRET")
+	if secret != "" {
+		return validateUploadToken(
+			r.Header.Get("X-Upload-Token"),
+			r.Header.Get("X-User-Id"),
+			secret,
+		)
+	}
+	// Proxy mode — trust X-User-Id added by the Next.js server.
+	userID := r.Header.Get("X-User-Id")
+	if userID == "" {
+		return "", fmt.Errorf("missing X-User-Id header")
+	}
+	return userID, nil
+}
+
+// validateUploadToken verifies the short-lived HMAC token minted by Next.js.
+// Token format: "userId:expiryUnix.hmac_sha256_hex"
+func validateUploadToken(token, claimedUserID, secret string) (string, error) {
+	if token == "" || claimedUserID == "" {
+		return "", fmt.Errorf("missing upload token or user ID")
+	}
+	dot := strings.LastIndex(token, ".")
+	if dot < 0 {
+		return "", fmt.Errorf("malformed upload token")
+	}
+	payload, sig := token[:dot], token[dot+1:]
+
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(payload))
+	expected := hex.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(expected), []byte(sig)) {
+		return "", fmt.Errorf("invalid upload token signature")
+	}
+
+	colon := strings.LastIndex(payload, ":")
+	if colon < 0 {
+		return "", fmt.Errorf("malformed token payload")
+	}
+	userID, expStr := payload[:colon], payload[colon+1:]
+
+	expiry, err := strconv.ParseInt(expStr, 10, 64)
+	if err != nil || time.Now().Unix() > expiry {
+		return "", fmt.Errorf("upload token expired")
+	}
+	if userID != claimedUserID {
+		return "", fmt.Errorf("token user ID mismatch")
+	}
+	return userID, nil
+}
+
+// maxSessionsLimit returns the configured session cap, independent of any
+// client-supplied header so it cannot be bypassed by a direct upload.
+func maxSessionsLimit() int {
+	if v := os.Getenv("MAX_SESSIONS_PER_USER"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 10
+}
+
 // ── Handler: POST /pipeline/upload ───────────────────────────────────────────
 
 func makeUploadHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setCORSHeaders(w, r)
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		sse, ok := newSSEEmitter(w)
 		if !ok {
 			http.Error(w, "SSE not supported", http.StatusInternalServerError)
 			return
 		}
 
-		// ── Auth / metadata from Next.js proxy ──────────────────────────────
 		stopHeartbeat := sse.startHeartbeat(r.Context(), 12*time.Second)
 		defer stopHeartbeat()
 
-		userID := r.Header.Get("X-User-Id")
-		if userID == "" {
+		userID, err := resolveUserID(r)
+		if err != nil {
 			sse.error("Unauthorized")
 			return
 		}
 
-		maxSessions := 10
-		if ms := r.Header.Get("X-Max-Sessions"); ms != "" {
-			if n, err := strconv.Atoi(ms); err == nil {
-				maxSessions = n
-			}
-		}
+		maxSessions := maxSessionsLimit()
 
 		// ── Parse multipart form (50 MB limit) ──────────────────────────────
 		if err := r.ParseMultipartForm(50 << 20); err != nil {
@@ -197,17 +291,23 @@ func makeUploadHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient) 
 
 func makeDocumentHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setCORSHeaders(w, r)
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		sse, ok := newSSEEmitter(w)
 		if !ok {
 			http.Error(w, "SSE not supported", http.StatusInternalServerError)
 			return
 		}
 
-		userID := r.Header.Get("X-User-Id")
 		stopHeartbeat := sse.startHeartbeat(r.Context(), 12*time.Second)
 		defer stopHeartbeat()
 
-		if userID == "" {
+		userID, err := resolveUserID(r)
+		if err != nil {
 			sse.error("Unauthorized")
 			return
 		}
@@ -602,7 +702,9 @@ func startServer() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.HandleFunc("POST /pipeline/upload", makeUploadHandler(sem, vc, sb))
+	mux.HandleFunc("OPTIONS /pipeline/upload", makeUploadHandler(sem, vc, sb))
 	mux.HandleFunc("POST /pipeline/document/{sessionId}", makeDocumentHandler(sem, vc, sb))
+	mux.HandleFunc("OPTIONS /pipeline/document/{sessionId}", makeDocumentHandler(sem, vc, sb))
 
 	log.Printf("Go pipeline service starting on :%s", port)
 	return http.ListenAndServe(":"+port, mux)

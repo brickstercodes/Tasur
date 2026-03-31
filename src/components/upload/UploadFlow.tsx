@@ -128,6 +128,26 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
     setProgressPercent(3);
     setProgressLabel('Starting…');
 
+    // Get a short-lived upload token so the file goes directly to the Go
+    // pipeline service, bypassing Vercel's 4.5 MB function payload limit.
+    let uploadUrl: string;
+    let token: string;
+    let userId: string;
+    try {
+      const tokenRes = await fetch('/api/upload-token');
+      if (!tokenRes.ok) {
+        const msg = await tokenRes.text().catch(() => '');
+        setUploadState('error');
+        setErrorMessage(msg || `Failed to start upload (${tokenRes.status}) — please try again.`);
+        return;
+      }
+      ({ uploadUrl, token, userId } = await tokenRes.json());
+    } catch {
+      setUploadState('error');
+      setErrorMessage('Network error — check your connection and try again.');
+      return;
+    }
+
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('domain', domain.trim() || 'general');
@@ -140,13 +160,17 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
       formData.append('title', selectedFile.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
     }
 
-    const endpoint = existingSessionId
-      ? `/api/sessions/${existingSessionId}/documents`
-      : '/api/sessions/upload';
+    const goEndpoint = existingSessionId
+      ? `${uploadUrl}/pipeline/document/${existingSessionId}`
+      : `${uploadUrl}/pipeline/upload`;
 
     let response: Response;
     try {
-      response = await fetch(endpoint, { method: 'POST', body: formData });
+      response = await fetch(goEndpoint, {
+        method: 'POST',
+        headers: { 'X-Upload-Token': token, 'X-User-Id': userId },
+        body: formData,
+      });
     } catch {
       setUploadState('error');
       setErrorMessage('Network error — check your connection and try again.');
