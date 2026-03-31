@@ -161,13 +161,17 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
 
     if (!response.ok || !response.body) {
       const responseText = await response.text().catch(() => '');
-      // 422 = guardrail rejection — surface the server's message directly
+      const isHtml = responseText.trimStart().startsWith('<');
       if (response.status === 422) {
         setUploadState('error');
-        setErrorMessage(responseText || 'Your custom instructions were rejected — please revise them.');
+        setErrorMessage(
+          (!isHtml && responseText) || 'Your custom instructions were rejected — please revise them.',
+        );
       } else {
         setUploadState('error');
-        setErrorMessage(responseText || `Server error (${response.status}) — please try again.`);
+        setErrorMessage(
+          (!isHtml && responseText) || `Server error (${response.status}) — please try again.`,
+        );
       }
       return;
     }
