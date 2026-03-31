@@ -1506,12 +1506,11 @@ body {
   gap: 6px;
   padding: 5px;
   border-radius: 999px;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--surface-elevated) 74%, var(--surface)) 0%,
-      color-mix(in srgb, var(--surface) 90%, var(--bg)) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-elevated) 74%, var(--surface)) 0%,
+    color-mix(in srgb, var(--surface) 90%, var(--bg)) 100%
+  );
   border: 1px solid color-mix(in srgb, var(--border) 84%, var(--primary) 16%);
   backdrop-filter: blur(8px);
   overflow: hidden;
@@ -1557,12 +1556,11 @@ body {
 
 .study-tab-link.is-active {
   color: color-mix(in srgb, var(--text) 90%, var(--primary) 10%);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--surface-elevated) 94%, var(--primary) 6%) 0%,
-      color-mix(in srgb, var(--surface) 82%, var(--primary) 18%) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-elevated) 94%, var(--primary) 6%) 0%,
+    color-mix(in srgb, var(--surface) 82%, var(--primary) 18%) 100%
+  );
   border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
   box-shadow:
     0 6px 14px color-mix(in srgb, var(--primary) 16%, transparent),
@@ -1570,12 +1568,11 @@ body {
 }
 
 [data-theme='dark'] .study-tabs-row {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--surface-elevated) 86%, var(--surface)) 0%,
-      color-mix(in srgb, var(--surface) 92%, var(--bg)) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-elevated) 86%, var(--surface)) 0%,
+    color-mix(in srgb, var(--surface) 92%, var(--bg)) 100%
+  );
   border-color: color-mix(in srgb, var(--border) 76%, var(--primary) 24%);
   box-shadow:
     0 3px 10px rgba(0, 0, 0, 0.28),
@@ -1589,12 +1586,11 @@ body {
 
 [data-theme='dark'] .study-tab-link.is-active {
   color: #fff;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--primary-hover) 88%, var(--primary)) 0%,
-      color-mix(in srgb, var(--primary) 82%, #3a1c08) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary-hover) 88%, var(--primary)) 0%,
+    color-mix(in srgb, var(--primary) 82%, #3a1c08) 100%
+  );
   border-color: color-mix(in srgb, var(--primary) 62%, transparent);
   box-shadow: 0 7px 15px color-mix(in srgb, var(--primary) 28%, transparent);
 }
