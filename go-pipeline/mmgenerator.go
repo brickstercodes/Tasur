@@ -63,6 +63,7 @@ func generateMm(
 	model := mmGeneratorModelID()
 
 	systemContent := &vertexContent{
+		Role: "user",
 		Parts: []vertexPart{
 			{Text: buildSystemInstruction(subjectHint)},
 		},
