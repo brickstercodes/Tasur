@@ -739,10 +739,11 @@ function MindmapViewerContent({
       {/* ── Pill-shaped floating toolbar ──────────────────────────────────────── */}
       <div
         style={{
-          // Viewport-anchored so it never gets clipped by sticky parent layout bars.
+          // Viewport-anchored and horizontally centered.
           position: 'fixed',
           top: MINDMAP_FLOATING_TOP,
-          left: 16,
+          left: '50%',
+          transform: 'translateX(-50%)',
           zIndex: 45,
           display: 'flex',
           alignItems: 'center',
@@ -1044,7 +1045,7 @@ function MindmapViewerContent({
             cursor: 'pointer',
           }}
         >
-          Space x2 Shortcuts
+          Hit Spacebar twice for Shortcuts
         </button>
       </div>
 

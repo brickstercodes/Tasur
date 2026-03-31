@@ -1503,29 +1503,37 @@ body {
 .study-tabs-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px;
+  gap: 6px;
+  padding: 5px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 92%, var(--bg));
-  border: 1px solid color-mix(in srgb, var(--border) 88%, var(--primary) 12%);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 74%, var(--surface)) 0%,
+      color-mix(in srgb, var(--surface) 90%, var(--bg)) 100%
+    );
+  border: 1px solid color-mix(in srgb, var(--border) 84%, var(--primary) 16%);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
   box-shadow:
-    0 1px 5px rgba(36, 22, 11, 0.05),
-    0 0 0 1px color-mix(in srgb, var(--primary) 6%, transparent) inset;
+    0 2px 8px rgba(36, 22, 11, 0.08),
+    0 0 0 1px color-mix(in srgb, var(--primary) 8%, transparent) inset;
 }
 
 .study-tab-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 18px;
+  min-width: 132px;
+  padding: 8px 20px;
   border-radius: 999px;
-  border: 1px solid transparent;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   text-decoration: none;
-  font-family: Inter, sans-serif;
-  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
-  background: transparent;
+  background: color-mix(in srgb, var(--surface) 68%, transparent);
   box-shadow: none;
   transition:
     transform 0.2s ease,
@@ -1536,26 +1544,59 @@ body {
 }
 
 .study-tab-link .study-tab-text {
-  letter-spacing: -0.005em;
+  letter-spacing: 0.01em;
 }
 
 .study-tab-link:hover {
   transform: translateY(-1px);
   color: var(--text);
-  background: color-mix(in srgb, var(--surface-elevated) 82%, var(--surface));
-  border-color: color-mix(in srgb, var(--primary) 18%, var(--border));
-  box-shadow: 0 4px 11px rgba(36, 22, 11, 0.08);
+  background: color-mix(in srgb, var(--surface-elevated) 88%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 26%, var(--border));
+  box-shadow: 0 5px 12px rgba(36, 22, 11, 0.09);
 }
 
 .study-tab-link.is-active {
-  color: #ffffff;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--primary-hover) 84%, var(--primary) 16%),
-    var(--primary)
-  );
-  border-color: color-mix(in srgb, var(--primary) 65%, transparent);
-  box-shadow: 0 8px 16px color-mix(in srgb, var(--primary) 24%, transparent);
+  color: color-mix(in srgb, var(--text) 90%, var(--primary) 10%);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 94%, var(--primary) 6%) 0%,
+      color-mix(in srgb, var(--surface) 82%, var(--primary) 18%) 100%
+    );
+  border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
+  box-shadow:
+    0 6px 14px color-mix(in srgb, var(--primary) 16%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--primary) 14%, transparent) inset;
+}
+
+[data-theme='dark'] .study-tabs-row {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-elevated) 86%, var(--surface)) 0%,
+      color-mix(in srgb, var(--surface) 92%, var(--bg)) 100%
+    );
+  border-color: color-mix(in srgb, var(--border) 76%, var(--primary) 24%);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.28),
+    0 0 0 1px color-mix(in srgb, var(--primary) 14%, transparent) inset;
+}
+
+[data-theme='dark'] .study-tab-link {
+  background: color-mix(in srgb, var(--surface-elevated) 52%, transparent);
+  border-color: color-mix(in srgb, var(--border) 78%, transparent);
+}
+
+[data-theme='dark'] .study-tab-link.is-active {
+  color: #fff;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--primary-hover) 88%, var(--primary)) 0%,
+      color-mix(in srgb, var(--primary) 82%, #3a1c08) 100%
+    );
+  border-color: color-mix(in srgb, var(--primary) 62%, transparent);
+  box-shadow: 0 7px 15px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .study-tab-link:focus-visible {
