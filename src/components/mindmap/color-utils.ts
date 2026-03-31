@@ -18,18 +18,18 @@ import type { MindmapNode } from '@/lib/schemas/mindmap-tree-output';
 
 /**
  * Fixed 8-color palette assigned round-robin to top-level branches.
- * Colors are chosen for visual distinction and study-tool aesthetics
- * (matching Freeplane's default color scheme).
+ * Colors are intentionally earthy/muted to fit Tasur's manuscript aesthetic
+ * while still providing clear topic separation.
  */
 export const BRANCH_PALETTE = [
-  '#2C7BB6', // blue
-  '#1A9641', // green
-  '#D7191C', // red
-  '#756BB1', // purple
-  '#E6550D', // orange
-  '#0E7F7F', // teal
-  '#8C510A', // brown
-  '#C51B7D', // pink
+  '#3F6F9D', // slate blue
+  '#3D7A5E', // forest green
+  '#9B5C4A', // terracotta
+  '#6A5A93', // muted violet
+  '#A06D2F', // amber umber
+  '#2F7C7C', // subdued teal
+  '#8C5A2B', // parchment brown
+  '#7D4A67', // dusty rose
 ] as const;
 
 // ── Confidence thresholds ─────────────────────────────────────────────────────

@@ -51,10 +51,35 @@ function getDepthStyles(depth: number): {
 // Three warm parchment tones that deepen with each level of the tree —
 // like layers of aged paper, lightest at the top, dustiest at the leaves.
 
-function getNodeBackground(depth: number): { bg: string; border: string; borderHover: string } {
-  if (depth === 1) return { bg: 'var(--mindmap-node-1)', border: 'var(--mindmap-node-border)', borderHover: 'var(--mindmap-node-border-hover)' };
-  if (depth === 2) return { bg: 'var(--mindmap-node-2)', border: 'var(--mindmap-node-border)', borderHover: 'var(--mindmap-node-border-hover)' };
-  return           { bg: 'var(--mindmap-node-1)', border: 'var(--mindmap-node-border)', borderHover: 'var(--mindmap-node-border-hover)' };
+function getNodeBackground(branchColor: string, depth: number): {
+  bg: string;
+  border: string;
+  borderHover: string;
+} {
+  const baseBg = depth === 2 ? 'var(--mindmap-node-2)' : 'var(--mindmap-node-1)';
+
+  // Mix branch hue with existing theme tokens so colors adapt in both themes.
+  if (depth === 1) {
+    return {
+      bg: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-fill-l1), ${baseBg})`,
+      border: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-border-l1), var(--mindmap-node-border))`,
+      borderHover: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-border-hover-l1), var(--mindmap-node-border-hover))`,
+    };
+  }
+
+  if (depth === 2) {
+    return {
+      bg: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-fill-l2), ${baseBg})`,
+      border: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-border-l2), var(--mindmap-node-border))`,
+      borderHover: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-border-hover-l2), var(--mindmap-node-border-hover))`,
+    };
+  }
+
+  return {
+    bg: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-fill-l3), ${baseBg})`,
+    border: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-border-l3), var(--mindmap-node-border))`,
+    borderHover: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-border-hover-l3), var(--mindmap-node-border-hover))`,
+  };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -71,6 +96,7 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
     isCollapsed,
     visibleChildCount,
     searchMatch,
+    isFocusDimmed,
     isResumeTarget,
     onToggleCollapse,
     onConceptClick,
@@ -83,8 +109,10 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
   const isConcept = !!concept_id;
   const hasChildren = visibleChildCount > 0;
 
-  // Search: non-matching nodes fade to 30% opacity.
-  const opacity = searchMatch === false ? 0.3 : 1;
+  // Search + focus mode: non-matches and out-of-focus branches dim.
+  const searchOpacity = searchMatch === false ? 0.3 : 1;
+  const focusOpacity = isFocusDimmed ? 0.2 : 1;
+  const opacity = Math.min(searchOpacity, focusOpacity);
 
   // Resume target pulsing ring is driven by the CSS animation injected in MindmapViewer.
   const animation = isResumeTarget && !isHovered
@@ -193,7 +221,7 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
 
   // ── Non-root nodes ──────────────────────────────────────────────────────────
   const { padding, fontSize, fontWeight, width } = getDepthStyles(depth);
-  const { bg, border, borderHover } = getNodeBackground(depth);
+  const { bg, border, borderHover } = getNodeBackground(branchColor, depth);
 
   const borderColor = isHovered ? borderHover : border;
   const boxShadow = isHovered ? '0 2px 12px rgba(0,0,0,0.08)' : undefined;

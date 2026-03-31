@@ -23,10 +23,11 @@
  * pattern for using useReactFlow outside the ReactFlow component tree.
  */
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
+  type Edge,
   type Node,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -41,7 +42,8 @@ import {
   findAncestorIds,
   type FlowNodeData,
 } from './layout/balanced-tree';
-import type { MindmapTreeOutput } from '@/lib/schemas/mindmap-tree-output';
+import { BRANCH_PALETTE, getStableNodeId } from './color-utils';
+import type { MindmapTreeOutput, MindmapNode as MindmapTreeNode } from '@/lib/schemas/mindmap-tree-output';
 
 // ── react-flow type registrations (defined outside component to prevent remount) ─
 
@@ -86,6 +88,51 @@ const CONFIDENCE_LEGEND = [
 
 // Dashboard header (52px) + study nav (48px) + breathing room.
 const MINDMAP_FLOATING_TOP = 108;
+const DOUBLE_SPACE_WINDOW_MS = 350;
+
+type TreeSearchMatch = {
+  nodeId: string;
+  ancestorIds: string[];
+};
+
+function collectTreeSearchMatches(
+  node: MindmapTreeNode,
+  parentId: string,
+  siblingIndex: number,
+  queryLower: string,
+  ancestorIds: string[],
+  result: TreeSearchMatch[],
+): void {
+  const nodeId = getStableNodeId(node, parentId, siblingIndex);
+  const nextAncestors = [...ancestorIds, nodeId];
+
+  if (node.label.toLowerCase().includes(queryLower)) {
+    result.push({ nodeId, ancestorIds });
+  }
+
+  if (!node.children || node.children.length === 0) return;
+
+  for (const [index, child] of node.children.entries()) {
+    collectTreeSearchMatches(child, nodeId, index, queryLower, nextAncestors, result);
+  }
+}
+
+function getTreeSearchMatches(tree: MindmapTreeOutput, query: string): TreeSearchMatch[] {
+  const queryLower = query.trim().toLowerCase();
+  if (!queryLower) return [];
+
+  const result: TreeSearchMatch[] = [];
+  for (const [index, child] of tree.children.entries()) {
+    collectTreeSearchMatches(child, 'root', index, queryLower, [], result);
+  }
+  return result;
+}
+
+function isTypingElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return target.isContentEditable || tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+}
 
 // ── Inner component: uses useReactFlow hook ───────────────────────────────────
 
@@ -104,8 +151,19 @@ function MindmapViewerContent({
     () => new Set(getAllCollapsibleNodeIds(tree)),
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false);
+  const [isShortcutPanelOpen, setIsShortcutPanelOpen] = useState(false);
+  const [isFocusModeEnabled, setIsFocusModeEnabled] = useState(false);
+  const [focusedBranchId, setFocusedBranchId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string>('root');
   // Set to true after expanding ancestors; cleared once fitView fires.
   const [pendingJumpToResume, setPendingJumpToResume] = useState(false);
+  // Search reveal flow: after expanding ancestors, wait until node appears then fit.
+  const [pendingSearchTargetId, setPendingSearchTargetId] = useState<string | null>(null);
+
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const lastSpacePressAtRef = useRef(0);
+  const lastAutoExpandedQueryRef = useRef('');
 
   // Lock page scroll while the mindmap is mounted so the document never
   // overflows its container. main's padding-bottom still contributes to the
@@ -180,6 +238,90 @@ function MindmapViewerContent({
     }));
   }, [layoutNodes, searchQuery]);
 
+  const focusedNodes = useMemo<Node<FlowNodeData>[]>(() => {
+    const shouldDim = isFocusModeEnabled && !!focusedBranchId;
+    if (!shouldDim) {
+      return searchedNodes.map((node) => ({
+        ...node,
+        data: { ...node.data, isFocusDimmed: false },
+      }));
+    }
+
+    return searchedNodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        isFocusDimmed:
+          node.data.depth > 0 &&
+          !!node.data.topLevelBranchId &&
+          node.data.topLevelBranchId !== focusedBranchId,
+      },
+    }));
+  }, [searchedNodes, isFocusModeEnabled, focusedBranchId]);
+
+  const focusedEdges = useMemo<Edge[]>(() => {
+    const shouldDim = isFocusModeEnabled && !!focusedBranchId;
+    if (!shouldDim) {
+      return layoutEdges.map((edge) => ({
+        ...edge,
+        style: { ...(edge.style ?? {}), opacity: 1 },
+      }));
+    }
+
+    return layoutEdges.map((edge) => {
+      const isDimmed = !!edge.data?.topLevelBranchId && edge.data.topLevelBranchId !== focusedBranchId;
+      return {
+        ...edge,
+        style: {
+          ...(edge.style ?? {}),
+          opacity: isDimmed ? 0.14 : 1,
+        },
+      };
+    });
+  }, [layoutEdges, isFocusModeEnabled, focusedBranchId]);
+
+  const nodeLabelById = useMemo(() => {
+    const result = new Map<string, string>();
+    for (const node of layoutNodes) result.set(node.id, node.data.label);
+    result.set('root', tree.title);
+    return result;
+  }, [layoutNodes, tree.title]);
+
+  const parentByNodeId = useMemo(() => {
+    const result = new Map<string, string>();
+    for (const edge of layoutEdges) result.set(edge.target, edge.source);
+    return result;
+  }, [layoutEdges]);
+
+  const breadcrumbPath = useMemo(() => {
+    const activeNodeId = nodeLabelById.has(selectedNodeId) ? selectedNodeId : 'root';
+    const ids: string[] = [];
+    const visited = new Set<string>();
+
+    let cursor = activeNodeId;
+    while (!visited.has(cursor)) {
+      visited.add(cursor);
+      ids.push(cursor);
+      if (cursor === 'root') break;
+      const parent = parentByNodeId.get(cursor);
+      if (!parent) {
+        ids.push('root');
+        break;
+      }
+      cursor = parent;
+    }
+
+    return ids.reverse().map((id) => ({
+      id,
+      label: nodeLabelById.get(id) ?? tree.title,
+    }));
+  }, [nodeLabelById, parentByNodeId, selectedNodeId, tree.title]);
+
+  const searchMatches = useMemo(
+    () => getTreeSearchMatches(tree, searchQuery),
+    [tree, searchQuery],
+  );
+
   // Top-level node IDs are used by "collapse all" to fold the entire tree body.
   const topLevelIds = useMemo(() => getTopLevelNodeIds(tree), [tree]);
 
@@ -224,8 +366,53 @@ function MindmapViewerContent({
     const resumeNode = layoutNodes.find((n) => n.data.isResumeTarget);
     if (!resumeNode) return; // Still not visible yet — wait for next render.
     fitView({ nodes: [{ id: resumeNode.id }], padding: 0.5, duration: 550 });
+    setSelectedNodeId(resumeNode.id);
     setPendingJumpToResume(false);
   }, [pendingJumpToResume, layoutNodes, fitView]);
+
+  // Auto-expand ancestors of the first search hit whenever the query changes.
+  useEffect(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      lastAutoExpandedQueryRef.current = '';
+      setPendingSearchTargetId(null);
+      return;
+    }
+
+    if (query === lastAutoExpandedQueryRef.current) return;
+    lastAutoExpandedQueryRef.current = query;
+
+    const firstMatch = searchMatches[0];
+    if (!firstMatch) return;
+
+    setCollapsedNodes((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const ancestorId of firstMatch.ancestorIds) {
+        if (next.delete(ancestorId)) changed = true;
+      }
+      return changed ? next : prev;
+    });
+    setPendingSearchTargetId(firstMatch.nodeId);
+  }, [searchQuery, searchMatches]);
+
+  // Once the search target becomes visible after expansion, center it.
+  useEffect(() => {
+    if (!pendingSearchTargetId) return;
+    const targetNode = layoutNodes.find((node) => node.id === pendingSearchTargetId);
+    if (!targetNode) return;
+    fitView({ nodes: [{ id: targetNode.id }], padding: 0.45, duration: 520 });
+    setSelectedNodeId(targetNode.id);
+    setPendingSearchTargetId(null);
+  }, [pendingSearchTargetId, layoutNodes, fitView]);
+
+  // Keep selection valid across relayouts/collapse state changes.
+  useEffect(() => {
+    if (!nodeLabelById.has(selectedNodeId)) {
+      setSelectedNodeId('root');
+    }
+  }, [selectedNodeId, nodeLabelById]);
 
   const handleZoomIn = useCallback(() => {
     zoomIn({ duration: 200 });
@@ -236,6 +423,149 @@ function MindmapViewerContent({
   }, [zoomOut]);
 
   const isAnyCollapsed = collapsedNodes.size > 0;
+  const branchChips = useMemo(
+    () =>
+      tree.children.map((branch, index) => ({
+        id: getStableNodeId(branch, 'root', index),
+        nodeId: getStableNodeId(branch, 'root', index),
+        label: branch.label,
+        color: BRANCH_PALETTE[index % BRANCH_PALETTE.length],
+      })),
+    [tree],
+  );
+
+  const handleFocusBranch = useCallback(
+    (nodeId: string) => {
+      setFocusedBranchId(nodeId);
+      setSelectedNodeId(nodeId);
+      fitView({ nodes: [{ id: nodeId }], padding: 0.45, duration: 520 });
+      setIsBranchMenuOpen(false);
+    },
+    [fitView],
+  );
+
+  const handleCycleBranch = useCallback(
+    (delta: 1 | -1) => {
+      if (branchChips.length === 0) return;
+
+      const currentIndex = focusedBranchId
+        ? branchChips.findIndex((chip) => chip.nodeId === focusedBranchId)
+        : -1;
+
+      const seedIndex = currentIndex === -1 ? (delta === 1 ? -1 : 0) : currentIndex;
+      const nextIndex = (seedIndex + delta + branchChips.length) % branchChips.length;
+      const nextBranch = branchChips[nextIndex];
+
+      setFocusedBranchId(nextBranch.nodeId);
+      setSelectedNodeId(nextBranch.nodeId);
+      fitView({ nodes: [{ id: nextBranch.nodeId }], padding: 0.45, duration: 520 });
+      setIsBranchMenuOpen(false);
+    },
+    [branchChips, focusedBranchId, fitView],
+  );
+
+  const handleBreadcrumbClick = useCallback(
+    (nodeId: string) => {
+      setSelectedNodeId(nodeId);
+
+      const clickedNode = layoutNodes.find((node) => node.id === nodeId);
+      if (clickedNode?.data.topLevelBranchId) {
+        setFocusedBranchId(clickedNode.data.topLevelBranchId);
+      }
+
+      fitView({ nodes: [{ id: nodeId }], padding: 0.45, duration: 520 });
+    },
+    [fitView, layoutNodes],
+  );
+
+  const handleToggleFocusMode = useCallback(() => {
+    setIsFocusModeEnabled((prev) => {
+      const next = !prev;
+      if (next && !focusedBranchId && branchChips.length > 0) {
+        setFocusedBranchId(branchChips[0].nodeId);
+      }
+      return next;
+    });
+  }, [focusedBranchId, branchChips]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsBranchMenuOpen(false);
+        setIsShortcutPanelOpen(false);
+        return;
+      }
+
+      if (isTypingElement(event.target)) return;
+
+      if (event.key === ' ') {
+        const now = Date.now();
+        if (now - lastSpacePressAtRef.current <= DOUBLE_SPACE_WINDOW_MS) {
+          event.preventDefault();
+          setIsShortcutPanelOpen((prev) => !prev);
+          lastSpacePressAtRef.current = 0;
+        } else {
+          lastSpacePressAtRef.current = now;
+        }
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key === '?') {
+        event.preventDefault();
+        setIsShortcutPanelOpen((prev) => !prev);
+        return;
+      }
+      if (key === '/') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+      if (key === 'f') {
+        event.preventDefault();
+        handleFitView();
+        return;
+      }
+      if (key === 'e') {
+        event.preventDefault();
+        handleExpandAll();
+        return;
+      }
+      if (key === 'c') {
+        event.preventDefault();
+        handleCollapseAll();
+        return;
+      }
+      if (key === 't') {
+        event.preventDefault();
+        setIsBranchMenuOpen((prev) => !prev);
+        return;
+      }
+      if (key === 'h') {
+        event.preventDefault();
+        handleToggleFocusMode();
+        return;
+      }
+      if (key === 'j' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        handleCycleBranch(1);
+        return;
+      }
+      if (key === 'k' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        handleCycleBranch(-1);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    handleCollapseAll,
+    handleCycleBranch,
+    handleExpandAll,
+    handleFitView,
+    handleToggleFocusMode,
+  ]);
 
   return (
     <div
@@ -307,6 +637,7 @@ function MindmapViewerContent({
         {/* Search — inline always, styled to match */}
         <ToolbarButton onClick={() => {}} title="Search">⌕</ToolbarButton>
         <input
+          ref={searchInputRef}
           type="text"
           placeholder="Search…"
           value={searchQuery}
@@ -375,6 +706,146 @@ function MindmapViewerContent({
 
         <ToolbarDivider />
 
+        {/* Collapsed topic list dropdown (top-level branches) */}
+        <div style={{ position: 'relative', padding: '0 4px' }}>
+          <button
+            onClick={() => setIsBranchMenuOpen((prev) => !prev)}
+            title="Open topic list"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              borderRadius: 999,
+              border: '1px solid var(--toolbar-border)',
+              background: 'transparent',
+              color: 'var(--text)',
+              padding: '7px 11px',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+            aria-expanded={isBranchMenuOpen}
+            aria-label="Toggle topic list"
+          >
+            Topics
+            <span style={{ fontSize: 12, lineHeight: 1 }}>{isBranchMenuOpen ? '▴' : '▾'}</span>
+          </button>
+
+          {isBranchMenuOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                left: 0,
+                minWidth: 220,
+                maxWidth: 280,
+                maxHeight: 260,
+                overflowY: 'auto',
+                zIndex: 70,
+                background: 'var(--toolbar-bg)',
+                border: '1px solid var(--toolbar-border)',
+                borderRadius: 12,
+                padding: 8,
+                boxShadow: '0 6px 18px rgba(28,25,23,0.16)',
+                backdropFilter: 'blur(6px)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              {branchChips.map((chip) => (
+                <button
+                  key={chip.id}
+                  onClick={() => handleFocusBranch(chip.nodeId)}
+                  title={`Focus ${chip.label}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    borderRadius: 10,
+                    border:
+                      focusedBranchId === chip.nodeId
+                        ? `1px solid color-mix(in srgb, ${chip.color} 82%, var(--toolbar-border))`
+                        : `1px solid color-mix(in srgb, ${chip.color} 54%, var(--toolbar-border))`,
+                    background:
+                      focusedBranchId === chip.nodeId
+                        ? `color-mix(in srgb, ${chip.color} 24%, var(--toolbar-bg))`
+                        : `color-mix(in srgb, ${chip.color} 14%, var(--toolbar-bg))`,
+                    color: 'var(--text)',
+                    padding: '7px 10px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: '0.01em',
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: chip.color,
+                      boxShadow: `0 0 0 1px color-mix(in srgb, ${chip.color} 72%, transparent)`,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{chip.label}</span>
+                  {focusedBranchId === chip.nodeId && (
+                    <span
+                      style={{
+                        marginLeft: 'auto',
+                        fontSize: 9,
+                        color: 'var(--text-muted)',
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Active
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <ToolbarDivider />
+
+        {/* Focus mode: dim non-selected branches */}
+        <button
+          onClick={handleToggleFocusMode}
+          title="Toggle branch focus mode"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            borderRadius: 999,
+            border: isFocusModeEnabled ? '1px solid var(--primary)' : '1px solid var(--toolbar-border)',
+            background: isFocusModeEnabled
+              ? 'color-mix(in srgb, var(--primary) 14%, var(--toolbar-bg))'
+              : 'transparent',
+            color: 'var(--text)',
+            padding: '7px 11px',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.03em',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
+        >
+          {isFocusModeEnabled ? 'Focus On' : 'Focus Off'}
+        </button>
+
+        <ToolbarDivider />
+
         {/* Learning mode indicator */}
         <span
           style={{
@@ -389,7 +860,155 @@ function MindmapViewerContent({
         >
           {learningMode === 'fast' ? '⚡ Fast' : '◎ Steady'}
         </span>
+
+        <ToolbarDivider />
+
+        {/* Keyboard hint */}
+        <button
+          onClick={() => setIsShortcutPanelOpen((prev) => !prev)}
+          title="Open keyboard shortcuts"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--text-muted)',
+            padding: '0 10px',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+          }}
+        >
+          Space x2 Shortcuts
+        </button>
       </div>
+
+      {/* ── Breadcrumb trail (selected node path) ─────────────────────────── */}
+      <div
+        style={{
+          position: 'fixed',
+          top: MINDMAP_FLOATING_TOP + 56,
+          left: 16,
+          zIndex: 44,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          maxWidth: 'min(78vw, 820px)',
+          overflowX: 'auto',
+          padding: '6px 10px',
+          borderRadius: 9999,
+          border: '1px solid var(--toolbar-border)',
+          background: 'var(--toolbar-bg)',
+          boxShadow: '0 4px 16px rgba(28,25,23,0.1)',
+          backdropFilter: 'blur(6px)',
+          scrollbarWidth: 'thin',
+        }}
+        title="Selected path"
+      >
+        {breadcrumbPath.map((crumb, index) => {
+          const isLast = index === breadcrumbPath.length - 1;
+          return (
+            <React.Fragment key={crumb.id}>
+              <button
+                onClick={() => handleBreadcrumbClick(crumb.id)}
+                style={{
+                  border: 'none',
+                  background: isLast ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'transparent',
+                  color: isLast ? 'var(--text)' : 'var(--text-muted)',
+                  borderRadius: 999,
+                  padding: '2px 8px',
+                  fontSize: 11,
+                  fontWeight: isLast ? 700 : 500,
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  maxWidth: 220,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+                title={crumb.label}
+              >
+                {crumb.label}
+              </button>
+              {!isLast && (
+                <span
+                  style={{
+                    color: 'var(--text-muted)',
+                    fontSize: 11,
+                    userSelect: 'none',
+                  }}
+                >
+                  {'>'}
+                </span>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {isShortcutPanelOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: MINDMAP_FLOATING_TOP + 98,
+            left: 16,
+            zIndex: 60,
+            width: 300,
+            background: 'var(--toolbar-bg)',
+            border: '1px solid var(--toolbar-border)',
+            borderRadius: 12,
+            padding: 12,
+            boxShadow: '0 8px 24px rgba(28,25,23,0.18)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 10,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'var(--text)',
+              }}
+            >
+              Keyboard Shortcuts
+            </span>
+            <button
+              onClick={() => setIsShortcutPanelOpen(false)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+              title="Close"
+            >
+              ✕
+            </button>
+          </div>
+
+          <ShortcutRow keys="Space, Space" action="Toggle this panel" />
+          <ShortcutRow keys="/" action="Focus search" />
+          <ShortcutRow keys="J / K" action="Next / previous topic" />
+          <ShortcutRow keys="T" action="Open topic dropdown" />
+          <ShortcutRow keys="H" action="Toggle focus mode" />
+          <ShortcutRow keys="E / C" action="Expand all / collapse all" />
+          <ShortcutRow keys="F" action="Fit view" />
+          <ShortcutRow keys="Esc" action="Close open panels" />
+        </div>
+      )}
 
       {/* ── Confidence legend (bottom-right) ─────────────────────────────────── */}
       {/* position: fixed so it's always viewport-relative and never clipped by
@@ -447,8 +1066,8 @@ function MindmapViewerContent({
 
       {/* ── react-flow canvas ─────────────────────────────────────────────────── */}
       <ReactFlow
-        nodes={searchedNodes}
-        edges={layoutEdges}
+        nodes={focusedNodes}
+        edges={focusedEdges}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         fitView
@@ -468,6 +1087,10 @@ function MindmapViewerContent({
         zoomOnScroll={true}
         zoomOnDoubleClick={false}
         nodeDragThreshold={6}
+        onNodeClick={(_, node) => {
+          setSelectedNodeId(node.id);
+          if (node.data.topLevelBranchId) setFocusedBranchId(node.data.topLevelBranchId);
+        }}
         onDoubleClick={handleFitView}
         attributionPosition="bottom-right"
       />
@@ -531,5 +1154,34 @@ function ToolbarDivider() {
         flexShrink: 0,
       }}
     />
+  );
+}
+
+function ShortcutRow({ keys, action }: { keys: string; action: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '4px 0',
+      }}
+    >
+      <span
+        style={{
+          fontSize: 10,
+          color: 'var(--text)',
+          fontWeight: 700,
+          fontFamily: "'JetBrains Mono', monospace",
+          letterSpacing: '0.03em',
+        }}
+      >
+        {keys}
+      </span>
+      <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+        {action}
+      </span>
+    </div>
   );
 }

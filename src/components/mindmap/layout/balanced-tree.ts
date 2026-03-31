@@ -59,6 +59,7 @@ export type FlowNodeData = {
   study_cue?: string;
   depth: number;
   direction: 'root' | 'right' | 'left';
+  topLevelBranchId?: string;
   branchColor: string;
   pastelColor: string;
   confidence?: number;
@@ -66,6 +67,8 @@ export type FlowNodeData = {
   visibleChildCount: number;
   /** Undefined = no active search. True = matches query. False = does not match. */
   searchMatch?: boolean;
+  /** True when focus mode is active and this node is outside selected branch. */
+  isFocusDimmed?: boolean;
   /** True on the single node the graph recommends the student work on next. */
   isResumeTarget?: boolean;
   onToggleCollapse: (nodeId: string) => void;
@@ -76,6 +79,7 @@ export type FlowNodeData = {
 export type FlowEdgeData = {
   depth: number;
   branchColor: string;
+  topLevelBranchId?: string;
   direction: 'right' | 'left';
 };
 
@@ -162,6 +166,7 @@ function positionNode(
   depth: number,
   parentId: string,
   siblingIndex: number,
+  topLevelBranchId: string,
   branchColor: string,
   ctx: LayoutContext,
 ): void {
@@ -188,6 +193,7 @@ function positionNode(
       study_cue: node.study_cue,
       depth,
       direction,
+      topLevelBranchId,
       branchColor,
       pastelColor,
       confidence,
@@ -214,7 +220,7 @@ function positionNode(
     sourceHandle,
     targetHandle,
     type: 'mindmapEdge',
-    data: { depth, branchColor, direction },
+    data: { depth, branchColor, topLevelBranchId, direction },
   });
 
   // Recurse into children if not collapsed.
@@ -228,7 +234,18 @@ function positionNode(
     for (const [index, child] of node.children.entries()) {
       const childId = getStableNodeId(child, nodeId, index);
       const childSubtreeHeight = computeSubtreeHeight(child, childId, depth + 1, ctx.collapsedNodes);
-      positionNode(child, currentY, childX, direction, depth + 1, nodeId, index, branchColor, ctx);
+      positionNode(
+        child,
+        currentY,
+        childX,
+        direction,
+        depth + 1,
+        nodeId,
+        index,
+        topLevelBranchId,
+        branchColor,
+        ctx,
+      );
       currentY += childSubtreeHeight + VERTICAL_GAP;
     }
   }
@@ -273,6 +290,7 @@ export function buildBalancedTreeLayout(
       depth: 0,
       direction: 'root',
       branchColor: '#2C3E50',
+      topLevelBranchId: undefined,
       pastelColor: '#2C3E50',
       isCollapsed: false,
       visibleChildCount: 0,
@@ -310,7 +328,18 @@ export function buildBalancedTreeLayout(
       const branchColor = BRANCH_PALETTE[index % BRANCH_PALETTE.length];
       const branchId = getStableNodeId(branch, rootId, index);
       const branchHeight = computeSubtreeHeight(branch, branchId, 1, collapsedNodes);
-      positionNode(branch, rightCurrentY, rightX, 'right', 1, rootId, index, branchColor, ctx);
+      positionNode(
+        branch,
+        rightCurrentY,
+        rightX,
+        'right',
+        1,
+        rootId,
+        index,
+        branchId,
+        branchColor,
+        ctx,
+      );
       rightCurrentY += branchHeight + VERTICAL_GAP;
     }
   }
@@ -336,7 +365,18 @@ export function buildBalancedTreeLayout(
       const siblingIndex = rightCount + index;
       const branchId = getStableNodeId(branch, rootId, siblingIndex);
       const branchHeight = computeSubtreeHeight(branch, branchId, 1, collapsedNodes);
-      positionNode(branch, leftCurrentY, leftX, 'left', 1, rootId, siblingIndex, branchColor, ctx);
+      positionNode(
+        branch,
+        leftCurrentY,
+        leftX,
+        'left',
+        1,
+        rootId,
+        siblingIndex,
+        branchId,
+        branchColor,
+        ctx,
+      );
       leftCurrentY += branchHeight + VERTICAL_GAP;
     }
   }

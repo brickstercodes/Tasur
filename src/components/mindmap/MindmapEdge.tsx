@@ -29,8 +29,20 @@ const STROKE_WIDTH_BY_DEPTH: Record<number, number> = {
 };
 const STROKE_WIDTH_LEAF = 0.8;
 
+const EDGE_COLOR_MIX_BY_DEPTH: Record<number, number> = {
+  1: 62,
+  2: 54,
+  3: 46,
+};
+const EDGE_COLOR_MIX_LEAF = 38;
+
 function getStrokeWidth(depth: number): number {
   return STROKE_WIDTH_BY_DEPTH[depth] ?? STROKE_WIDTH_LEAF;
+}
+
+function getStrokeColor(depth: number, branchColor: string): string {
+  const mixPct = EDGE_COLOR_MIX_BY_DEPTH[depth] ?? EDGE_COLOR_MIX_LEAF;
+  return `color-mix(in srgb, ${branchColor} ${mixPct}%, var(--mindmap-edge))`;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -49,6 +61,7 @@ export function MindmapEdge({
 
   const { depth, branchColor } = data;
   const strokeWidth = getStrokeWidth(depth);
+  const strokeColor = getStrokeColor(depth, branchColor);
 
   const [edgePath] = getBezierPath({
     sourceX,
@@ -62,7 +75,7 @@ export function MindmapEdge({
   return (
     <BaseEdge
       path={edgePath}
-      style={{ stroke: 'var(--mindmap-edge)', strokeWidth, fill: 'none' }}
+      style={{ stroke: strokeColor, strokeWidth, fill: 'none' }}
     />
   );
 }
