@@ -45,6 +45,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const appUserId = await resolveAppUserId(authSession.user);
   const sessions = await getSessionsForUser(appUserId);
+  const groupedSessions = groupSessionsByDomain(sessions);
 
   const isUploadMode = upload === '1';
 
@@ -120,13 +121,48 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
       {/* ── Session list ─────────────────────────────────────────────────── */}
       {!isUploadMode && (
-        <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {sessions.length === 0 ? (
             <EmptyState />
           ) : (
-            sessions.map((session) => (
-              <SessionCard key={session.id} session={session} />
-            ))
+            groupedSessions.map((group, groupIndex) => {
+              const masteryPercent =
+                group.totalConcepts > 0
+                  ? Math.round((group.masteredConcepts / group.totalConcepts) * 100)
+                  : null;
+
+              const shouldStartExpanded =
+                groupedSessions.length === 1 || groupIndex === 0;
+
+              return (
+                <details
+                  key={group.key}
+                  className="session-group manuscript-card app-fade-up"
+                  open={shouldStartExpanded}
+                >
+                  <summary className="session-group-summary">
+                    <span className="session-group-summary-left">
+                      <span className="session-group-title">{group.label}</span>
+                      <span className="session-group-count">
+                        {group.sessions.length} session{group.sessions.length !== 1 ? 's' : ''}
+                      </span>
+                    </span>
+
+                    <span className="session-group-summary-right">
+                      {masteryPercent === null ? 'In progress' : `${masteryPercent}% mastered`}
+                    </span>
+                  </summary>
+
+                  <div className="session-group-content">
+                    <div className="session-group-content-inner stagger-list">
+                      {group.sessions.map((session) => (
+                        <SessionCard key={session.id} session={session} />
+                      ))}
+                    </div>
+                  </div>
+                </details>
+              );
+            })
           )}
         </div>
       )}
@@ -223,11 +259,20 @@ function SessionCard({ session }: { session: SessionListItem }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <Link
             href={`/dashboard?upload=1&sessionId=${session.id}`}
+            className="session-card-doc-link"
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              minHeight: 32,
+              padding: '0 10px',
+              borderRadius: 8,
+              border: '1px solid color-mix(in srgb, var(--border) 78%, transparent)',
+              background: 'transparent',
               fontSize: 12,
               color: 'var(--text-muted)',
               textDecoration: 'none',
               fontFamily: 'Inter, sans-serif',
+              transition: 'background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.12s ease',
             }}
           >
             + doc
@@ -235,12 +280,25 @@ function SessionCard({ session }: { session: SessionListItem }) {
 
           <Link
             href={`/study/${session.id}/mindmap`}
+            className="session-card-resume-link"
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 36,
+              minWidth: 116,
+              padding: '0 16px',
+              borderRadius: 999,
+              border: '1px solid color-mix(in srgb, var(--primary) 68%, transparent)',
+              background: 'var(--primary)',
               fontSize: 13,
-              fontWeight: 500,
-              color: 'var(--primary)',
+              fontWeight: 600,
+              color: '#fff',
               textDecoration: 'none',
               fontFamily: 'Inter, sans-serif',
+              boxShadow: '0 5px 14px color-mix(in srgb, var(--primary) 30%, transparent)',
+              letterSpacing: '0.01em',
+              transition: 'background 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease',
             }}
           >
             Resume →
@@ -321,4 +379,61 @@ function formatRelativeTime(isoString: string): string {
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) return `${diffDays}d ago`;
   return new Date(isoString).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function groupSessionsByDomain(sessions: SessionListItem[]): Array<{
+  key: string;
+  label: string;
+  sessions: SessionListItem[];
+  masteredConcepts: number;
+  totalConcepts: number;
+  latestActivityMs: number;
+}> {
+  const groups = new Map<
+    string,
+    {
+      key: string;
+      label: string;
+      sessions: SessionListItem[];
+      masteredConcepts: number;
+      totalConcepts: number;
+      latestActivityMs: number;
+    }
+  >();
+
+  for (const session of sessions) {
+    const normalizedDomain = session.domain?.trim() || 'General';
+    const groupKey = normalizedDomain.toLowerCase();
+    const activityMs = new Date(session.lastActiveAt).getTime();
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        key: groupKey,
+        label: normalizedDomain,
+        sessions: [],
+        masteredConcepts: 0,
+        totalConcepts: 0,
+        latestActivityMs: Number.NEGATIVE_INFINITY,
+      });
+    }
+
+    const group = groups.get(groupKey)!;
+    group.sessions.push(session);
+    group.masteredConcepts += session.masteredConcepts;
+    group.totalConcepts += session.totalConcepts;
+    group.latestActivityMs = Math.max(group.latestActivityMs, activityMs);
+  }
+
+  for (const group of groups.values()) {
+    group.sessions.sort(
+      (a, b) => new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime(),
+    );
+  }
+
+  return Array.from(groups.values()).sort((a, b) => {
+    if (b.latestActivityMs !== a.latestActivityMs) {
+      return b.latestActivityMs - a.latestActivityMs;
+    }
+    return a.label.localeCompare(b.label);
+  });
 }

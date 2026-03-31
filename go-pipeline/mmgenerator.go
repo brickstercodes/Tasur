@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -95,6 +96,10 @@ func generateMm(
 	}
 
 	mmXml := extractXMLFromResponse(text)
+	if repaired, didRepair := repairUnclosedNodes(mmXml); didRepair {
+		log.Printf("mm-generator: repaired %d unclosed <node> tag(s) in initial output", strings.Count(repaired, "</node>")-strings.Count(mmXml, "</node>"))
+		mmXml = repaired
+	}
 	errs := validateMmOutput(mmXml)
 
 	if len(errs) > 0 {
@@ -131,6 +136,10 @@ func generateMm(
 		}
 
 		retriedXml := extractXMLFromResponse(retryText)
+		if repaired, didRepair := repairUnclosedNodes(retriedXml); didRepair {
+			log.Printf("mm-generator: repaired %d unclosed <node> tag(s) in retry output", strings.Count(repaired, "</node>")-strings.Count(retriedXml, "</node>"))
+			retriedXml = repaired
+		}
 		retryErrs := validateMmOutput(retriedXml)
 		if len(retryErrs) > 0 {
 			return MmGeneratorResult{}, fmt.Errorf(

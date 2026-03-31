@@ -12,7 +12,7 @@ import { generateText } from 'ai';
 import { getMmGeneratorModel } from '@/config/model-provider';
 import type { AgentResult, TasurAgent } from '@/interfaces/agents';
 import type { MmGeneratorInput } from '@/interfaces/registry';
-import { validateMmOutput } from '@/lib/schemas/mm-generator-output';
+import { repairUnclosedNodes, validateMmOutput } from '@/lib/schemas/mm-generator-output';
 import { loadPrompt, loadPromptFile } from '@/prompts/loader';
 
 /** Thinking models require temperature = 1. Even for the text path, we use a thinking-enabled
@@ -62,7 +62,12 @@ export class ManualMmGeneratorAgent implements TasurAgent<MmGeneratorInput, stri
       },
     });
 
-    const mmXml = extractXmlFromResponse(text);
+    let mmXml = extractXmlFromResponse(text);
+    const initialRepair = repairUnclosedNodes(mmXml);
+    if (initialRepair.repaired) {
+      console.log('[mm-generator] repaired unclosed <node> tags in initial output');
+      mmXml = initialRepair.xml;
+    }
     const validationResult = validateMmOutput(mmXml);
 
     if (!validationResult.valid) {
@@ -93,12 +98,20 @@ export class ManualMmGeneratorAgent implements TasurAgent<MmGeneratorInput, stri
         },
       });
 
-      const retriedXml = extractXmlFromResponse(retryResult.text);
+      let retriedXml = extractXmlFromResponse(retryResult.text);
+      const retryRepair = repairUnclosedNodes(retriedXml);
+      if (retryRepair.repaired) {
+        console.log('[mm-generator] repaired unclosed <node> tags in retry output');
+        retriedXml = retryRepair.xml;
+      }
       const retryValidation = validateMmOutput(retriedXml);
 
       if (!retryValidation.valid) {
+        console.error(
+          `[mm-generator] failed validation after retry: ${retryValidation.errors.join('; ')}`,
+        );
         throw new Error(
-          `.mm Generator failed validation after retry. Errors:\n${retryValidation.errors.join('\n')}`,
+          'Oops, something went wrong generating your mindmap. Please try again!',
         );
       }
 

@@ -439,7 +439,8 @@ func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, s
 		input.CustomInstructions,
 	)
 	if err != nil {
-		sse.error("Mindmap generation failed: " + err.Error())
+		log.Printf("mindmap generation error: %v", err)
+		sse.error("Oops, something went wrong generating your mindmap. Please try again!")
 		return
 	}
 
@@ -453,7 +454,8 @@ func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, s
 	sse.progress("analyzing", "Analysing structure…", 48)
 	parsedTree, err := parseMmXml(mmResult.MmXml)
 	if err != nil {
-		sse.error("Mindmap parsing failed: " + err.Error())
+		log.Printf("mindmap parsing error: %v", err)
+		sse.error("Oops, something went wrong generating your mindmap. Please try again!")
 		return
 	}
 	concepts := extractConcepts(parsedTree)
@@ -582,7 +584,8 @@ func runDocumentPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient,
 		input.CustomInstructions,
 	)
 	if err != nil {
-		sse.error("Mindmap generation failed: " + err.Error())
+		log.Printf("mindmap generation error (add-document): %v", err)
+		sse.error("Oops, something went wrong generating your mindmap. Please try again!")
 		return
 	}
 
@@ -596,7 +599,8 @@ func runDocumentPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient,
 	sse.progress("analyzing", "Analysing structure…", 50)
 	parsedTree, err := parseMmXml(mmResult.MmXml)
 	if err != nil {
-		sse.error("Mindmap parsing failed: " + err.Error())
+		log.Printf("mindmap parsing error (add-document): %v", err)
+		sse.error("Oops, something went wrong generating your mindmap. Please try again!")
 		return
 	}
 	newConcepts := extractConcepts(parsedTree)

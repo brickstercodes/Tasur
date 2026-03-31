@@ -512,6 +512,53 @@ func depthToExamPriority(depth int) int {
 	return 1
 }
 
+// ── XML repair ───────────────────────────────────────────────────────────────
+
+// repairUnclosedNodes fixes the most common LLM XML failure: missing </node>
+// closing tags at the tail of the output. It counts open vs close <node> tags
+// and appends the missing closers just before </map>.
+// Returns the repaired XML and whether any repair was applied.
+func repairUnclosedNodes(xml string) (string, bool) {
+	trimmed := strings.TrimSpace(xml)
+	if !strings.HasSuffix(trimmed, "</map>") {
+		return xml, false // can't repair if </map> is missing entirely
+	}
+
+	closeCount := strings.Count(trimmed, "</node>")
+
+	// Count non-self-closing <node ...> tags (self-closing ones like <node/>
+	// don't need a </node> closer).
+	actualOpen := 0
+	idx := 0
+	for {
+		pos := strings.Index(trimmed[idx:], "<node ")
+		if pos == -1 {
+			break
+		}
+		tagStart := idx + pos
+		// Find end of this tag
+		tagEnd := strings.Index(trimmed[tagStart:], ">")
+		if tagEnd == -1 {
+			break
+		}
+		tagEnd += tagStart
+		if trimmed[tagEnd-1] != '/' {
+			actualOpen++
+		}
+		idx = tagEnd + 1
+	}
+
+	missing := actualOpen - closeCount
+	if missing <= 0 {
+		return xml, false
+	}
+
+	// Insert missing </node> closers before the final </map>
+	closers := strings.Repeat("</node>\n", missing)
+	body := strings.TrimSuffix(trimmed, "</map>")
+	return body + closers + "</map>", true
+}
+
 // ── XML response extraction ───────────────────────────────────────────────────
 
 var (

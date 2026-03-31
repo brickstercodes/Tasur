@@ -95,6 +95,8 @@ type TreeSearchMatch = {
   ancestorIds: string[];
 };
 
+type NavigationDirection = 'left' | 'right' | 'up' | 'down';
+
 function collectTreeSearchMatches(
   node: MindmapTreeNode,
   parentId: string,
@@ -512,6 +514,72 @@ function MindmapViewerContent({
     [tree],
   );
 
+  const getNodeCenter = useCallback((node: Node<FlowNodeData>) => {
+    const fallbackWidth =
+      node.data.depth === 0 ? 200 : node.data.depth === 1 ? 190 : node.data.depth === 2 ? 185 : 180;
+    const fallbackHeight = node.data.depth === 0 ? 52 : 40;
+    const width = node.width ?? fallbackWidth;
+    const height = node.height ?? fallbackHeight;
+
+    return {
+      x: node.position.x + width / 2,
+      y: node.position.y + height / 2,
+    };
+  }, []);
+
+  const getDirectionalNeighborId = useCallback(
+    (fromNodeId: string, direction: NavigationDirection): string | undefined => {
+      const fromNode = nodeById.get(fromNodeId);
+      if (!fromNode) return undefined;
+
+      const fromCenter = getNodeCenter(fromNode);
+      const MIN_AXIS_DELTA = 10;
+
+      let bestId: string | undefined;
+      let bestScore = Number.POSITIVE_INFINITY;
+
+      for (const candidate of layoutNodes) {
+        if (candidate.id === fromNodeId) continue;
+
+        const candidateCenter = getNodeCenter(candidate);
+        const dx = candidateCenter.x - fromCenter.x;
+        const dy = candidateCenter.y - fromCenter.y;
+
+        const isInDirection =
+          (direction === 'left' && dx <= -MIN_AXIS_DELTA) ||
+          (direction === 'right' && dx >= MIN_AXIS_DELTA) ||
+          (direction === 'up' && dy <= -MIN_AXIS_DELTA) ||
+          (direction === 'down' && dy >= MIN_AXIS_DELTA);
+
+        if (!isInDirection) continue;
+
+        const primary = direction === 'left' || direction === 'right' ? Math.abs(dx) : Math.abs(dy);
+        const secondary = direction === 'left' || direction === 'right' ? Math.abs(dy) : Math.abs(dx);
+        const score = primary + secondary * 1.45;
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestId = candidate.id;
+        }
+      }
+
+      return bestId;
+    },
+    [getNodeCenter, layoutNodes, nodeById],
+  );
+
+  const handleDirectionalMove = useCallback(
+    (direction: NavigationDirection): boolean => {
+      const nextNodeId = getDirectionalNeighborId(selectedNodeId, direction);
+      if (!nextNodeId) return false;
+
+      selectNodeAndSyncFocus(nextNodeId);
+      fitView({ nodes: [{ id: nextNodeId }], padding: 0.45, duration: 500 });
+      return true;
+    },
+    [fitView, getDirectionalNeighborId, selectNodeAndSyncFocus, selectedNodeId],
+  );
+
   const handleFocusBranch = useCallback(
     (nodeId: string) => {
       selectNodeAndSyncFocus(nodeId);
@@ -554,10 +622,12 @@ function MindmapViewerContent({
 
   const handleGoDeeper = useCallback(() => {
     if (selectedNodeId === 'root') {
-      const firstBranchId = branchChips[0]?.nodeId;
-      if (!firstBranchId) return;
-        selectNodeAndSyncFocus(firstBranchId);
-      fitView({ nodes: [{ id: firstBranchId }], padding: 0.45, duration: 500 });
+      const rightBranchId =
+        getDirectionalNeighborId('root', 'right') ?? branchChips[0]?.nodeId;
+      if (!rightBranchId) return;
+
+      selectNodeAndSyncFocus(rightBranchId);
+      fitView({ nodes: [{ id: rightBranchId }], padding: 0.45, duration: 500 });
       return;
     }
 
@@ -585,6 +655,7 @@ function MindmapViewerContent({
   }, [
     selectedNodeId,
     branchChips,
+    getDirectionalNeighborId,
     fitView,
     collapsedNodes,
     nodeById,
@@ -677,27 +748,55 @@ function MindmapViewerContent({
       }
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        handleCycleSibling(1);
+        if (!handleDirectionalMove('down')) handleCycleSibling(1);
         return;
       }
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        handleCycleSibling(-1);
+        if (!handleDirectionalMove('up')) handleCycleSibling(-1);
         return;
       }
-      const isGoDeeper =
-        event.key === 'ArrowRight';
-      const isGoShallower =
-        event.key === 'ArrowLeft';
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
 
-      if (isGoDeeper) {
-        event.preventDefault();
-        handleGoDeeper();
+        if (!handleDirectionalMove('right')) {
+          const currentNode = nodeById.get(selectedNodeId);
+          const rootNode = nodeById.get('root');
+
+          if (!currentNode || !rootNode) {
+            handleGoDeeper();
+            return;
+          }
+
+          const currentX = getNodeCenter(currentNode).x;
+          const rootX = getNodeCenter(rootNode).x;
+          const isOutwardMove = selectedNodeId === 'root' || currentX > rootX;
+
+          if (isOutwardMove) handleGoDeeper();
+          else handleGoShallower();
+        }
         return;
       }
-      if (isGoShallower) {
+
+      if (event.key === 'ArrowLeft') {
         event.preventDefault();
-        handleGoShallower();
+
+        if (!handleDirectionalMove('left')) {
+          const currentNode = nodeById.get(selectedNodeId);
+          const rootNode = nodeById.get('root');
+
+          if (!currentNode || !rootNode) {
+            handleGoShallower();
+            return;
+          }
+
+          const currentX = getNodeCenter(currentNode).x;
+          const rootX = getNodeCenter(rootNode).x;
+          const isOutwardMove = selectedNodeId === 'root' || currentX < rootX;
+
+          if (isOutwardMove) handleGoDeeper();
+          else handleGoShallower();
+        }
       }
     };
 
@@ -706,10 +805,14 @@ function MindmapViewerContent({
   }, [
     handleCollapseAll,
     handleCycleSibling,
+    handleDirectionalMove,
     handleExpandAll,
     handleFitView,
+    getNodeCenter,
     handleGoDeeper,
     handleGoShallower,
+    nodeById,
+    selectedNodeId,
     handleToggleFocusMode,
   ]);
 
@@ -842,24 +945,41 @@ function MindmapViewerContent({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                padding: '4px 12px',
-                border: 'none',
+                minHeight: 34,
+                minWidth: 106,
+                padding: '6px 14px',
+                border: '1px solid color-mix(in srgb, var(--primary) 62%, transparent)',
                 borderRadius: 9999,
                 background: 'var(--primary)',
                 color: '#fff',
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
                 fontFamily: 'Inter, sans-serif',
                 letterSpacing: '0.02em',
                 whiteSpace: 'nowrap',
-                transition: 'background 0.1s ease',
+                boxShadow: '0 3px 10px color-mix(in srgb, var(--primary) 24%, transparent)',
+                transition: 'background 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-hover)';
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.background = 'var(--primary-hover)';
+                el.style.transform = 'translateY(-1px)';
+                el.style.boxShadow = '0 6px 16px color-mix(in srgb, var(--primary) 34%, transparent)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary)';
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.background = 'var(--primary)';
+                el.style.transform = 'translateY(0)';
+                el.style.boxShadow = '0 3px 10px color-mix(in srgb, var(--primary) 24%, transparent)';
+              }}
+              onMouseDown={(e) => {
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.transform = 'scale(0.98)';
+              }}
+              onMouseUp={(e) => {
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.transform = 'translateY(-1px)';
               }}
             >
               ▶ Continue
@@ -1164,8 +1284,8 @@ function MindmapViewerContent({
 
           <ShortcutRow keys="Space, Space" action="Toggle this panel" />
           <ShortcutRow keys="/" action="Focus search" />
-          <ShortcutRow keys="↑ / ↓" action="Next / previous sibling" />
-          <ShortcutRow keys="→ / ←" action="Go deeper / go back" />
+          <ShortcutRow keys="↑ / ↓" action="Move to nearest node above / below" />
+          <ShortcutRow keys="→ / ←" action="Move to nearest node right / left" />
           <ShortcutRow keys="T" action="Open topic dropdown" />
           <ShortcutRow keys="H" action="Toggle focus mode" />
           <ShortcutRow keys="E / C" action="Expand all / collapse all" />

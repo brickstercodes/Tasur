@@ -111,6 +111,40 @@ export function validateMmOutput(xml: string): MmValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
+// ── XML repair ───────────────────────────────────────────────────────────
+
+/**
+ * Repairs the most common LLM XML failure: missing </node> closing tags at
+ * the tail of the output. Counts non-self-closing <node> opens vs </node>
+ * closes and appends the missing closers before </map>.
+ *
+ * Returns { xml, repaired } — repaired is true if any tags were inserted.
+ */
+export function repairUnclosedNodes(xml: string): { xml: string; repaired: boolean } {
+  const trimmed = xml.trim();
+  if (!trimmed.endsWith('</map>')) return { xml, repaired: false };
+
+  const closeCount = (trimmed.match(/<\/node>/g) ?? []).length;
+
+  // Count non-self-closing <node ...> tags
+  let actualOpen = 0;
+  const openPattern = /<node\s/g;
+  let match: RegExpExecArray | null;
+  while ((match = openPattern.exec(trimmed)) !== null) {
+    const tagStart = match.index;
+    const tagEnd = trimmed.indexOf('>', tagStart);
+    if (tagEnd === -1) break;
+    if (trimmed[tagEnd - 1] !== '/') actualOpen++;
+  }
+
+  const missing = actualOpen - closeCount;
+  if (missing <= 0) return { xml, repaired: false };
+
+  const body = trimmed.slice(0, trimmed.length - '</map>'.length);
+  const closers = '</node>\n'.repeat(missing);
+  return { xml: body + closers + '</map>', repaired: true };
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
