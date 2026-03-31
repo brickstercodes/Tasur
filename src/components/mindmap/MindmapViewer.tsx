@@ -281,6 +281,12 @@ function MindmapViewerContent({
     });
   }, [layoutEdges, isFocusModeEnabled, focusedBranchId]);
 
+  const nodeById = useMemo(() => {
+    const result = new Map<string, Node<FlowNodeData>>();
+    for (const node of layoutNodes) result.set(node.id, node);
+    return result;
+  }, [layoutNodes]);
+
   const nodeLabelById = useMemo(() => {
     const result = new Map<string, string>();
     for (const node of layoutNodes) result.set(node.id, node.data.label);
@@ -303,6 +309,52 @@ function MindmapViewerContent({
     }
     return result;
   }, [layoutEdges]);
+
+  const selectNodeAndSyncFocus = useCallback(
+    (nodeId: string) => {
+      setSelectedNodeId(nodeId);
+
+      if (nodeId === 'root') {
+        setFocusedBranchId(null);
+        return;
+      }
+
+      const node = nodeById.get(nodeId);
+      if (node?.data.topLevelBranchId) {
+        setFocusedBranchId(node.data.topLevelBranchId);
+      } else {
+        setFocusedBranchId(null);
+      }
+    },
+    [nodeById],
+  );
+
+  const getPreferredChildId = useCallback(
+    (parentId: string): string | undefined => {
+      const childIds = childrenByNodeId.get(parentId) ?? [];
+      if (childIds.length === 0) return undefined;
+
+      const parentNode = nodeById.get(parentId);
+      if (!parentNode) return childIds[0];
+
+      const parentY = parentNode.position.y;
+      let bestChildId = childIds[0];
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      for (const childId of childIds) {
+        const childNode = nodeById.get(childId);
+        if (!childNode) continue;
+        const distance = Math.abs(childNode.position.y - parentY);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestChildId = childId;
+        }
+      }
+
+      return bestChildId;
+    },
+    [childrenByNodeId, nodeById],
+  );
 
   const breadcrumbPath = useMemo(() => {
     const activeNodeId = nodeLabelById.has(selectedNodeId) ? selectedNodeId : 'root';
@@ -421,24 +473,22 @@ function MindmapViewerContent({
   // After expanding a collapsed node for deeper navigation, move into its first child.
   useEffect(() => {
     if (!pendingDeepenFromNodeId) return;
-    const firstChildId = childrenByNodeId.get(pendingDeepenFromNodeId)?.[0];
+    const firstChildId = getPreferredChildId(pendingDeepenFromNodeId);
     if (!firstChildId) return;
 
-    const childNode = layoutNodes.find((node) => node.id === firstChildId);
+    const childNode = nodeById.get(firstChildId);
     if (!childNode) return;
 
-    setSelectedNodeId(childNode.id);
-    if (childNode.data.topLevelBranchId) {
-      setFocusedBranchId(childNode.data.topLevelBranchId);
-    }
+    selectNodeAndSyncFocus(childNode.id);
     fitView({ nodes: [{ id: childNode.id }], padding: 0.45, duration: 500 });
     setPendingDeepenFromNodeId(null);
-  }, [pendingDeepenFromNodeId, childrenByNodeId, layoutNodes, fitView]);
+  }, [pendingDeepenFromNodeId, getPreferredChildId, nodeById, fitView, selectNodeAndSyncFocus]);
 
   // Keep selection valid across relayouts/collapse state changes.
   useEffect(() => {
     if (!nodeLabelById.has(selectedNodeId)) {
       setSelectedNodeId('root');
+      setFocusedBranchId(null);
     }
   }, [selectedNodeId, nodeLabelById]);
 
@@ -464,59 +514,54 @@ function MindmapViewerContent({
 
   const handleFocusBranch = useCallback(
     (nodeId: string) => {
-      setFocusedBranchId(nodeId);
-      setSelectedNodeId(nodeId);
+      selectNodeAndSyncFocus(nodeId);
       fitView({ nodes: [{ id: nodeId }], padding: 0.45, duration: 520 });
       setIsBranchMenuOpen(false);
     },
-    [fitView],
+    [fitView, selectNodeAndSyncFocus],
   );
 
-  const handleCycleBranch = useCallback(
+  const handleCycleSibling = useCallback(
     (delta: 1 | -1) => {
-      if (branchChips.length === 0) return;
+      // Root has no siblings by definition.
+      if (selectedNodeId === 'root') return;
 
-      const currentIndex = focusedBranchId
-        ? branchChips.findIndex((chip) => chip.nodeId === focusedBranchId)
-        : -1;
+      const parentId = parentByNodeId.get(selectedNodeId);
+      if (!parentId) return;
 
-      const seedIndex = currentIndex === -1 ? (delta === 1 ? -1 : 0) : currentIndex;
-      const nextIndex = (seedIndex + delta + branchChips.length) % branchChips.length;
-      const nextBranch = branchChips[nextIndex];
+      const siblings = childrenByNodeId.get(parentId) ?? [];
+      if (siblings.length <= 1) return;
 
-      setFocusedBranchId(nextBranch.nodeId);
-      setSelectedNodeId(nextBranch.nodeId);
-      fitView({ nodes: [{ id: nextBranch.nodeId }], padding: 0.45, duration: 520 });
-      setIsBranchMenuOpen(false);
+      const currentIndex = siblings.indexOf(selectedNodeId);
+      if (currentIndex === -1) return;
+
+      const nextIndex = (currentIndex + delta + siblings.length) % siblings.length;
+      const nextSiblingId = siblings[nextIndex];
+
+      selectNodeAndSyncFocus(nextSiblingId);
+      fitView({ nodes: [{ id: nextSiblingId }], padding: 0.45, duration: 520 });
     },
-    [branchChips, focusedBranchId, fitView],
+    [selectedNodeId, parentByNodeId, childrenByNodeId, fitView, selectNodeAndSyncFocus],
   );
 
   const handleBreadcrumbClick = useCallback(
     (nodeId: string) => {
-      setSelectedNodeId(nodeId);
-
-      const clickedNode = layoutNodes.find((node) => node.id === nodeId);
-      if (clickedNode?.data.topLevelBranchId) {
-        setFocusedBranchId(clickedNode.data.topLevelBranchId);
-      }
-
+      selectNodeAndSyncFocus(nodeId);
       fitView({ nodes: [{ id: nodeId }], padding: 0.45, duration: 520 });
     },
-    [fitView, layoutNodes],
+    [fitView, selectNodeAndSyncFocus],
   );
 
   const handleGoDeeper = useCallback(() => {
     if (selectedNodeId === 'root') {
       const firstBranchId = branchChips[0]?.nodeId;
       if (!firstBranchId) return;
-      setSelectedNodeId(firstBranchId);
-      setFocusedBranchId(firstBranchId);
+        selectNodeAndSyncFocus(firstBranchId);
       fitView({ nodes: [{ id: firstBranchId }], padding: 0.45, duration: 500 });
       return;
     }
 
-    const selectedNode = layoutNodes.find((node) => node.id === selectedNodeId);
+    const selectedNode = nodeById.get(selectedNodeId);
     if (!selectedNode || selectedNode.data.visibleChildCount === 0) return;
 
     if (collapsedNodes.has(selectedNodeId)) {
@@ -529,24 +574,22 @@ function MindmapViewerContent({
       return;
     }
 
-    const firstChildId = childrenByNodeId.get(selectedNodeId)?.[0];
+    const firstChildId = getPreferredChildId(selectedNodeId);
     if (!firstChildId) return;
 
-    const childNode = layoutNodes.find((node) => node.id === firstChildId);
+    const childNode = nodeById.get(firstChildId);
     if (!childNode) return;
 
-    setSelectedNodeId(childNode.id);
-    if (childNode.data.topLevelBranchId) {
-      setFocusedBranchId(childNode.data.topLevelBranchId);
-    }
+    selectNodeAndSyncFocus(childNode.id);
     fitView({ nodes: [{ id: childNode.id }], padding: 0.45, duration: 500 });
   }, [
     selectedNodeId,
     branchChips,
     fitView,
-    layoutNodes,
     collapsedNodes,
-    childrenByNodeId,
+    nodeById,
+    getPreferredChildId,
+    selectNodeAndSyncFocus,
   ]);
 
   const handleGoShallower = useCallback(() => {
@@ -554,13 +597,9 @@ function MindmapViewerContent({
     const parentId = parentByNodeId.get(selectedNodeId);
     if (!parentId) return;
 
-    setSelectedNodeId(parentId);
-    const parentNode = layoutNodes.find((node) => node.id === parentId);
-    if (parentNode?.data.topLevelBranchId) {
-      setFocusedBranchId(parentNode.data.topLevelBranchId);
-    }
+    selectNodeAndSyncFocus(parentId);
     fitView({ nodes: [{ id: parentId }], padding: 0.45, duration: 500 });
-  }, [selectedNodeId, parentByNodeId, layoutNodes, fitView]);
+  }, [selectedNodeId, parentByNodeId, fitView, selectNodeAndSyncFocus]);
 
   const handleToggleFocusMode = useCallback(() => {
     setIsFocusModeEnabled((prev) => {
@@ -571,6 +610,12 @@ function MindmapViewerContent({
       return next;
     });
   }, [focusedBranchId, branchChips]);
+
+  const selectedNode = nodeById.get(selectedNodeId);
+  const canGoShallower = selectedNodeId !== 'root';
+  const canGoDeeper = selectedNodeId === 'root'
+    ? branchChips.length > 0
+    : (selectedNode?.data.visibleChildCount ?? 0) > 0;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -630,32 +675,37 @@ function MindmapViewerContent({
         handleToggleFocusMode();
         return;
       }
-      if (key === 'j' || event.key === 'ArrowDown') {
+      if (event.key === 'ArrowDown') {
         event.preventDefault();
-        handleCycleBranch(1);
+        handleCycleSibling(1);
         return;
       }
-      if (key === 'k' || event.key === 'ArrowUp') {
+      if (event.key === 'ArrowUp') {
         event.preventDefault();
-        handleCycleBranch(-1);
+        handleCycleSibling(-1);
         return;
       }
-      if (event.key === '>') {
+      const isGoDeeper =
+        event.key === 'ArrowRight';
+      const isGoShallower =
+        event.key === 'ArrowLeft';
+
+      if (isGoDeeper) {
         event.preventDefault();
         handleGoDeeper();
         return;
       }
-      if (event.key === '<') {
+      if (isGoShallower) {
         event.preventDefault();
         handleGoShallower();
       }
     };
 
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [
     handleCollapseAll,
-    handleCycleBranch,
+    handleCycleSibling,
     handleExpandAll,
     handleFitView,
     handleGoDeeper,
@@ -727,6 +777,22 @@ function MindmapViewerContent({
           title="Collapse all"
         >
           ⊟
+        </ToolbarButton>
+        <ToolbarDivider />
+
+        <ToolbarButton
+          onClick={handleGoShallower}
+          disabled={!canGoShallower}
+          title="Go back (←)"
+        >
+          ‹
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={handleGoDeeper}
+          disabled={!canGoDeeper}
+          title="Go deeper (→)"
+        >
+          ›
         </ToolbarButton>
         <ToolbarDivider />
 
@@ -1097,8 +1163,8 @@ function MindmapViewerContent({
 
           <ShortcutRow keys="Space, Space" action="Toggle this panel" />
           <ShortcutRow keys="/" action="Focus search" />
-          <ShortcutRow keys="J / K" action="Next / previous topic" />
-          <ShortcutRow keys="> / <" action="Go deeper / go back" />
+          <ShortcutRow keys="↑ / ↓" action="Next / previous sibling" />
+          <ShortcutRow keys="→ / ←" action="Go deeper / go back" />
           <ShortcutRow keys="T" action="Open topic dropdown" />
           <ShortcutRow keys="H" action="Toggle focus mode" />
           <ShortcutRow keys="E / C" action="Expand all / collapse all" />
@@ -1185,8 +1251,7 @@ function MindmapViewerContent({
         zoomOnDoubleClick={false}
         nodeDragThreshold={6}
         onNodeClick={(_, node) => {
-          setSelectedNodeId(node.id);
-          if (node.data.topLevelBranchId) setFocusedBranchId(node.data.topLevelBranchId);
+          selectNodeAndSyncFocus(node.id);
         }}
         onDoubleClick={handleFitView}
         attributionPosition="bottom-right"
