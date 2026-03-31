@@ -200,8 +200,8 @@ func makeUploadHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient) 
 		stopHeartbeat := sse.startHeartbeat(r.Context(), 12*time.Second)
 		defer stopHeartbeat()
 
-		userID, err := resolveUserID(r)
-		if err != nil {
+		userID := r.Header.Get("X-User-Id")
+		if userID == "" {
 			sse.error("Unauthorized")
 			return
 		}
@@ -306,8 +306,8 @@ func makeDocumentHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient
 		stopHeartbeat := sse.startHeartbeat(r.Context(), 12*time.Second)
 		defer stopHeartbeat()
 
-		userID, err := resolveUserID(r)
-		if err != nil {
+		userID := r.Header.Get("X-User-Id")
+		if userID == "" {
 			sse.error("Unauthorized")
 			return
 		}
