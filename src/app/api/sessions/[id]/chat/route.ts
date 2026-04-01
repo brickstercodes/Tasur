@@ -30,6 +30,7 @@ import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
 import { createServerClient } from '@/lib/supabase';
+import { resolveSessionAccess } from '@/lib/session-access';
 import { getAgentRegistry } from '@/config/agent-provider';
 import { loadFromSupabase, syncToSupabase } from '@/lib/graph/sync';
 import { incrementSessionTokenUsage } from '@/lib/session-persistence';
@@ -70,18 +71,12 @@ export async function GET(
     return Response.json({ error: 'conceptId query param required' }, { status: 400 });
   }
 
-  const supabase = createServerClient();
-
-  const { data: sessionRow } = await supabase
-    .from('study_sessions')
-    .select('id')
-    .eq('id', sessionId)
-    .eq('user_id', appUserId)
-    .single();
-
-  if (!sessionRow) {
+  const access = await resolveSessionAccess(sessionId, appUserId);
+  if (!access) {
     return Response.json({ error: 'Session not found' }, { status: 404 });
   }
+
+  const supabase = createServerClient();
 
   const { data: messages, error } = await supabase
     .from('chat_messages')
@@ -134,18 +129,12 @@ export async function POST(
     );
   }
 
-  const supabase = createServerClient();
-
-  const { data: sessionRow } = await supabase
-    .from('study_sessions')
-    .select('id, user_id')
-    .eq('id', sessionId)
-    .eq('user_id', appUserId)
-    .single();
-
-  if (!sessionRow) {
+  const access = await resolveSessionAccess(sessionId, appUserId);
+  if (!access) {
     return Response.json({ error: 'Session not found' }, { status: 404 });
   }
+
+  const supabase = createServerClient();
 
   // Persist the user's message immediately so it is in history for the next turn.
   await supabase.from('chat_messages').insert({
@@ -169,7 +158,8 @@ export async function POST(
     supabase
       .from('understanding_state')
       .select('concept_id, confidence_score')
-      .eq('session_id', sessionId),
+      .eq('session_id', sessionId)
+      .eq('user_id', appUserId),
 
     supabase
       .from('concepts')
@@ -306,6 +296,7 @@ export async function POST(
             .select('confidence_score')
             .eq('session_id', sessionId)
             .eq('concept_id', conceptId)
+            .eq('user_id', appUserId)
             .maybeSingle();
 
           const existingScore = currentState?.confidence_score ?? 0;
@@ -415,6 +406,7 @@ async function updateUnderstandingState(
     .select('id, exposure_count, assessment_history')
     .eq('session_id', sessionId)
     .eq('concept_id', conceptId)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (existing) {

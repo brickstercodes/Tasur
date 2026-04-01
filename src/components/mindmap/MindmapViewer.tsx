@@ -43,6 +43,7 @@ import {
   type FlowNodeData,
 } from './layout/balanced-tree';
 import { BRANCH_PALETTE, getStableNodeId } from './color-utils';
+import { ShareButton } from './ShareButton';
 import type { MindmapTreeOutput, MindmapNode as MindmapTreeNode } from '@/lib/schemas/mindmap-tree-output';
 
 // ── react-flow type registrations (defined outside component to prevent remount) ─
@@ -66,6 +67,8 @@ export type MindmapViewerProps = {
    * The corresponding node is highlighted with a pulsing ring.
    */
   resumeConceptId?: string | null;
+  /** Whether the current user owns this session (controls share button visibility). */
+  isOwner?: boolean;
 };
 
 // ── Top-level export: wraps content in ReactFlowProvider ──────────────────────
@@ -144,6 +147,7 @@ function MindmapViewerContent({
   sessionId,
   learningMode,
   resumeConceptId,
+  isOwner,
 }: MindmapViewerProps) {
   const router = useRouter();
   const { fitView, zoomIn, zoomOut } = useReactFlow();
@@ -1143,6 +1147,13 @@ function MindmapViewerContent({
         >
           {learningMode === 'fast' ? '⚡ Fast' : '◎ Steady'}
         </span>
+
+        {isOwner && (
+          <>
+            <ToolbarDivider />
+            <ShareButton sessionId={sessionId} />
+          </>
+        )}
 
         <ToolbarDivider />
 

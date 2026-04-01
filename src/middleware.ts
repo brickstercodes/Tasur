@@ -27,7 +27,7 @@ const SESSION_COOKIE_NAMES = [
   '__Secure-better-auth.session_token',
 ];
 
-const PROTECTED_PATH_PREFIXES = ['/dashboard'];
+const PROTECTED_PATH_PREFIXES = ['/dashboard', '/share'];
 const AUTH_PATH_PREFIXES = ['/login', '/signup'];
 
 function isProtectedPath(pathname: string): boolean {

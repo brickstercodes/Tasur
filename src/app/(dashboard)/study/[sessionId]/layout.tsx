@@ -22,7 +22,7 @@ import { headers } from 'next/headers';
 
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
-import { createServerClient } from '@/lib/supabase';
+import { resolveSessionAccess } from '@/lib/session-access';
 import { StudyBackLink } from '@/components/study/StudyBackLink';
 import { StudyTabs } from '@/components/study/StudyTabs';
 
@@ -45,18 +45,10 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
   if (!authSession) redirect('/login');
   const appUserId = await resolveAppUserId(authSession.user);
 
-  const supabase = createServerClient();
+  const access = await resolveSessionAccess(sessionId, appUserId);
+  if (!access) notFound();
 
-  const { data: sessionRow } = await supabase
-    .from('study_sessions')
-    .select('title, learning_mode, subject_domain')
-    .eq('id', sessionId)
-    .eq('user_id', appUserId)
-    .single();
-
-  if (!sessionRow) notFound();
-
-  const { title, learning_mode: mode, subject_domain: domain } = sessionRow;
+  const { title, learning_mode: mode, subject_domain: domain } = access.session;
 
   return (
     <div>

@@ -21,6 +21,7 @@ import { type NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
 import { createServerClient } from '@/lib/supabase';
+import { resolveSessionAccess } from '@/lib/session-access';
 import { loadFromSupabase, syncToSupabase } from '@/lib/graph/sync';
 import {
   isDue,
@@ -52,18 +53,12 @@ export async function GET(
     parseInt(request.nextUrl.searchParams.get('limit') ?? '20'),
   );
 
-  const supabase = createServerClient();
-
-  const { data: sessionRow } = await supabase
-    .from('study_sessions')
-    .select('id')
-    .eq('id', sessionId)
-    .eq('user_id', appUserId)
-    .single();
-
-  if (!sessionRow) {
+  const access = await resolveSessionAccess(sessionId, appUserId);
+  if (!access) {
     return Response.json({ error: 'Session not found' }, { status: 404 });
   }
+
+  const supabase = createServerClient();
 
   // Fetch flashcards and concept metadata in parallel — independent queries.
   const [flashcardsResult, conceptsResult] = await Promise.all([
@@ -142,20 +137,14 @@ export async function POST(
   const body: RatingRequestBody = await request.json();
   const { cardId, conceptId, rating } = body;
 
-  const supabase = createServerClient();
-
-  const { data: sessionRow } = await supabase
-    .from('study_sessions')
-    .select('id, learning_mode')
-    .eq('id', sessionId)
-    .eq('user_id', appUserId)
-    .single();
-
-  if (!sessionRow) {
+  const access = await resolveSessionAccess(sessionId, appUserId);
+  if (!access) {
     return Response.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  const sessionMode = (sessionRow.learning_mode ?? 'steady') as 'fast' | 'steady';
+  const sessionMode = (access.session.learning_mode ?? 'steady') as 'fast' | 'steady';
+
+  const supabase = createServerClient();
 
   // Fetch the current SR state for this card.
   const { data: cardRow } = await supabase
@@ -192,6 +181,7 @@ export async function POST(
       .select('id, confidence_score, exposure_count')
       .eq('session_id', sessionId)
       .eq('concept_id', conceptId)
+      .eq('user_id', appUserId)
       .maybeSingle(),
   ]);
 

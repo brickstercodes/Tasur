@@ -395,6 +395,94 @@ export type Database = {
           },
         ]
       }
+      session_shares: {
+        Row: {
+          id: string
+          session_id: string
+          user_id: string
+          shared_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          user_id: string
+          shared_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          user_id?: string
+          shared_by?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_shares_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "study_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_shares_shared_by_fkey"
+            columns: ["shared_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_links: {
+        Row: {
+          id: string
+          session_id: string
+          created_by: string
+          code: string
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          created_by: string
+          code: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          created_by?: string
+          code?: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_links_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "study_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_graphs: {
         Row: {
           graph_state: Json

@@ -18,9 +18,13 @@
  * upload flow once processing finishes.
  */
 
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 
+import { auth } from '@/lib/auth';
+import { resolveAppUserId } from '@/lib/app-user';
 import { createServerClient } from '@/lib/supabase';
+import { resolveSessionAccess } from '@/lib/session-access';
 import { loadFromSupabase } from '@/lib/graph/sync';
 import type { MindmapTreeOutput } from '@/lib/schemas/mindmap-tree-output';
 import { MindmapViewer } from '@/components/mindmap/MindmapViewer';
@@ -33,6 +37,13 @@ interface PageProps {
 
 export default async function MindmapPage({ params }: PageProps) {
   const { sessionId } = await params;
+
+  const authSession = await auth.api.getSession({ headers: await headers() });
+  if (!authSession) redirect('/login');
+  const appUserId = await resolveAppUserId(authSession.user);
+
+  const access = await resolveSessionAccess(sessionId, appUserId);
+  if (!access) notFound();
 
   const supabase = createServerClient();
 
@@ -49,7 +60,8 @@ export default async function MindmapPage({ params }: PageProps) {
     supabase
       .from('understanding_state')
       .select('concept_id, confidence_score')
-      .eq('session_id', sessionId),
+      .eq('session_id', sessionId)
+      .eq('user_id', appUserId),
 
     supabase
       .from('study_sessions')
@@ -114,6 +126,7 @@ export default async function MindmapPage({ params }: PageProps) {
         learningMode={learningMode}
         sessionTitle={sessionTitle}
         resumeConceptId={resumeConceptId}
+        isOwner={access.isOwner}
       />
     </div>
   );

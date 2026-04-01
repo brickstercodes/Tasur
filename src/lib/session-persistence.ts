@@ -60,6 +60,7 @@ export interface SessionListItem {
   totalConcepts: number;
   masteredConcepts: number;
   averageConfidence: number;
+  isShared?: boolean;
 }
 
 // ── Session creation ──────────────────────────────────────────────────────────
@@ -162,24 +163,53 @@ export async function persistPipelineResults(input: PipelinePersistenceInput): P
 export async function getSessionsForUser(userId: string): Promise<SessionListItem[]> {
   const supabase = createServerClient();
 
-  const { data: sessions, error } = await supabase
+  // Fetch owned sessions
+  const { data: ownedSessions, error } = await supabase
     .from('study_sessions')
     .select('id, title, subject_domain, learning_mode, status, created_at, last_active_at')
     .eq('user_id', userId)
     .order('last_active_at', { ascending: false });
 
   if (error) throw new Error(`Failed to load sessions: ${error.message}`);
-  if (!sessions?.length) return [];
 
-  const sessionIds = sessions.map((s) => s.id);
+  // Fetch shared sessions — gracefully handles missing table (migration not yet applied)
+  let sharedSessionIds: string[] = [];
+  let sharedSessions: typeof ownedSessions = [];
+  try {
+    const { data: shares, error: sharesError } = await supabase
+      .from('session_shares')
+      .select('session_id')
+      .eq('user_id', userId);
+
+    if (!sharesError && shares?.length) {
+      sharedSessionIds = shares.map((s) => s.session_id);
+      const { data } = await supabase
+        .from('study_sessions')
+        .select('id, title, subject_domain, learning_mode, status, created_at, last_active_at')
+        .in('id', sharedSessionIds)
+        .order('last_active_at', { ascending: false });
+      sharedSessions = data ?? [];
+    }
+  } catch {
+    // session_shares table may not exist yet — continue without shared sessions
+  }
+
+  const allSessions = [...(ownedSessions ?? []), ...sharedSessions];
+  if (!allSessions.length) return [];
+
+  const sharedIdSet = new Set(sharedSessionIds);
+  const allSessionIds = allSessions.map((s) => s.id);
+
+  // Fetch understanding_state scoped to THIS user for correct per-user progress
   const { data: understandingRows } = await supabase
     .from('understanding_state')
     .select('session_id, confidence_score')
-    .in('session_id', sessionIds);
+    .in('session_id', allSessionIds)
+    .eq('user_id', userId);
 
   const progressBySession = computeProgressBySession(understandingRows ?? []);
 
-  return sessions.map((session) => {
+  return allSessions.map((session) => {
     const progress = progressBySession[session.id] ?? { total: 0, mastered: 0, avgConfidence: 0 };
     return {
       id: session.id,
@@ -192,6 +222,7 @@ export async function getSessionsForUser(userId: string): Promise<SessionListIte
       totalConcepts: progress.total,
       masteredConcepts: progress.mastered,
       averageConfidence: progress.avgConfidence,
+      isShared: sharedIdSet.has(session.id),
     };
   });
 }

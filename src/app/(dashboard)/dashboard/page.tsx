@@ -241,6 +241,22 @@ function SessionCard({ session }: { session: SessionListItem }) {
             >
               {session.mode === 'fast' ? '⚡ Fast' : '◎ Steady'}
             </span>
+            {session.isShared && (
+              <>
+                <span style={{ color: 'var(--border)', fontSize: 12 }}>·</span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: '#9B5C4A',
+                  }}
+                >
+                  Shared
+                </span>
+              </>
+            )}
           </div>
 
           {/* Stats line */}
@@ -257,26 +273,28 @@ function SessionCard({ session }: { session: SessionListItem }) {
 
         {/* Right: action links */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-          <Link
-            href={`/dashboard?upload=1&sessionId=${session.id}`}
-            className="session-card-doc-link"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              minHeight: 32,
-              padding: '0 10px',
-              borderRadius: 8,
-              border: '1px solid color-mix(in srgb, var(--border) 78%, transparent)',
-              background: 'transparent',
-              fontSize: 12,
-              color: 'var(--text-muted)',
-              textDecoration: 'none',
-              fontFamily: 'Inter, sans-serif',
-              transition: 'background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.12s ease',
-            }}
-          >
-            + doc
-          </Link>
+          {!session.isShared && (
+            <Link
+              href={`/dashboard?upload=1&sessionId=${session.id}`}
+              className="session-card-doc-link"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                minHeight: 32,
+                padding: '0 10px',
+                borderRadius: 8,
+                border: '1px solid color-mix(in srgb, var(--border) 78%, transparent)',
+                background: 'transparent',
+                fontSize: 12,
+                color: 'var(--text-muted)',
+                textDecoration: 'none',
+                fontFamily: 'Inter, sans-serif',
+                transition: 'background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.12s ease',
+              }}
+            >
+              + doc
+            </Link>
+          )}
 
           <Link
             href={`/study/${session.id}/mindmap`}
@@ -304,7 +322,7 @@ function SessionCard({ session }: { session: SessionListItem }) {
             Resume →
           </Link>
 
-          <DeleteSessionButton sessionId={session.id} />
+          {!session.isShared && <DeleteSessionButton sessionId={session.id} />}
         </div>
       </div>
 

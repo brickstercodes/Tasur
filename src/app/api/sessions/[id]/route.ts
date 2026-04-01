@@ -17,6 +17,7 @@ import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
 import { createServerClient } from '@/lib/supabase';
+import { resolveSessionAccess } from '@/lib/session-access';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -30,24 +31,29 @@ export async function GET(_req: Request, { params }: RouteParams) {
   }
   const appUserId = await resolveAppUserId(session.user);
 
+  const access = await resolveSessionAccess(id, appUserId);
+  if (!access) {
+    return Response.json({ error: 'Session not found' }, { status: 404 });
+  }
+
   const supabase = createServerClient();
 
   const { data: sessionRow, error } = await supabase
     .from('study_sessions')
     .select('id, title, subject_domain, learning_mode, status, created_at, last_active_at')
     .eq('id', id)
-    .eq('user_id', appUserId)
     .single();
 
   if (error || !sessionRow) {
     return Response.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  // Fetch progress stats for the resume card
+  // Fetch progress stats for the resume card — scoped to current user
   const { data: understandingRows } = await supabase
     .from('understanding_state')
     .select('concept_id, confidence_score')
-    .eq('session_id', id);
+    .eq('session_id', id)
+    .eq('user_id', appUserId);
 
   const scores = (understandingRows ?? []).map((r) => r.confidence_score);
   const total = scores.length;
