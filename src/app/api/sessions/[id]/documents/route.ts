@@ -133,6 +133,18 @@ export async function POST(req: Request, { params }: RouteParams) {
 
   const contentType = req.headers.get('content-type') ?? '';
 
+  // ── File size gate (25 MB) ───────────────────────────────────────────────
+  const MAX_BODY_BYTES = 25 * 1024 * 1024;
+  const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
+  if (contentLength > MAX_BODY_BYTES) {
+    const sizeMB = (contentLength / (1024 * 1024)).toFixed(1);
+    const errorEvent = `data: ${JSON.stringify({
+      type: 'error',
+      message: `File is ${sizeMB} MB — the maximum is 25 MB. For best results, upload individual chapters rather than entire textbooks.`,
+    })}\n\n`;
+    return new Response(errorEvent, { headers: SSE_HEADERS });
+  }
+
   let goResponse: Response;
   try {
     goResponse = await fetch(`${goServiceUrl}/pipeline/document/${sessionId}`, {

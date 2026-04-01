@@ -62,6 +62,7 @@ interface UploadFlowProps {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ACCEPTED_TYPES = '.pdf,.docx,.txt,.png,.jpg,.jpeg';
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 
 const STEP_ORDER = ['extracting', 'generating_mm', 'analyzing', 'searching', 'flashcards', 'saving'];
 
@@ -108,6 +109,14 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
     if (ext === 'ppt' || ext === 'pptx') {
       setUploadState('error');
       setErrorMessage('PowerPoint files (.ppt, .pptx) are not supported. Please export your slides as PDF and upload that instead.');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setUploadState('error');
+      setErrorMessage(
+        `This file is ${(file.size / (1024 * 1024)).toFixed(1)} MB — the maximum is 25 MB. ` +
+        'For best results, upload individual chapters rather than entire textbooks.',
+      );
       return;
     }
     setSelectedFile(file);

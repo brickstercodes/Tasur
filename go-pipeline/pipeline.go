@@ -17,6 +17,13 @@ import (
 	"time"
 )
 
+// ── Upload limits ────────────────────────────────────────────────────────────
+
+// maxExtractedTextChars is the ceiling for extracted document text (~175k chars).
+// Slides with sparse text pass easily; dense textbook chapters should be uploaded
+// individually for best output quality.
+const maxExtractedTextChars = 175_000
+
 // ── SSE helpers ───────────────────────────────────────────────────────────────
 
 // sseEmitter writes SSE events to the response writer and flushes immediately.
@@ -450,6 +457,16 @@ func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, s
 		rawText = <-visionTextCh
 	}
 
+	// ── Text length gate ────────────────────────────────────────────────────
+	if len(rawText) > maxExtractedTextChars {
+		sse.error(fmt.Sprintf(
+			"This document contains ~%dk characters of text — the limit is %dk. "+
+				"For best quality, we suggest uploading individual chapters rather than entire textbooks.",
+			len(rawText)/1000, maxExtractedTextChars/1000,
+		))
+		return
+	}
+
 	// Phase 2: Deterministic mm-parser
 	sse.progress("analyzing", "Analysing structure…", 48)
 	parsedTree, err := parseMmXml(mmResult.MmXml)
@@ -593,6 +610,16 @@ func runDocumentPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient,
 	rawText := extraction.RawText
 	if visionTextCh != nil {
 		rawText = <-visionTextCh
+	}
+
+	// ── Text length gate (175,000 chars) ────────────────────────────────────
+	if len(rawText) > maxExtractedTextChars {
+		sse.error(fmt.Sprintf(
+			"This document contains ~%dk characters of text — the limit is %dk. "+
+				"For best quality, we suggest uploading individual chapters rather than entire textbooks.",
+			len(rawText)/1000, maxExtractedTextChars/1000,
+		))
+		return
 	}
 
 	// Phase 2: Parser
