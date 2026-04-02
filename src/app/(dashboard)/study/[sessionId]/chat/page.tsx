@@ -20,6 +20,7 @@ import Link from 'next/link';
 
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
+import { resolveSessionAccess } from '@/lib/session-access';
 import { createServerClient } from '@/lib/supabase';
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { FocusZone } from '@/components/chat/FocusZone';
@@ -65,34 +66,29 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
   }
   const appUserId = await resolveAppUserId(session.user);
 
-  const supabase = createServerClient();
-
-  // Fetch session metadata and concept details in parallel.
-  const [sessionResult, conceptResult] = await Promise.all([
-    supabase
-      .from('study_sessions')
-      .select('title, learning_mode, subject_domain, user_id')
-      .eq('id', sessionId)
-      .eq('user_id', appUserId)
-      .single(),
-
-    supabase
-      .from('concepts')
-      .select('id, name')
-      .eq('id', conceptId)
-      .eq('session_id', sessionId)
-      .single(),
-  ]);
-
-  if (sessionResult.error || !sessionResult.data) {
+  // Verify access (owner OR shared user)
+  const access = await resolveSessionAccess(sessionId, appUserId);
+  if (!access) {
     notFound();
   }
+
+  const learningMode = access.session.learning_mode as 'fast' | 'steady';
+  const subject_domain = access.session.subject_domain;
+
+  const supabase = createServerClient();
+
+  // Fetch concept details.
+  const conceptResult = await supabase
+    .from('concepts')
+    .select('id, name')
+    .eq('id', conceptId)
+    .eq('session_id', sessionId)
+    .single();
 
   if (conceptResult.error || !conceptResult.data) {
     notFound();
   }
 
-  const { learning_mode: learningMode, subject_domain } = sessionResult.data;
   const { name: conceptName } = conceptResult.data;
   const domain = subject_domain ?? 'general';
 

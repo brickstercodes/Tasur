@@ -19,6 +19,7 @@ import Link from 'next/link';
 
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
+import { resolveSessionAccess } from '@/lib/session-access';
 import { createServerClient } from '@/lib/supabase';
 import { isDue } from '@/lib/sr-algorithm';
 import { FlashcardDeck, type DeckCard } from '@/components/flashcards/FlashcardDeck';
@@ -44,21 +45,16 @@ export default async function FlashcardsPage({ params, searchParams }: PageProps
   }
   const appUserId = await resolveAppUserId(session.user);
 
-  const supabase = createServerClient();
-
-  // Verify ownership and get session metadata.
-  const { data: sessionRow } = await supabase
-    .from('study_sessions')
-    .select('title, learning_mode, subject_domain')
-    .eq('id', sessionId)
-    .eq('user_id', appUserId)
-    .single();
-
-  if (!sessionRow) {
+  // Verify access (owner OR shared user)
+  const access = await resolveSessionAccess(sessionId, appUserId);
+  if (!access) {
     notFound();
   }
 
+  const sessionRow = access.session;
   const effectiveMode = (sessionRow.learning_mode ?? mode) as 'fast' | 'steady';
+
+  const supabase = createServerClient();
 
   // Fetch flashcards + concept names in parallel.
   const [flashcardsResult, conceptsResult] = await Promise.all([
