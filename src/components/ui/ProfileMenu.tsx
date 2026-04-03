@@ -11,6 +11,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { signOut } from '@/lib/auth-client';
 
 // Same warm palette as chat avatars so the colour is consistent per initial.
@@ -116,6 +117,25 @@ export function ProfileMenu({ initial, email }: ProfileMenuProps) {
               {email}
             </span>
           </div>
+          <Link
+            href="/settings"
+            onClick={() => setOpen(false)}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '7px 16px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 13,
+              color: 'var(--text)',
+              fontFamily: 'Inter, sans-serif',
+              textDecoration: 'none',
+            }}
+          >
+            Settings
+          </Link>
           <button
             onClick={handleSignOut}
             style={{

@@ -58,7 +58,9 @@
       "Bash(git stash:*)",
       "Bash(/usr/local/bin/node node_modules/.bin/next build)",
       "Bash(grep -r \"NeedsVision\\\\|needsVision\\\\|vision\" /Users/anugrahshetty/Documents/Tasur/go-pipeline/*.go)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(/usr/local/bin/node --input-type=module -e \":*)",
+      "Bash(ls /Users/anugrahshetty/Documents/Tasur/src/app/\\\\\\(dashboard\\\\\\)/)"
     ]
   }
 }

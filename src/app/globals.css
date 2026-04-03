@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Hide reCAPTCHA v3 badge — Google ToS allows this if attribution text is shown */
+.grecaptcha-badge { visibility: hidden !important; }
+
 .landing-nav-link {
   color: var(--text-muted);
   transition: color 0.2s;

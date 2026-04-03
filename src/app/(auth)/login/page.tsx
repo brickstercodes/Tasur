@@ -19,6 +19,7 @@ import { useState } from 'react';
 
 import { AuthInput } from '@/components/auth-input';
 import { signIn } from '@/lib/auth-client';
+import { getRecaptchaToken, verifyRecaptcha } from '@/lib/recaptcha';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,6 +32,22 @@ export default function LoginPage() {
     event.preventDefault();
     setIsSubmitting(true);
     setErrorMessage(null);
+
+    // reCAPTCHA v3 verification (non-blocking on infra errors)
+    try {
+      const token = await getRecaptchaToken('login');
+      if (token) {
+        const result = await verifyRecaptcha(token, 'login');
+        if (!result.ok) {
+          setErrorMessage(result.message ?? 'Verification failed — please try again.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    } catch {
+      // reCAPTCHA failed to run — don't block the user
+      console.warn('reCAPTCHA verification skipped due to error');
+    }
 
     const { error } = await signIn.email({
       email,
