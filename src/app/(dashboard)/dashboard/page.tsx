@@ -28,6 +28,7 @@ import { resolveAppUserId } from '@/lib/app-user';
 import { getSessionsForUser, type SessionListItem } from '@/lib/session-persistence';
 import { UploadFlow } from '@/components/upload/UploadFlow';
 import { DeleteSessionButton } from '@/components/dashboard/DeleteSessionButton';
+import { ProcessingSessionTiles } from '@/components/dashboard/ProcessingSessionTiles';
 
 // ── Page props ────────────────────────────────────────────────────────────────
 
@@ -44,7 +45,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   if (!authSession) redirect('/login');
 
   const appUserId = await resolveAppUserId(authSession.user);
-  const sessions = await getSessionsForUser(appUserId);
+  const allSessions = await getSessionsForUser(appUserId);
+  // Filter out 'processing' sessions — they're shown live by ProcessingSessionTiles
+  const sessions = allSessions.filter((s) => s.status !== 'processing');
   const groupedSessions = groupSessionsByDomain(sessions);
 
   const isUploadMode = upload === '1';
@@ -122,6 +125,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       {/* ── Session list ─────────────────────────────────────────────────── */}
       {!isUploadMode && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Live processing tiles from background uploads */}
+          <ProcessingSessionTiles />
           {sessions.length === 0 ? (
             <EmptyState />
           ) : (

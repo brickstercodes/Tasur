@@ -89,6 +89,10 @@ func (e *sseEmitter) error(message string) {
 	e.emit(ErrorEvent{Type: "error", Message: message})
 }
 
+func (e *sseEmitter) sessionCreated(sessionID, title string) {
+	e.emit(SessionCreatedEvent{Type: "session_created", SessionID: sessionID, Title: title})
+}
+
 func (e *sseEmitter) queued(position int) {
 	label := "You're in the queue — Tasur is in beta and processes one mindmap at a time."
 	if position > 1 {
@@ -279,6 +283,14 @@ func makeUploadHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient) 
 			return
 		}
 
+		// Create session early with status='processing' so the dashboard can show it
+		sessionID, err := sb.createStudySession(userID, rawTitle, domain, mode)
+		if err != nil {
+			sse.error("Failed to create session: " + err.Error())
+			return
+		}
+		sse.sessionCreated(sessionID, rawTitle)
+
 		runUploadPipeline(ctx, sse, vc, sb, PipelineInput{
 			FileBytes:          fileBytes,
 			Filename:           filename,
@@ -290,6 +302,7 @@ func makeUploadHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient) 
 			GenerateFlashcards: generateFlashcards,
 			CustomInstructions: customInstructions,
 			UserID:             userID,
+			SessionID:          sessionID,
 		})
 	}
 }
@@ -392,10 +405,17 @@ func makeDocumentHandler(sem chan struct{}, vc *vertexClient, sb *supabaseClient
 // ── Upload pipeline ───────────────────────────────────────────────────────────
 
 func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, sb *supabaseClient, input PipelineInput) {
+	pipelineOK := false
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("pipeline panic: %v", r)
 			sse.error("Internal error — please try again")
+		}
+		// Clean up the pre-created session if the pipeline didn't complete
+		if !pipelineOK && input.SessionID != "" {
+			if err := sb.deleteSession(input.SessionID); err != nil {
+				log.Printf("failed to clean up session %s after pipeline failure: %v", input.SessionID, err)
+			}
 		}
 	}()
 
@@ -497,15 +517,10 @@ func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, s
 		flashcardResult = FlashcardGeneratorResult{Output: FlashcardOutput{Cards: []Flashcard{}}}
 	}
 
-	// Phase 5: DB persistence
+	// Phase 5: DB persistence (session was already created with status='processing')
 	sse.progress("saving", "Saving your study session…", 88)
-	sessionID, err := sb.createStudySession(input.UserID, input.Title, input.Domain, input.Mode)
-	if err != nil {
-		sse.error("Failed to create session: " + err.Error())
-		return
-	}
+	sessionID := input.SessionID
 
-	// Update graphState with real sessionId now that we have it
 	graphState.SessionID = sessionID
 
 	if err := sb.persistPipelineResults(PersistInput{
@@ -525,6 +540,13 @@ func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, s
 	}); err != nil {
 		sse.error("Failed to save session: " + err.Error())
 		return
+	}
+
+	pipelineOK = true
+
+	// Mark session as active now that all data is persisted
+	if err := sb.updateSessionStatus(sessionID, "active"); err != nil {
+		log.Printf("failed to update session status to active (non-fatal): %v", err)
 	}
 
 	// Track token usage (non-fatal)

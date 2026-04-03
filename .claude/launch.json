@@ -4,8 +4,8 @@
     {
       "name": "Next.js Dev Server",
       "runtimeExecutable": "/usr/local/bin/node",
-      "runtimeArgs": ["/usr/local/bin/npx", "next", "dev"],
-      "port": 3000
+      "runtimeArgs": ["node_modules/.bin/next", "dev", "--webpack"],
+      "autoPort": true
     }
   ]
 }

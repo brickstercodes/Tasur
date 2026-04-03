@@ -513,50 +513,264 @@ func depthToExamPriority(depth int) int {
 }
 
 // ── XML repair ───────────────────────────────────────────────────────────────
+// Three-pass repair pipeline for LLM-generated Freeplane XML:
+//   1. sanitizeXmlAttributes — escape bare <, >, & inside quoted attribute values
+//   2. balanceXmlTags        — stack-based tag balancer that fixes mismatched/missing closers
+//   3. ensureMapEnvelope     — guarantee the document starts with <map and ends with </map>
 
-// repairUnclosedNodes fixes the most common LLM XML failure: missing </node>
-// closing tags at the tail of the output. It counts open vs close <node> tags
-// and appends the missing closers just before </map>.
-// Returns the repaired XML and whether any repair was applied.
-func repairUnclosedNodes(xml string) (string, bool) {
-	trimmed := strings.TrimSpace(xml)
+// attrValueRe matches attribute values: key="value" or key='value'.
+// We only need to fix characters inside the quotes.
+var attrValueRe = regexp.MustCompile(`([-\w]+)="([^"]*)"`)
+
+// sanitizeXmlAttributes escapes bare XML-special characters inside attribute values.
+// LLMs commonly produce TEXT="x < y" or TEXT="A & B" which breaks xml.Unmarshal.
+func sanitizeXmlAttributes(xmlStr string) (string, int) {
+	fixes := 0
+	result := attrValueRe.ReplaceAllStringFunc(xmlStr, func(match string) string {
+		eqIdx := strings.Index(match, "=\"")
+		if eqIdx == -1 {
+			return match
+		}
+		key := match[:eqIdx]
+		// Inner value without surrounding quotes
+		inner := match[eqIdx+2 : len(match)-1]
+
+		// Skip if already clean
+		if !strings.ContainsAny(inner, "<>&") {
+			return match
+		}
+
+		// Escape & first (so we don't double-escape), but skip existing entities
+		var buf strings.Builder
+		buf.Grow(len(inner))
+		i := 0
+		for i < len(inner) {
+			ch := inner[i]
+			switch ch {
+			case '&':
+				// Check if this is already a valid entity like &amp; &lt; &gt; &quot; &apos; or &#...;
+				if isEntityAt(inner, i) {
+					// Copy through the semicolon
+					semi := strings.IndexByte(inner[i:], ';')
+					buf.WriteString(inner[i : i+semi+1])
+					i += semi + 1
+				} else {
+					buf.WriteString("&amp;")
+					fixes++
+					i++
+				}
+			case '<':
+				buf.WriteString("&lt;")
+				fixes++
+				i++
+			case '>':
+				buf.WriteString("&gt;")
+				fixes++
+				i++
+			default:
+				buf.WriteByte(ch)
+				i++
+			}
+		}
+		return key + "=\"" + buf.String() + "\""
+	})
+	return result, fixes
+}
+
+// isEntityAt checks if position i in s starts a valid XML entity reference.
+func isEntityAt(s string, i int) bool {
+	if i >= len(s) || s[i] != '&' {
+		return false
+	}
+	rest := s[i:]
+	semi := strings.IndexByte(rest, ';')
+	if semi < 2 || semi > 10 {
+		return false
+	}
+	entity := rest[1:semi]
+	// Named entities
+	switch entity {
+	case "amp", "lt", "gt", "quot", "apos":
+		return true
+	}
+	// Numeric: &#123; or &#x1F;
+	if len(entity) >= 2 && entity[0] == '#' {
+		return true
+	}
+	return false
+}
+
+// balanceXmlTags walks the XML string token-by-token, tracking a stack of open
+// element names. It fixes:
+//   - Missing closing tags (appends them at the right position)
+//   - Extra closing tags (removes them)
+//   - Swapped closers like </node> closing a <map> (corrects the tag name)
+func balanceXmlTags(xmlStr string) (string, int) {
+	fixes := 0
+	var out strings.Builder
+	out.Grow(len(xmlStr) + 256)
+	var stack []string // open element names
+
+	i := 0
+	for i < len(xmlStr) {
+		// Find next '<'
+		lt := strings.IndexByte(xmlStr[i:], '<')
+		if lt == -1 {
+			out.WriteString(xmlStr[i:])
+			break
+		}
+		// Write text before the tag
+		out.WriteString(xmlStr[i : i+lt])
+		i += lt
+
+		// Determine tag type
+		rest := xmlStr[i:]
+		if strings.HasPrefix(rest, "<!--") {
+			// Comment — pass through
+			end := strings.Index(rest, "-->")
+			if end == -1 {
+				out.WriteString(rest)
+				break
+			}
+			out.WriteString(rest[:end+3])
+			i += end + 3
+			continue
+		}
+		if strings.HasPrefix(rest, "<?") {
+			// Processing instruction — pass through
+			end := strings.Index(rest, "?>")
+			if end == -1 {
+				out.WriteString(rest)
+				break
+			}
+			out.WriteString(rest[:end+2])
+			i += end + 2
+			continue
+		}
+
+		gt := strings.IndexByte(rest, '>')
+		if gt == -1 {
+			out.WriteString(rest)
+			break
+		}
+		tag := rest[:gt+1]
+		i += gt + 1
+
+		if strings.HasPrefix(tag, "</") {
+			// Closing tag
+			name := strings.TrimSpace(tag[2 : len(tag)-1])
+			if len(stack) == 0 {
+				// Extra closer with no opener — skip it
+				fixes++
+				continue
+			}
+			top := stack[len(stack)-1]
+			if name == top {
+				// Correct close
+				out.WriteString(tag)
+				stack = stack[:len(stack)-1]
+			} else {
+				// Mismatched closer — check if it matches something deeper in the stack
+				found := -1
+				for j := len(stack) - 1; j >= 0; j-- {
+					if stack[j] == name {
+						found = j
+						break
+					}
+				}
+				if found >= 0 {
+					// Close everything above the match
+					for k := len(stack) - 1; k > found; k-- {
+						out.WriteString("</" + stack[k] + ">\n")
+						fixes++
+					}
+					out.WriteString(tag)
+					stack = stack[:found]
+				} else {
+					// Closer doesn't match anything — rewrite it to close the top
+					out.WriteString("</" + top + ">")
+					stack = stack[:len(stack)-1]
+					fixes++
+				}
+			}
+		} else if strings.HasSuffix(tag, "/>") {
+			// Self-closing — pass through
+			out.WriteString(tag)
+		} else {
+			// Opening tag — extract element name
+			inner := tag[1 : len(tag)-1] // strip < >
+			spaceIdx := strings.IndexAny(inner, " \t\n\r")
+			var name string
+			if spaceIdx > 0 {
+				name = inner[:spaceIdx]
+			} else {
+				name = inner
+			}
+			out.WriteString(tag)
+			stack = append(stack, name)
+		}
+	}
+
+	// Close any remaining open tags in reverse order
+	for j := len(stack) - 1; j >= 0; j-- {
+		out.WriteString("</" + stack[j] + ">\n")
+		fixes++
+	}
+
+	return out.String(), fixes
+}
+
+// ensureMapEnvelope ensures the XML starts with <map and ends with </map>.
+// If </map> is missing, it appends one. If the XML doesn't start with <map,
+// it returns the input unchanged (can't safely repair that).
+func ensureMapEnvelope(xmlStr string) (string, int) {
+	trimmed := strings.TrimSpace(xmlStr)
+	fixes := 0
+	if !strings.HasPrefix(trimmed, "<map") {
+		return xmlStr, 0
+	}
 	if !strings.HasSuffix(trimmed, "</map>") {
-		return xml, false // can't repair if </map> is missing entirely
+		trimmed += "\n</map>"
+		fixes++
+	}
+	return trimmed, fixes
+}
+
+// repairXml runs the full three-pass repair pipeline on LLM-generated XML.
+// Returns the repaired XML, total number of fixes applied, and a log of what was fixed.
+func repairXml(xmlStr string) (string, int, []string) {
+	totalFixes := 0
+	var repairs []string
+
+	// Pass 1: Sanitize attribute values
+	result, n := sanitizeXmlAttributes(xmlStr)
+	if n > 0 {
+		totalFixes += n
+		repairs = append(repairs, fmt.Sprintf("escaped %d unescaped character(s) in attribute values", n))
 	}
 
-	closeCount := strings.Count(trimmed, "</node>")
-
-	// Count non-self-closing <node ...> tags (self-closing ones like <node/>
-	// don't need a </node> closer).
-	actualOpen := 0
-	idx := 0
-	for {
-		pos := strings.Index(trimmed[idx:], "<node ")
-		if pos == -1 {
-			break
-		}
-		tagStart := idx + pos
-		// Find end of this tag
-		tagEnd := strings.Index(trimmed[tagStart:], ">")
-		if tagEnd == -1 {
-			break
-		}
-		tagEnd += tagStart
-		if trimmed[tagEnd-1] != '/' {
-			actualOpen++
-		}
-		idx = tagEnd + 1
+	// Pass 2: Ensure </map> envelope exists before balancing
+	result, n = ensureMapEnvelope(result)
+	if n > 0 {
+		totalFixes += n
+		repairs = append(repairs, "appended missing </map> closing tag")
 	}
 
-	missing := actualOpen - closeCount
-	if missing <= 0 {
-		return xml, false
+	// Pass 3: Balance open/close tags
+	result, n = balanceXmlTags(result)
+	if n > 0 {
+		totalFixes += n
+		repairs = append(repairs, fmt.Sprintf("fixed %d mismatched/missing tag(s)", n))
 	}
 
-	// Insert missing </node> closers before the final </map>
-	closers := strings.Repeat("</node>\n", missing)
-	body := strings.TrimSuffix(trimmed, "</map>")
-	return body + closers + "</map>", true
+	return strings.TrimSpace(result), totalFixes, repairs
+}
+
+// repairUnclosedNodes is kept as an alias for backward compatibility within the codebase.
+// It delegates to the full repairXml pipeline.
+func repairUnclosedNodes(xmlStr string) (string, bool) {
+	repaired, fixes, _ := repairXml(xmlStr)
+	return repaired, fixes > 0
 }
 
 // ── XML response extraction ───────────────────────────────────────────────────

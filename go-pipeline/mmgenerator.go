@@ -96,8 +96,8 @@ func generateMm(
 	}
 
 	mmXml := extractXMLFromResponse(text)
-	if repaired, didRepair := repairUnclosedNodes(mmXml); didRepair {
-		log.Printf("mm-generator: repaired %d unclosed <node> tag(s) in initial output", strings.Count(repaired, "</node>")-strings.Count(mmXml, "</node>"))
+	if repaired, fixes, repairs := repairXml(mmXml); fixes > 0 {
+		log.Printf("mm-generator: repaired initial output (%d fixes): %s", fixes, strings.Join(repairs, "; "))
 		mmXml = repaired
 	}
 	errs := validateMmOutput(mmXml)
@@ -136,8 +136,8 @@ func generateMm(
 		}
 
 		retriedXml := extractXMLFromResponse(retryText)
-		if repaired, didRepair := repairUnclosedNodes(retriedXml); didRepair {
-			log.Printf("mm-generator: repaired %d unclosed <node> tag(s) in retry output", strings.Count(repaired, "</node>")-strings.Count(retriedXml, "</node>"))
+		if repaired, fixes, repairs := repairXml(retriedXml); fixes > 0 {
+			log.Printf("mm-generator: repaired retry output (%d fixes): %s", fixes, strings.Join(repairs, "; "))
 			retriedXml = repaired
 		}
 		retryErrs := validateMmOutput(retriedXml)
@@ -240,6 +240,8 @@ func buildRetryUserParts(
 		"",
 		"CRITICAL REMINDERS:",
 		"- Output must start with <map and end with </map>",
+		"- Every <node> must have a matching </node> — count your opens and closes",
+		"- Escape special characters in TEXT attributes: < → &lt;, > → &gt;, & → &amp;",
 		"- Every TRACKABLE=\"true\" node must have a unique CONCEPT_ID attribute",
 		"- Minimum 3 levels of nesting",
 		"- No markdown fencing or extra text outside the XML",

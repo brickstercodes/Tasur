@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SteadyIcon, FastIcon } from '@/components/ui/ModeIcons';
 import { saveDocToCache } from '@/lib/doc-cache';
+import { startBackgroundUpload } from '@/lib/upload-store';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -139,10 +140,6 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
   const handleSubmit = useCallback(async () => {
     if (!selectedFile) return;
 
-    setUploadState('processing');
-    setProgressPercent(3);
-    setProgressLabel('Starting…');
-
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('domain', domain.trim() || 'general');
@@ -151,13 +148,40 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
     if (customInstructions.trim()) {
       formData.append('customInstructions', customInstructions.trim());
     }
+
+    const title = selectedFile.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+
+    // ── New session: background upload, navigate to dashboard immediately ──
     if (!existingSessionId) {
-      formData.append('title', selectedFile.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
+      formData.append('title', title);
+
+      setUploadState('processing');
+      setProgressPercent(3);
+      setProgressLabel('Starting…');
+
+      try {
+        // Cache file locally before navigating so FocusZone can render the real PDF.
+        const sessionId = await startBackgroundUpload(
+          formData,
+          { title, domain: domain.trim() || 'general', mode },
+          '/api/sessions/upload',
+        );
+        try { await saveDocToCache(sessionId, selectedFile); } catch { /* non-fatal */ }
+        // Navigate to dashboard — the upload continues in the background
+        router.push('/dashboard');
+      } catch (err) {
+        setUploadState('error');
+        setErrorMessage(err instanceof Error ? err.message : 'Something went wrong — please try again.');
+      }
+      return;
     }
 
-    const endpoint = existingSessionId
-      ? `/api/sessions/${existingSessionId}/documents`
-      : '/api/sessions/upload';
+    // ── Add document to existing session: stay on page with SSE progress ──
+    setUploadState('processing');
+    setProgressPercent(3);
+    setProgressLabel('Starting…');
+
+    const endpoint = `/api/sessions/${existingSessionId}/documents`;
 
     let response: Response;
     try {
@@ -219,7 +243,6 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
         } else if (parsed.type === 'done') {
           setProgressLabel(parsed.label);
           setProgressPercent(100);
-          // Cache file locally so FocusZone can render the real PDF without server storage.
           try { await saveDocToCache(parsed.sessionId, selectedFile); } catch { /* non-fatal */ }
           router.push(`/study/${parsed.sessionId}/mindmap`);
           return;
@@ -231,7 +254,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
       }
     }
 
-    // Stream closed without a done or error event — server timed out or connection dropped.
+    // Stream closed without a done or error event
     setUploadState('error');
     setErrorMessage('Processing timed out — please try again. Large files may take longer.');
   }, [selectedFile, domain, customInstructions, mode, generateFlashcards, existingSessionId, router]);

@@ -206,6 +206,14 @@ type QueuedEvent struct {
 	Label    string `json:"label"`
 }
 
+// SessionCreatedEvent is emitted early in the pipeline so the client can
+// navigate away and track progress from the dashboard.
+type SessionCreatedEvent struct {
+	Type      string `json:"type"`
+	SessionID string `json:"sessionId"`
+	Title     string `json:"title"`
+}
+
 // ── Vertex AI REST types ──────────────────────────────────────────────────────
 
 // vertexRequest is the JSON body sent to the Vertex AI generateContent endpoint.

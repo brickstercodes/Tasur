@@ -105,7 +105,7 @@ func (s *supabaseClient) createStudySession(userID, title, domain, mode string) 
 		"title":          title,
 		"subject_domain": domain,
 		"learning_mode":  mode,
-		"status":         "active",
+		"status":         "processing",
 	}
 
 	respBytes, status, err := s.do("POST", "/rest/v1/study_sessions", payload, map[string]string{
@@ -128,6 +128,34 @@ func (s *supabaseClient) createStudySession(userID, title, domain, mode string) 
 		return "", fmt.Errorf("createStudySession: no id in response")
 	}
 	return id, nil
+}
+
+// deleteSession removes a session row (CASCADE deletes children).
+// Used to clean up pre-created sessions when the pipeline fails before persisting data.
+func (s *supabaseClient) deleteSession(sessionID string) error {
+	path := fmt.Sprintf("/rest/v1/study_sessions?id=eq.%s", url.QueryEscape(sessionID))
+	respBytes, status, err := s.do("DELETE", path, nil, nil)
+	if err != nil {
+		return err
+	}
+	if status >= 400 {
+		return fmt.Errorf("deleteSession HTTP %d: %s", status, string(respBytes))
+	}
+	return nil
+}
+
+// updateSessionStatus sets the status column for a session (e.g. "processing" → "active").
+func (s *supabaseClient) updateSessionStatus(sessionID, status string) error {
+	path := fmt.Sprintf("/rest/v1/study_sessions?id=eq.%s", url.QueryEscape(sessionID))
+	payload := map[string]interface{}{"status": status}
+	respBytes, httpStatus, err := s.do("PATCH", path, payload, nil)
+	if err != nil {
+		return err
+	}
+	if httpStatus >= 400 {
+		return fmt.Errorf("updateSessionStatus HTTP %d: %s", httpStatus, string(respBytes))
+	}
+	return nil
 }
 
 // getSession fetches learning_mode and subject_domain for an existing session,

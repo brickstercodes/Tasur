@@ -110,6 +110,18 @@ This alerts the student to refer to their original material for visual content t
 
 ---
 
+## XML Well-Formedness (Critical — malformed XML breaks the entire pipeline)
+
+Your output is parsed by a strict XML parser. A single syntax error discards the whole file.
+
+- **Escape special characters in TEXT attributes**: `<` → `&lt;`, `>` → `&gt;`, `&` → `&amp;`. Example: `TEXT="O(n log n) &lt; O(n²)"` NOT `TEXT="O(n log n) < O(n²)"`
+- **Close every `<node>` tag**: every `<node ...>` must have a matching `</node>`. Count your opens and closes.
+- **The document must end with `</node></map>`**: the root `<node>` must be closed before `</map>`.
+- **Do NOT nest `<map>` tags** or close `<map>` with `</node>`.
+- **Attribute values must use double quotes**: `TEXT="value"`, not `TEXT='value'` or unquoted.
+
+---
+
 ## Negative Constraints (Critical — these are common failure modes)
 
 ````
@@ -124,6 +136,7 @@ Do NOT:
 - Duplicate content across different branches of the tree
 - Use vague labels like "Overview", "Misc", "Other" without specific content beneath them
 - Include markdown formatting in TEXT attributes (no **, no *, no #)
+- Put bare <, >, or & characters in TEXT attributes — always use XML entities
 - Add prose or explanation text outside the XML
 - Wrap the XML in code fences or add "```xml" markers
 - Leave any TRACKABLE node without a CONCEPT_ID attribute
