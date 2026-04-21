@@ -8,6 +8,19 @@
  *
  * `cursor: none` is injected dynamically (not in globals.css) so it only
  * applies when the custom cursor is active.
+ *
+ * Two past bugs fixed here:
+ *
+ * 1. useState(true) default caused cursor:none to flash in before localStorage
+ *    was read, and if cleanup ever failed (HMR, StrictMode), the stale style
+ *    lingered with no recovery path → native cursor disappeared even when OFF.
+ *    Fix: start with null ("not yet loaded") and only act once preference is known.
+ *
+ * 2. document.head.appendChild put our style BEFORE any later-injected styles
+ *    (Next.js CSS-in-JS, etc.). Two !important rules at equal specificity are
+ *    won by the LAST one in the cascade, so those later styles re-enabled the
+ *    native cursor even while the custom cursor was ON.
+ *    Fix: append to document.body so our rule is always last.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -24,14 +37,13 @@ const STORAGE_KEY = 'cursor';
 
 export function CustomCursor() {
   const elRef = useRef<HTMLImageElement>(null);
-  const [enabled, setEnabled] = useState(true);
+  // null = preference not yet loaded; avoids injecting cursor:none before we know.
+  const [enabled, setEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     // Default is 'custom' — only disable if explicitly set to 'system'
-    if (saved === 'system') {
-      setEnabled(false);
-    }
+    setEnabled(saved !== 'system');
   }, []);
 
   // Listen for changes from the settings page (same tab or other tabs)
@@ -57,16 +69,28 @@ export function CustomCursor() {
   }, []);
 
   useEffect(() => {
-    if (!enabled) return;
+    // Still loading preference — do nothing yet.
+    if (enabled === null) return;
+
+    // When disabled: sweep out any stale cursor:none styles that might have
+    // survived a failed cleanup (HMR reload, StrictMode double-invoke, etc.).
+    if (!enabled) {
+      document
+        .querySelectorAll<HTMLStyleElement>('[data-custom-cursor-lock]')
+        .forEach(el => el.remove());
+      return;
+    }
 
     const hasFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
     if (!hasFinePointer) return;
 
-    // Keep this rule last in the cascade so late-loaded styles can't re-enable native cursors.
+    // Append to <body> (not <head>) so this rule sits LAST in the cascade.
+    // Any stylesheet injected into <head> after page load will come before
+    // this one, meaning our !important wins the tie-break.
     const styleEl = document.createElement('style');
     styleEl.setAttribute('data-custom-cursor-lock', 'true');
-    styleEl.textContent = '* { cursor: none !important; }';
-    document.head.appendChild(styleEl);
+    styleEl.textContent = '*, *::before, *::after { cursor: none !important; }';
+    document.body.appendChild(styleEl);
 
     function hideCursor() {
       if (elRef.current) {
@@ -105,7 +129,7 @@ export function CustomCursor() {
     };
   }, [enabled]);
 
-  if (!enabled) return null;
+  if (enabled === null || !enabled) return null;
 
   return (
     /* eslint-disable-next-line @next/next/no-img-element */

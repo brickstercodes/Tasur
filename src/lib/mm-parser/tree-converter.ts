@@ -79,6 +79,15 @@ function convertMmNode(node: MmNode): MindmapNode {
   if (node.TRACKABLE && node.CONCEPT_ID) {
     result.id = node.CONCEPT_ID;
     result.concept_id = node.CONCEPT_ID;
+
+    // Populate content from direct non-TRACKABLE leaf children (the teaching points).
+    const leafTexts = node.children
+      .filter((child) => !child.TRACKABLE && child.children.length === 0)
+      .map((child) => child.TEXT);
+
+    if (leafTexts.length > 0) {
+      result.content = leafTexts.join(' ');
+    }
   }
 
   return result;

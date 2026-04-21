@@ -1,5 +1,7 @@
 # Tasur — Product Vision & Goal Statement
 
+> **Status — April 2026:** v0.1 is complete and live on Railway. Phases 1, 2, and 4 from the five-phase flow are fully implemented (upload → mindmap → chat → flashcards). Session sharing, reCaptcha, and a Go pipeline microservice (bypassing Vercel's 60s timeout) have also shipped. The product is in active beta.
+
 ## The Name
 
 **Tasur** (تصور) — Urdu for "conception" / "visualization." A platform built on the belief that understanding begins when you can *see* it.
@@ -75,6 +77,8 @@ The orchestrator moves students between these phases based on observed understan
 ### Phase 1 — Ingest & Orient
 User uploads material. The system parses it and generates a comprehensive mindmap in a single step — a Freeplane-format .mm file that serves as the single source of truth. From this one artifact, the system derives the concept registry, knowledge graph, teaching sequence, and visual mindmap. Web search augments gaps in the uploaded material. The student sees the full landscape before diving in.
 
+*Implementation note (v0.1):* This phase runs inside a Go pipeline microservice deployed separately on Railway, bypassing Next.js's 60-second timeout limit. PDF and image files are always processed through Gemini vision (no heuristic text extraction) for accuracy. A three-pass XML repair step handles any malformed .mm output before parsing.
+
 ### Phase 2 — Concept Breakdown
 The AI study partner walks through concepts following the mindmap's natural structure — foundational concepts first, complex ones after prerequisites are solid. The teaching sequence is derived from the mindmap tree, ensuring the student's journey matches the visual structure they see. Uses analogies, real-world examples, and conversational explanations. Micro-assessments after each concept ("If a process is in waiting state and gets a CPU signal, what happens?") feed understanding data back to the orchestrator.
 
@@ -116,9 +120,10 @@ Cross-user learning (aggregating patterns across students) is deferred to v2+ wh
 
 - **Single source of truth:** One .mm file drives the mindmap display, knowledge graph, concept registry, teaching sequence, and flashcard anchoring. No drift between representations.
 - **.mm-first pipeline:** A single LLM call produces a rich Freeplane-format mindmap from which all downstream data structures are derived deterministically — replacing the previous two-step Parser + Mindmap Generator approach
+- **Go pipeline microservice:** Long-running document processing (extraction → .mm generation → flashcard generation → DB writes) runs in a dedicated Go service on Railway, avoiding Next.js's 60-second function timeout. Next.js proxies upload routes to this service.
 - **MCP connector pattern:** External tools (Excalidraw, diagram renderers, code execution) are integrated as modular connectors, not monolithic dependencies
 - **Web-first:** Browser-based application, responsive but not mobile-optimized in v1
-- **LLM cost awareness:** The orchestrator is the expensive brain; specialist agents can use smaller, faster, cheaper models where appropriate
+- **LLM cost awareness:** The orchestrator runs Gemini 2.5 Pro (high-capability reasoning); specialist agents use Gemini 2.5 Flash (fast, cheap structured generation). Provider is configurable via env var — Anthropic and OpenAI are also supported.
 
 ---
 

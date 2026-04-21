@@ -1,5 +1,7 @@
 # Tasur — System Architecture (v0.1)
 
+> **Status — April 2026:** This document describes the designed architecture. The system is fully built and live. Key divergences from original design: (1) Mastra sunset 2026-03-29, Vercel AI SDK is now the sole agent framework; (2) Gemini 2.5 Pro/Flash via Vertex AI are the production LLMs, not Claude/GPT-4; (3) a Go pipeline microservice on Railway handles document processing to bypass Vercel's 60s timeout; (4) six migrations have been applied adding `token_usage`, `share_links`, `session_shares`, `student_graphs` tables, and a `processing` session status. Sections marked **[SUPERSEDED]** reflect original plans that changed during implementation.
+
 ## Architecture Philosophy
 
 Every feature reduces to a **tool + specialist agent**. The .mm-derived teaching tree determines the default learning sequence; the orchestrator decides *how* to teach each concept and *when to adapt* — the specialist decides the specifics. The orchestrator is the most capable and expensive model — it spends compute on judgment (assessment evaluation, approach selection), not sequencing or content generation. Specialist agents are smaller, faster, cheaper models constrained by structured output schemas and rich few-shot prompts.
@@ -387,7 +389,8 @@ study_sessions
 ├── subject_domain (e.g., "dbms")
 ├── created_at
 ├── last_active_at
-└── status (enum: 'active' | 'paused' | 'completed')
+├── token_usage (jsonb)  -- aggregate {inputTokens, outputTokens} for cost tracking
+└── status (enum: 'active' | 'paused' | 'completed' | 'processing')  -- 'processing' added in migration 6
 
 -- Uploaded Documents
 documents
@@ -462,6 +465,44 @@ chat_messages
 ├── content (text)
 ├── message_type (text)  -- explanation, micro_assessment, etc.
 └── created_at
+
+-- Token Usage Tracking (migration 4)
+token_usage
+├── id (uuid, PK)
+├── session_id (FK → study_sessions)
+├── user_id (FK → users)
+├── model (text)
+├── input_tokens (int)
+├── output_tokens (int)
+├── cost_cents (float)
+└── created_at
+
+-- Session Sharing (migration 5)
+share_links
+├── id (uuid, PK)
+├── session_id (FK → study_sessions)
+├── created_by (FK → users)
+├── code (text, UNIQUE)  -- 9-byte base64url random code
+├── is_active (boolean)
+└── created_at
+
+session_shares
+├── id (uuid, PK)
+├── session_id (FK → study_sessions)
+├── user_id (FK → users)    -- user who accepted the share
+├── shared_by (FK → users)  -- who created the link
+├── created_at
+└── UNIQUE(session_id, user_id)
+
+-- In-Memory Knowledge Graph Serialization (migration 3)
+student_graphs
+├── id (uuid, PK)
+├── session_id (FK → study_sessions, UNIQUE)
+├── graph_state (jsonb)    -- serialized StudentGraphState (nodes + edges + adjacency)
+└── last_synced_at
+
+-- NOTE: study_sessions.status enum also includes 'processing' (migration 6)
+-- Sessions begin in 'processing' state when pipeline starts, transition to 'active' on completion.
 ```
 
 ### Key Indexes
@@ -486,35 +527,43 @@ CREATE INDEX idx_chat_session_concept ON chat_messages(session_id, concept_id, c
 
 This is the most important flow in v0.1. Here's exactly what happens:
 
+*Note (as built):* Steps 2–4b run inside the **Go pipeline service** on Railway, not inside Next.js. Next.js receives the multipart upload and immediately proxies the request (with file bytes + metadata headers) to `GO_SERVICE_URL`. The Go service streams SSE events back through Next.js to the client. This bypasses Vercel's 60s hard timeout.
+
 ```
 1. STUDENT uploads a PDF via the frontend
    │
-2. UPLOAD HANDLER receives file
-   ├── Stores raw file in Supabase Storage
-   ├── Creates study_session record
-   └── Extracts raw text (pdf-parse, mammoth, tesseract)
+2. NEXT.JS PROXY validates session limit, then forwards to GO PIPELINE SERVICE (SSE proxy)
    │
-3. .mm GENERATOR AGENT processes the raw text (single LLM call)
+3. GO PIPELINE SERVICE: Text Extraction
+   ├── TXT: direct UTF-8 read
+   ├── DOCX: unzip + XML parsing
+   ├── PDF: always Gemini vision (no heuristic text path — abandoned after hallucination issues)
+   ├── Images (PNG/JPG): Gemini vision
+   ├── Stores raw file in Supabase Storage
+   ├── Creates study_session record (status = 'processing')
+   └── Emits: event: session_created (early ID for dashboard tile)
+   │
+4. .mm GENERATOR AGENT processes text/PDF bytes (single Gemini 2.5 Pro call, thinking budget 5000)
    ├── Produces Freeplane XML (.mm format)
    ├── Contains TRACKABLE nodes with CONCEPT_IDs
    ├── Contains leaf detail nodes with teaching points
-   └── Stores .mm XML in documents.mm_xml
+   ├── Three-pass XML repair on malformed output (unclosed tags, etc.)
+   └── Stores .mm XML in documents table
    │
-4. .mm PARSER (deterministic code, NOT an LLM call)
+5. .mm PARSER (deterministic Go code, NOT an LLM call)
    ├── Validates XML structure
    ├── Extracts DerivedConcept[] from TRACKABLE nodes
    ├── Builds knowledge graph edges from tree structure
    ├── Converts to MindmapTreeOutput JSON for frontend
+   ├── Remaps user-generated CONCEPT_IDs → deterministic UUIDs (prevents collision on re-upload)
    ├── Stores concepts + relationships in database
    ├── Stores MindmapTreeOutput in mindmaps table
-   ├── Initializes understanding_state (all concepts at 0.0 confidence)
-   └── Detects gaps (concepts mentioned but not expanded)
+   └── Initializes understanding_state (all concepts at 0.0 confidence)
    │
-   ├── 4a. WEB SEARCH AGENT fills gaps (conditional)
-   │   └── Returns augmentations → merged into concept data
-   │
-   └── 4b. FLASHCARD GENERATOR creates initial deck (parallel)
+   └── 5a. FLASHCARD GENERATOR creates initial deck (Gemini 2.5 Flash, structured JSON)
        └── Returns cards → stored in flashcards table with initial SR state
+   │
+6. GO PIPELINE updates session status → 'active', emits: event: done
    │
 5. FRONTEND receives mindmap data + session ready signal
    ├── Renders interactive mindmap from MindmapTreeOutput (Phase 1)
@@ -894,245 +943,184 @@ Orchestrator override:
 
 ## LLM Provider Strategy
 
-Tasur uses a **tiered LLM provider strategy** to manage costs across development, testing, and production:
+Tasur uses a **configurable LLM provider** system. The production provider is **Google Gemini via Vertex AI**. Anthropic and OpenAI are also supported via env var toggle, but Gemini is the default and all prompt tuning targets Gemini.
 
-### Provider Tiers
-
-| Tier | Provider | Use Case | Cost |
-|------|----------|----------|------|
-| **Mock** | Hardcoded JSON / static .mm XML | Development (Modules 4–6). No LLM calls. Mock agents return static but schema-valid responses. | $0 |
-| **Dev/Free** | Google Gemini (free tier) | Development & testing (Module 7+). Gemini 2.0 Flash for specialists, Gemini Pro for orchestrator. Free tier: 15 RPM, 1M TPM, 1500 RPD. | $0 |
-| **Dev/Free (alt)** | Groq (free tier) | Alternative for specialist agents. Llama 3.3 70B / Mixtral at high speed. 30 RPM limit. | $0 |
-| **Production** | Claude Sonnet + Haiku / GPT-4o + 4o-mini | Paying users. Best quality. Cost optimized by orchestrator call frequency. | ~$0.08/session |
-
-### Mock Provider
-
-The dual-path provider toggle:
+### Provider Configuration
 
 ```typescript
-// src/config/agent-provider.ts
-export function getAgentRegistry(): AgentRegistry {
-  const provider = process.env.AGENT_PROVIDER || 'mastra';
+// src/config/model-provider.ts
+// LLM_PROVIDER env var: 'gemini' (default) | 'anthropic' | 'openai'
+// ORCHESTRATOR_MODEL: model name override for orchestrator
+// SPECIALIST_MODEL: model name override for specialist agents
+// MM_GENERATOR_MODEL: override for mindmap generator (defaults to gemini-2.5-pro)
+```
 
-  switch (provider) {
-    case 'mastra':
-      return createMastraRegistry();
-    case 'manual':
-      return createManualRegistry();
-    default:
-      throw new Error(`Unknown agent provider: ${provider}`);
-  }
+```typescript
+// src/config/agent-provider.ts — single path (Mastra sunset 2026-03-29)
+export function getAgentRegistry(): AgentRegistry {
+  return createManualRegistry();  // Vercel AI SDK — no env var toggle needed
 }
 ```
 
-All testing uses real API calls — no mock agents.
+### Model Mapping (Production)
 
-### Model Mapping (Dev vs. Production)
+| Role | Model | Notes |
+|------|-------|-------|
+| Orchestrator | gemini-2.5-pro | High-capability reasoning, tree-aware routing |
+| .mm Generator | gemini-2.5-pro | Thinking budget: 5000 tokens (Go service); always Gemini |
+| Flashcard Generator | gemini-2.5-flash | Structured JSON output |
+| Concept Explainer | gemini-2.5-flash | Streaming SSE |
+| Web Search Agent | gemini-2.5-flash | Research augmentation (conditional) |
 
-| Role | Dev (Gemini Free) | Production |
-|------|-------------------|------------|
-| Orchestrator | Gemini 2.0 Pro | Claude Sonnet / GPT-4o |
-| .mm Generator | Gemini 2.0 Flash | Haiku / 4o-mini |
-| Web Search Agent | Gemini 2.0 Flash | Haiku / 4o-mini |
-| Concept Explainer | Gemini 2.0 Pro | Claude Sonnet / GPT-4o |
-| Flashcard Generator | Gemini 2.0 Flash | Haiku / 4o-mini |
-
-Model selection is configured via environment variables, NOT hardcoded:
-
-```typescript
-// .env.local
-LLM_PROVIDER=gemini          # or 'anthropic' or 'openai'
-ORCHESTRATOR_MODEL=gemini-2.0-pro
-SPECIALIST_MODEL=gemini-2.0-flash
-```
-
-The `TasurAgent` interface remains LLM-agnostic — the model provider is injected at the adapter layer (Mastra config or manual AI SDK provider import). Prompts, schemas, and business logic never reference a specific model.
+The `TasurAgent` interface remains LLM-agnostic — prompts, schemas, and business logic never reference a model directly.
 
 ### Cost Estimation (Production, per student per 30-min session)
 
 | Component | Model | Calls | Est. Tokens/Call | Est. Cost |
 |-----------|-------|-------|-----------------|-----------|
-| Orchestrator | Claude Sonnet / GPT-4o | ~8 | ~2K in + ~500 out | ~$0.03 |
-| .mm Generator | Haiku / 4o-mini | 1 | ~5K in + ~3K out | ~$0.006 |
-| Web Search Agent | Haiku / 4o-mini | 2–3 | ~2K in + ~1K out | ~$0.003 |
-| Concept Explainer | Sonnet / 4o | ~15 turns | ~2K in + ~500 out | ~$0.05 |
-| Flashcard Generator | Haiku / 4o-mini | 1 | ~3K in + ~2K out | ~$0.004 |
-| **Total per session** | | | | **~$0.08** |
+| Orchestrator | gemini-2.5-pro | ~8 | ~2K in + ~500 out | ~$0.02 |
+| .mm Generator | gemini-2.5-pro | 1 | ~8K in + ~5K out (thinking) | ~$0.01 |
+| Concept Explainer | gemini-2.5-flash | ~15 turns | ~2K in + ~500 out | ~$0.01 |
+| Flashcard Generator | gemini-2.5-flash | 1 | ~3K in + ~2K out | ~$0.002 |
+| **Total per session** | | | | **~$0.04** |
 
-**Note vs. previous architecture:** The .mm-first pipeline saves one LLM call (Mindmap Generator eliminated) and reduces orchestrator calls from ~12 to ~8 (sequencing decisions are now deterministic tree walks). Net cost reduction: ~$0.02/session.
-
-At $0.08/session and an average of 3 sessions/day for an active student: **~$0.24/student/day** or **~$7.20/student/month**. During development with Gemini free tier: **$0**.
-
-This informs pricing: a $15–20/month subscription covers LLM costs with healthy margin, assuming reasonable usage.
+The .mm-first pipeline (1 LLM call instead of 2) and deterministic tree sequencing reduce orchestrator call frequency vs. original estimates. Gemini pricing is also lower than Claude Sonnet equivalents at comparable quality for this workload.
 
 ---
 
-## Folder Structure (v0.1 Monorepo — Dual-Path Architecture)
+## Folder Structure (v0.1 — As Built)
+
+*Note: `src/mastra/` was deleted 2026-03-29 (Mastra sunset). `src/manual/` is the sole agent implementation. `agent-provider.ts` no longer has a toggle — it directly returns `createManualRegistry()`.*
 
 ```
 tasur/
 ├── src/
-│   ├── app/                          # Next.js app router
+│   ├── app/                          # Next.js 16 App Router
 │   │   ├── (auth)/
 │   │   │   ├── login/
 │   │   │   └── signup/
 │   │   ├── (dashboard)/
-│   │   │   ├── sessions/
+│   │   │   ├── dashboard/            # Session list + upload UI
+│   │   │   ├── settings/             # User preferences
 │   │   │   └── study/[sessionId]/
-│   │   │       ├── mindmap/
-│   │   │       ├── chat/
-│   │   │       └── flashcards/
-│   │   └── api/                      # API routes (call interfaces, never Mastra directly)
-│   │       ├── sessions/
-│   │       ├── chat/
-│   │       ├── flashcards/
-│   │       └── upload/
+│   │   │       ├── layout.tsx        # Sticky session nav (StudyTabs)
+│   │   │       ├── mindmap/          # Phase 1 — interactive mindmap viewer
+│   │   │       ├── chat/             # Phase 2 — concept breakdown chat
+│   │   │       └── flashcards/       # Phase 4 — SM-2 review
+│   │   ├── share/[code]/             # Share link acceptance handler
+│   │   └── api/
+│   │       ├── auth/                 # BetterAuth routes + reCaptcha verify
+│   │       └── sessions/
+│   │           ├── route.ts          # GET: list sessions
+│   │           ├── upload/route.ts   # POST: proxy to Go pipeline (SSE)
+│   │           └── [id]/
+│   │               ├── route.ts      # GET/DELETE: single session
+│   │               ├── chat/route.ts # POST: streaming chat (SSE)
+│   │               ├── flashcards/route.ts  # GET/POST: flashcard review
+│   │               ├── documents/route.ts   # POST: add doc (proxy to Go)
+│   │               └── share/route.ts       # POST/DELETE: share link mgmt
 │   │
 │   ├── interfaces/                   # FRAMEWORK-AGNOSTIC agent contracts
 │   │   ├── agents.ts                 # TasurAgent, TasurStreamingAgent interfaces
-│   │   ├── registry.ts              # AgentRegistry type + factory
-│   │   └── types.ts                 # AgentResult, shared input/output types
+│   │   ├── registry.ts               # AgentRegistry type
+│   │   └── types.ts                  # AgentResult, AgentName types
 │   │
-│   ├── mastra/                       # MASTRA IMPLEMENTATION (swappable)
-│   │   ├── index.ts                  # Mastra instance + agent registry factory
-│   │   ├── agents/                   # Mastra agent wrappers (implement TasurAgent)
-│   │   │   ├── orchestrator.ts
-│   │   │   ├── mm-generator.ts       # .mm Generator (replaces document-parser + mindmap-generator)
-│   │   │   ├── concept-explainer.ts
-│   │   │   ├── flashcard-generator.ts
-│   │   │   └── web-search.ts
-│   │   ├── tools/
-│   │   │   ├── generate-mm.ts        # .mm generation tool
-│   │   │   ├── explain-concept.ts
-│   │   │   ├── generate-flashcards.ts
-│   │   │   ├── search-web.ts
-│   │   │   └── update-understanding.ts
-│   │   ├── workflows/
-│   │   │   └── learning-session.ts
-│   │   └── memory/
-│   │       └── config.ts
-│   │
-│   ├── manual/                       # MANUAL FALLBACK (Vercel AI SDK)
-│   │   ├── index.ts                  # Manual agent registry factory
-│   │   ├── agents/                   # Direct LLM call wrappers (implement TasurAgent)
-│   │   │   ├── orchestrator.ts
-│   │   │   ├── mm-generator.ts
-│   │   │   ├── concept-explainer.ts
+│   ├── manual/                       # Vercel AI SDK agents (sole implementation)
+│   │   ├── index.ts                  # createManualRegistry() factory
+│   │   ├── agents/
+│   │   │   ├── orchestrator.ts       # Study decision: next concept, teaching approach
+│   │   │   ├── mm-generator.ts       # .mm XML generation (Next.js path, rarely called)
+│   │   │   ├── concept-explainer.ts  # Streaming concept explanation
 │   │   │   ├── flashcard-generator.ts
 │   │   │   └── web-search.ts
 │   │   └── orchestration/
-│   │       └── learning-session.ts   # Async loop version of the workflow
+│   │       └── learning-session.ts   # Full session orchestration loop
 │   │
 │   ├── config/
-│   │   ├── agent-provider.ts         # AGENT_PROVIDER toggle (mastra/manual)
-│   │   └── model-provider.ts         # LLM_PROVIDER + model name config
+│   │   ├── agent-provider.ts         # Returns createManualRegistry() directly (no toggle)
+│   │   └── model-provider.ts         # LLM_PROVIDER + model name config (gemini/anthropic/openai)
 │   │
-│   ├── prompts/                      # FRAMEWORK-AGNOSTIC (our IP)
-│   │   ├── base/
-│   │   │   ├── orchestrator.md
-│   │   │   ├── mm-generator.md       # The most critical prompt — .mm generation
-│   │   │   ├── concept-explainer.md
-│   │   │   └── flashcard-generator.md
-│   │   ├── domains/
-│   │   │   ├── dbms.md
-│   │   │   ├── os.md
-│   │   │   ├── sqa.md
-│   │   │   ├── cn.md
-│   │   │   ├── se.md
-│   │   │   └── dc.md
-│   │   └── loader.ts                # Reads .md files, composes prompt layers
-│   │
-│   ├── lib/                          # FRAMEWORK-AGNOSTIC core logic
-│   │   ├── supabase.ts
-│   │   ├── mm-parser/                # Deterministic .mm XML parser (NOT an LLM)
-│   │   │   ├── index.ts              # Main: XML string → ParsedMindmap
-│   │   │   ├── types.ts              # ParsedMindmap, MmNode, DerivedConcept types
-│   │   │   ├── concept-extractor.ts  # Extracts DerivedConcept[] from tree
-│   │   │   ├── graph-builder.ts      # Builds ConceptNode[] + ConceptEdge[]
-│   │   │   └── tree-converter.ts     # Converts to MindmapTreeOutput JSON
+│   ├── lib/
+│   │   ├── auth.ts                   # BetterAuth server config (pg pool, session cookie)
+│   │   ├── auth-client.ts            # Client-side auth helpers
+│   │   ├── app-user.ts               # Maps BetterAuth user.id → users table UUID
+│   │   ├── supabase.ts               # Service-role Supabase client factory
+│   │   ├── session-access.ts         # resolveSessionAccess(): owner OR session_shares member
+│   │   ├── session-persistence.ts    # All DB write operations (25KB, pipeline result writes)
+│   │   ├── sr-algorithm.ts           # SM-2 spaced repetition + confidence blending
+│   │   ├── recaptcha.ts              # reCaptcha v3 verification
+│   │   ├── guardrails.ts             # Content safety validations
+│   │   ├── mm-parser/                # Deterministic .mm XML parser (mirrors Go mmparser.go)
+│   │   │   └── index.ts              # XML string → ParsedMindmap → DerivedConcept[]
 │   │   ├── graph/
-│   │   │   ├── student-graph.ts
-│   │   │   ├── traversal.ts          # Depth-first tree walk for teaching sequence
-│   │   │   └── sync.ts
-│   │   ├── parsing/                  # File text extraction (unchanged)
+│   │   │   ├── student-graph.ts      # In-memory knowledge graph (mastery, prerequisites)
+│   │   │   ├── traversal.ts          # Graph algorithms (BFS, topo sort, shortest path)
+│   │   │   └── sync.ts               # Load/save StudentGraph from student_graphs table
+│   │   ├── parsing/                  # File text extraction utilities (used by Next.js path)
 │   │   │   ├── pdf.ts
 │   │   │   ├── docx.ts
 │   │   │   └── ocr.ts
-│   │   ├── sr-algorithm.ts
-│   │   └── schemas/                  # Zod schemas (used by BOTH implementations)
-│   │       ├── mm-generator-output.ts  # .mm XML string + structural validation
-│   │       ├── mindmap-tree-output.ts  # MindmapTreeOutput (derived from .mm)
-│   │       ├── explainer-output.ts
-│   │       ├── orchestrator-output.ts
-│   │       └── flashcard-output.ts
+│   │   └── schemas/                  # Zod schemas for agent I/O validation
 │   │
-│   ├── components/                   # FRAMEWORK-AGNOSTIC frontend
-│   │   ├── mindmap/                  # Collapsible tree mindmap (NOT flat graph)
-│   │   ├── chat/
-│   │   ├── flashcards/
-│   │   └── ui/
+│   ├── components/
+│   │   ├── mindmap/
+│   │   │   ├── MindmapViewer.tsx     # ReactFlow wrapper, collapse/search state
+│   │   │   ├── MindmapNode.tsx       # Custom node: confidence dot, click-to-chat
+│   │   │   ├── MindmapEdge.tsx       # Custom edge: curved, labeled
+│   │   │   ├── ShareButton.tsx       # Owner-only share link generator
+│   │   │   ├── layout/balanced-tree.ts  # Balanced tree layout algorithm
+│   │   │   └── color-utils.ts        # Branch palette + confidence coloring
+│   │   ├── chat/                     # ChatInterface, FocusZone sidebar
+│   │   ├── flashcards/               # FlashcardDeck, SM-2 rating UI
+│   │   ├── dashboard/                # SessionCard, DeleteButton, ProcessingTiles
+│   │   ├── upload/                   # UploadFlow: drag-drop + SSE progress reader
+│   │   ├── study/                    # StudyTabs, StudyBackLink
+│   │   └── ui/                       # TasurWordmark, ThemeToggle, CustomCursor
 │   │
+│   ├── contexts/                     # ThemeContext
 │   ├── types/
 │   │   ├── concepts.ts
 │   │   ├── graph.ts
 │   │   ├── sessions.ts
-│   │   └── understanding.ts
-│   │
-│   └── config/
-│       └── agent-provider.ts         # Toggle: 'mastra' | 'manual' (env var)
+│   │   ├── understanding.ts
+│   │   └── database.ts               # Supabase-generated types (supabase gen types typescript)
+│   └── middleware.ts                 # Auth gate on /(dashboard)/ routes
 │
-├── docs/                             # Divio documentation system
-│   ├── 00-index.md                   # Entry point
-│   ├── 01-quickstart.md              # Tutorial: run Tasur locally
-│   ├── 10-architecture.md            # Explanation: system design overview
-│   ├── 99-troubleshooting.md         # Common issues and fixes
-│   └── adr/                          # Architecture Decision Records
-│       ├── ADR-0001-dual-path-agent-framework.md
-│       ├── ADR-0002-in-memory-graph-storage.md
-│       └── ADR-0003-mm-first-architecture.md
+├── go-pipeline/                      # Go pipeline microservice (separate Railway service)
+│   ├── main.go                       # HTTP server startup
+│   ├── pipeline.go                   # HTTP handlers + SSE emitter (26KB)
+│   ├── extraction.go                 # Text extraction (PDF/DOCX/TXT/images)
+│   ├── mmgenerator.go                # .mm XML generation via Vertex AI REST
+│   ├── mmparser.go                   # Parse .mm XML → DerivedConcepts + edges
+│   ├── flashcards.go                 # Flashcard generation via Vertex AI
+│   ├── supabase.go                   # REST client for Supabase writes
+│   ├── vertex.go                     # Vertex AI REST API wrapper
+│   ├── ratelimit.go                  # Serial processing queue (position N in queue)
+│   ├── types.go                      # Type definitions
+│   ├── Dockerfile                    # Alpine-based container
+│   ├── railway.toml
+│   └── prompts/                      # Embedded at build time (//go:embed)
+│       ├── mm-generator-system.md
+│       ├── mm-generator-example.xml
+│       └── flashcard-generator.md
+│
+├── prompts/                          # Next.js-side prompts (concept explainer, orchestrator)
 │
 ├── supabase/
-│   └── migrations/
+│   └── migrations/                   # 6 migrations applied
+│       ├── 20240001_initial_schema.sql
+│       ├── 20240002_chat_messages_metadata.sql
+│       ├── 20240003_indexes_and_student_graphs.sql
+│       ├── 20240004_token_usage.sql
+│       ├── 20240005_session_shares.sql
+│       └── 20240006_processing_status.sql
 │
-├── .eslintrc.js                      # ESLint config (code standards enforcement)
-├── .prettierrc                       # Prettier config (formatting)
-├── .env.example                      # Placeholder env vars (committed)
-├── .env.local                        # Actual env vars (NOT committed)
+├── Dockerfile                        # Next.js standalone container (node:22-alpine)
+├── railway.toml                      # Railway deployment config (Next.js service)
+├── next.config.ts                    # output: standalone, serverExternalPackages
 ├── package.json
-├── next.config.js
 ├── tsconfig.json
-└── CHANGELOG.md                      # Keep a Changelog format
-```
-
-### Provider Toggle
-
-```typescript
-// src/config/agent-provider.ts
-// WHY: One env var switches the entire agent layer — Mastra for primary,
-// manual (Vercel AI SDK) as fallback. Business logic never imports either directly.
-
-import { createMastraRegistry } from '@/mastra';
-import { createManualRegistry } from '@/manual';
-import type { AgentRegistry } from '@/interfaces/registry';
-
-export function getAgentRegistry(): AgentRegistry {
-  const provider = process.env.AGENT_PROVIDER || 'mastra';
-
-  switch (provider) {
-    case 'mastra':
-      return createMastraRegistry();
-    case 'manual':
-      return createManualRegistry();
-    default:
-      throw new Error(`Unknown agent provider: ${provider}`);
-  }
-}
-
-// API routes use this:
-// const agents = getAgentRegistry();
-// const result = await agents.get('mm-generator').execute(input);
-// ^ This code never changes regardless of which provider is active
-```
+└── CHANGELOG.md
 
 ---
 
@@ -1180,89 +1168,37 @@ Mid-Session Mode Switch:
 
 ---
 
-## Agent Framework — Dual-Path Strategy (Mastra + Manual Fallback)
+## Agent Framework — Vercel AI SDK (Manual Path)
 
-### Strategy: Mastra-First, Pivot-Ready
+Mastra was evaluated and **sunset on 2026-03-29** (`src/mastra/` deleted, `@mastra/core` uninstalled, 341 packages removed). The Vercel AI SDK manual path is the sole implementation.
 
-We use **Mastra** (https://mastra.ai) as the primary agent infrastructure — but we architect our code so that **all business logic is framework-agnostic**. If Mastra introduces breaking changes, proves too rigid, or adds unexpected constraints, we can swap it out for a manual approach (Vercel AI SDK + hand-rolled orchestration) without rewriting our prompts, schemas, domain logic, or graph implementation.
+### Why the Isolation Layer Mattered
 
-The rule: **Mastra owns the plumbing. We own the intelligence.**
+The codebase was designed with framework-agnostic `TasurAgent` / `TasurStreamingAgent` interfaces from the start. When Mastra was sunset, only the adapter layer needed changing — prompts, schemas, graph logic, .mm parser, SR algorithm, and frontend were untouched. The rule held: **the framework owned the plumbing, we owned the intelligence.**
 
-### Why Mastra (with eyes open)
-
-Mastra provides agent primitives, graph-based workflows, memory management, a tool system, Mastra Studio for local debugging, evals for quality testing, and native Next.js integration. For a solo build, this saves real time on infrastructure we'd otherwise hand-roll.
-
-**Honest risks we're accepting:**
-- Young framework — API may change, docs may have gaps
-- Workflow graph pattern may not perfectly fit our dynamic LLM-driven routing
-- Debugging through framework abstractions adds friction
-- Dependency on an external team's priorities
-
-**Mitigation:** The isolation layer described below ensures Mastra is swappable.
-
-### Architecture Mapping: Tasur → Mastra
-
-```
-Tasur Concept              →  Mastra Primitive
-─────────────────────────────────────────────────
-Orchestrator               →  Mastra Agent (with workflow graph)
-Specialist Agents          →  Mastra Agents (with tools + schemas)
-Tool invocation            →  Mastra Tools
-Orchestrator routing       →  Mastra Workflow (graph-based state machine)
-Chat conversation memory   →  Mastra Short-term Memory
-Understanding model        →  Mastra Long-term Memory + Supabase
-Quality validation         →  Mastra Evals
-Prompt iteration/testing   →  Mastra Studio
-```
-
-### The Isolation Layer — How We Stay Pivot-Ready
-
-The key architectural decision: we define **our own agent interface** that Mastra implements. If we swap Mastra out, we rewrite the adapter layer, not the agents.
+### Current Implementation
 
 ```typescript
-// === OUR INTERFACE (framework-agnostic) ===
-// This is what the rest of the app talks to. It never imports Mastra directly.
-
-interface AgentResult<T> {
-  data: T;
-  usage: { inputTokens: number; outputTokens: number };
-  duration: number;
+// src/config/agent-provider.ts
+export function getAgentRegistry(): AgentRegistry {
+  return createManualRegistry();  // direct, no toggle needed
 }
+```
 
-interface TasurAgent<TInput, TOutput> {
-  execute(input: TInput): Promise<AgentResult<TOutput>>;
-}
+```typescript
+// src/manual/agents/mm-generator.ts (representative example)
+import { generateText } from 'ai';
+import { vertex } from '@ai-sdk/google-vertex';
 
-interface TasurStreamingAgent<TInput, TOutput> {
-  stream(input: TInput): AsyncIterable<string>;  // for chat streaming
-  execute(input: TInput): Promise<AgentResult<TOutput>>;  // for full response
-}
-
-// === MASTRA IMPLEMENTATION (swappable) ===
-
-import { Agent, Tool } from '@mastra/core';
-
-class MastraMmGeneratorAgent implements TasurAgent<RawText, string> {
-  private agent: Agent;
-
-  async execute(input: RawText): Promise<AgentResult<string>> {
-    const result = await this.agent.generate(input);
-    return { data: result.text, usage: result.usage, duration: result.duration };
-  }
-}
-
-// === MANUAL FALLBACK (ready to swap in) ===
-
-import { generateText, streamText } from 'ai';
-
-class ManualMmGeneratorAgent implements TasurAgent<RawText, string> {
-  async execute(input: RawText): Promise<AgentResult<string>> {
+class ManualMmGeneratorAgent implements TasurAgent<MmGeneratorInput, string> {
+  async execute(input: MmGeneratorInput): Promise<AgentResult<string>> {
     const result = await generateText({
-      model: google('gemini-2.0-flash'),
-      system: loadPrompt('mm-generator', input.domain),
-      prompt: input.text,
+      model: vertex('gemini-2.5-pro', { useSearchGrounding: false }),
+      providerOptions: { vertex: { thinkingConfig: { thinkingBudget: 5000 } } },
+      system: loadPrompt('mm-generator'),
+      messages: [{ role: 'user', content: input.text }],
     });
-    return { data: result.text, usage: result.usage, duration: /* calc */ };
+    return { data: result.text, usage: result.usage, duration: result.experimental_providerMetadata?.duration ?? 0 };
   }
 }
 ```
@@ -1270,160 +1206,26 @@ class ManualMmGeneratorAgent implements TasurAgent<RawText, string> {
 ### What Lives Where
 
 ```
-FRAMEWORK-AGNOSTIC (never imports Mastra):     ADAPTER LAYERS (swappable):
+FRAMEWORK-AGNOSTIC:                            VERCEL AI SDK ADAPTER:
 ─────────────────────────────────────────       ──────────────────────────────
-src/interfaces/agents.ts (TasurAgent, etc.)    src/mastra/agents/*.ts
-src/prompts/**/*.md (all prompts)              src/mastra/tools/*.ts
-src/lib/schemas/*.ts (Zod output schemas)      src/mastra/workflows/*.ts
-src/lib/graph/ (StudentGraph)                  src/mastra/memory/config.ts
-src/lib/mm-parser/ (.mm XML parser)            src/mastra/index.ts
-src/lib/sr-algorithm.ts                        src/manual/agents/*.ts
-src/components/** (all frontend)               src/manual/index.ts
+src/interfaces/agents.ts (TasurAgent, etc.)    src/manual/agents/*.ts
+src/prompts/**/*.md (all prompts)              src/manual/orchestration/learning-session.ts
+src/lib/schemas/*.ts (Zod output schemas)      src/manual/index.ts
+src/lib/graph/ (StudentGraph)
+src/lib/mm-parser/ (.mm XML parser)
+src/lib/sr-algorithm.ts
+src/components/** (all frontend)
 src/app/** (all routes)
 src/config/model-provider.ts
 ```
 
-**The test:** If you delete the entire `src/mastra/` folder, the only thing that breaks is the adapter layer. All prompts, schemas, graph logic, .mm parser, SR algorithm, and frontend continue to work. You rewrite the adapters using Vercel AI SDK's `generateText()` and `streamText()`, and you're back up.
+### What We Build Ourselves (Regardless of Framework)
 
-### Mastra Workflow: The Learning Flow
-
-```typescript
-// Mastra workflow definition — lives in src/mastra/workflows/learning-session.ts
-// .mm-first pipeline: single LLM call + deterministic parsing
-
-const learningFlow = new Workflow({
-  name: "learning-session",
-  steps: {
-    ingest: {
-      agent: mmGeneratorAgent,      // Single LLM call → .mm XML
-      postProcess: mmParser.parse,  // Deterministic: XML → concepts + graph + tree
-      next: ({ result }) => result.gaps.length > 0 ? "augment" : "orient"
-    },
-    augment: {
-      agent: webSearchAgent,
-      next: "orient"
-    },
-    orient: {
-      // Mindmap conversion is now deterministic code (no LLM call)
-      // Only Flashcard Generator needs an LLM call here
-      parallel: [{ agent: flashcardGeneratorAgent }],
-      next: "route"
-    },
-    route: {
-      agent: orchestratorAgent,
-      next: ({ result }) => {
-        switch (result.next_action.agent) {
-          case "concept_explainer": return "explain";
-          case "flashcard_deck": return "practice";
-          case "session_complete": return "summary";
-        }
-      }
-    },
-    explain: {
-      agent: conceptExplainerAgent,
-      next: "route"
-    },
-    practice: {
-      agent: flashcardDeckAgent,
-      next: "route"
-    },
-    summary: {
-      agent: orchestratorAgent,
-      next: "complete"
-    }
-  }
-});
-```
-
-### Manual Fallback: The Same Flow Without Mastra
-
-```typescript
-// If we pivot away from Mastra, the same learning flow becomes:
-// (lives in src/manual/orchestration/learning-session.ts)
-
-async function runLearningSession(
-  session: StudySession,
-  agents: AgentRegistry
-) {
-  // Ingest: single LLM call → .mm XML
-  const mmResult = await agents.get('mm-generator').execute(session.document);
-
-  // Parse: deterministic code → concepts + graph + tree
-  const parsed = mmParser.parse(mmResult.data);
-  const concepts = extractConcepts(parsed);
-  const edges = buildGraphEdges(parsed);
-  const mindmapTree = convertToTreeOutput(parsed);
-
-  // Store everything
-  await storeConcepts(session.id, concepts);
-  await storeEdges(session.id, edges);
-  await storeMindmap(session.id, mindmapTree);
-  await initializeUnderstandingState(session.id, concepts);
-
-  // Augment (if gaps detected from .mm)
-  const gaps = detectGaps(parsed);
-  if (gaps.length > 0) {
-    const augmented = await agents.get('web-search').execute(gaps);
-    mergeAugmentations(concepts, augmented.data);
-  }
-
-  // Generate flashcards
-  const flashcards = await agents.get('flashcard-generator').execute(concepts);
-
-  // Core loop: tree-walk default + orchestrator for judgment calls
-  let sessionActive = true;
-  while (sessionActive) {
-    // Default: next unmastered node in depth-first tree walk
-    const nextConcept = getNextTeachingTarget(parsed, session.graph);
-
-    if (!nextConcept) {
-      sessionActive = false; // All mastered
-      break;
-    }
-
-    // Orchestrator decides HOW to teach (approach, not sequence)
-    const decision = await agents.get('orchestrator').execute({
-      studentState: session.graph.serialize(),
-      currentConcept: nextConcept,
-      mode: session.learningMode,
-      lastEvent: session.lastEvent,
-    });
-
-    session.graph.updateConfidence(decision.data.understanding_update);
-
-    switch (decision.data.next_action.agent) {
-      case 'concept_explainer':
-        await runConceptChat(agents.get('concept-explainer'), decision.data.next_action.params);
-        break;
-      case 'flashcard_deck':
-        await runFlashcardReview(decision.data.next_action.params);
-        break;
-      case 'session_complete':
-        sessionActive = false;
-        break;
-    }
-  }
-}
-```
-
-**Both implementations call the same agents, use the same prompts, produce the same schemas.** The difference is just how the control flow is managed — Mastra's workflow graph vs. our own async loop.
-
-### Decision Checkpoints: When to Pivot
-
-| Signal | Action |
-|--------|--------|
-| Mastra works well, workflows feel natural | Stay with Mastra, deepen integration |
-| Mastra works but workflow graph is too rigid for dynamic routing | Keep Mastra for agent/tool primitives, replace workflow with our async loop |
-| Mastra has bugs/breaking changes that block us | Swap entire `src/mastra/` for manual implementation using Vercel AI SDK |
-| Mastra adds features we need (better evals, streaming improvements) | Deepen integration, reduce manual fallback surface |
-
-### What We Still Build Ourselves (Regardless of Framework)
-
-- **Prompts and domain templates** — these are our IP, not framework concerns
-- **Output schemas (Zod for JSON agents, XML validation for .mm generator)** — used by both Mastra and manual fallback
-- **Student Understanding Model logic** — the scoring, confidence calculations, and graph traversal
-- **.mm Parser** — deterministic XML parsing that derives concepts, edges, and teaching roadmap
-- **SM-2 spaced repetition algorithm** — pure business logic, not agent logic
+- **Prompts and domain templates** — our IP, framework-agnostic `.md` files
+- **Output schemas** — Zod for JSON agents, XML validation for .mm generator
+- **Student Understanding Model** — scoring, confidence calculations, graph traversal
+- **.mm Parser** — deterministic XML parsing: concepts, edges, teaching roadmap
+- **SM-2 spaced repetition** — pure business logic
 - **Frontend** — all React components and UI
 - **Supabase data layer** — primary persistence for all application data
 - **Agent interface definitions** — the `TasurAgent` abstraction that both implementations satisfy
@@ -1611,8 +1413,9 @@ class StudentGraph {
 |----------|-----------|
 | **Monorepo (Next.js full-stack)** | Solo developer. One repo, one deploy, one mental model. Split later if needed. |
 | **.mm-first pipeline (single source of truth)** | One .mm file drives everything: mindmap display, knowledge graph, concept registry, teaching sequence, flashcard anchoring. Eliminates drift between Parser output and Mindmap Generator output. One LLM call instead of two. Richer content at extraction time (leaf nodes contain actual teaching points, not thin metadata). |
-| **Mastra-first with manual fallback** | Use Mastra for agent plumbing (saves weeks), but behind our own `TasurAgent` interface. One env var (`AGENT_PROVIDER`) switches between Mastra and Vercel AI SDK (manual). Business logic (prompts, schemas, graph, .mm parser, SR) never imports Mastra. If Mastra fails us, we swap the adapter layer — not the product. |
-| **LLM strategy (Gemini dev → Claude/GPT production)** | Gemini free tier for development and testing, Claude/GPT for production (best quality). Model choice is env-var config (`LLM_PROVIDER`), never hardcoded in agents. All testing uses real API calls. |
+| **Vercel AI SDK as sole agent framework** | Mastra was evaluated and sunset 2026-03-29 (341 packages removed). `TasurAgent` / `AgentRegistry` interfaces are retained — framework-agnostic contracts proved their worth when swapping was needed. `agent-provider.ts` now directly returns `createManualRegistry()`, no toggle needed. |
+| **LLM strategy (Gemini 2.5 Pro/Flash via Vertex AI)** | Gemini 2.5 Pro for orchestrator and .mm generation (thinking budget: 5000 tokens). Gemini 2.5 Flash for specialist agents (fast, cheap structured output). Provider is env-var config (`LLM_PROVIDER`), never hardcoded — Anthropic and OpenAI also supported. |
+| **Go pipeline microservice on Railway** | Next.js Vercel 60s hard timeout causes silent failures on large documents (pipeline takes 60-120s+). Go service on Railway has no timeout. Next.js proxies upload routes to Go via `GO_SERVICE_URL`. PDFs always processed via Gemini vision (no heuristic text extraction — abandoned after hallucination issues). |
 | **Deterministic .mm Parser (not LLM)** | The .mm XML is parsed by code (`fast-xml-parser`), not another LLM call. Concept extraction, graph edge derivation, and MindmapTreeOutput conversion are all deterministic — zero cost, sub-millisecond, reproducible. |
 | **Tree-walk teaching sequence** | The .mm tree order IS the default teaching sequence. Depth-first traversal is deterministic code. The orchestrator LLM only intervenes for judgment calls (assessment evaluation, approach selection, non-standard routing). This cuts orchestrator calls from ~12 to ~8 per session. |
 | **Prompts as .md files** | Version-controllable, easy to iterate, readable. The prompts ARE the product — treat them as first-class code. The .mm Generator prompt is the most critical prompt in the system. |

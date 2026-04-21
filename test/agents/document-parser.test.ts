@@ -1,17 +1,19 @@
 /**
- * WHY: Integration tests for the Document Parser Agent — both Mastra and manual paths.
+ * WHY: Integration tests for the Document Parser Agent — manual (Vercel AI SDK) path.
  *
  * Each test passes a hardcoded DBMS normalization paragraph as a Buffer (simulating
  * a .txt upload) and asserts that the output passes Zod schema validation.
  * These tests require LLM_PROVIDER=gemini and GOOGLE_APPLICATION_CREDENTIALS to be set
  * in .env. They are skipped automatically when credentials are absent so the
  * CI pipeline can run without live credentials.
+ *
+ * Note: Mastra path removed 2026-03-29 (Mastra sunset).
+ * Note: DocumentParser is deprecated in favour of the .mm-first pipeline but retained for testing.
  */
 
 import { describe, expect, it } from 'vitest';
 
 import { ManualDocumentParserAgent } from '@/manual/agents/document-parser';
-import { MastraDocumentParserAgent } from '@/mastra/agents/document-parser';
 import type { DocumentParserInput } from '@/interfaces/registry';
 import { documentParserOutputSchema } from '@/lib/schemas/parser-output';
 
@@ -49,30 +51,6 @@ const TEST_INPUT: DocumentParserInput = {
 };
 
 const hasApiKey = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-
-describe.skipIf(!hasApiKey)('Document Parser Agent — Mastra path', () => {
-  it('produces output that passes Zod schema validation', async () => {
-    const agent = new MastraDocumentParserAgent();
-    const result = await agent.execute(TEST_INPUT);
-
-    expect(result.duration).toBeGreaterThan(0);
-    expect(result.usage.inputTokens).toBeGreaterThan(0);
-
-    // The core assertion — schema validation throws if the LLM output is malformed.
-    const validated = documentParserOutputSchema.safeParse(result.data);
-    expect(validated.success).toBe(true);
-
-    if (validated.success) {
-      expect(validated.data.concepts.length).toBeGreaterThan(0);
-      expect(validated.data.subject_detection.primary).toBeTruthy();
-      // Every concept must have a non-empty id and name.
-      for (const concept of validated.data.concepts) {
-        expect(concept.id).toBeTruthy();
-        expect(concept.name).toBeTruthy();
-      }
-    }
-  }, 60_000); // 60s timeout — LLM calls can be slow
-});
 
 describe.skipIf(!hasApiKey)('Document Parser Agent — manual path', () => {
   it('produces output that passes Zod schema validation', async () => {

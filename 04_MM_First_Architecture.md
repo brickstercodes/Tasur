@@ -1,5 +1,7 @@
 # Tasur — .mm-First Architecture Redesign
 
+> **Status — April 2026:** Migration **COMPLETE**. All four phases shipped. The .mm-first pipeline is the sole production path. Key implementation details that differed from this design document: (1) PDF/image extraction uses **Gemini vision exclusively** (heuristic text extraction abandoned after hallucination issues); (2) a **three-pass XML repair step** was added before parsing to handle malformed .mm output; (3) in production, the entire pipeline runs inside a **Go microservice** (not Next.js), embedded prompts at build time via `//go:embed`; (4) the Go mmparser.go mirrors the TypeScript mm-parser logic.
+
 ## Document Purpose
 
 This document describes a fundamental architectural change to Tasur's content pipeline: replacing the current multi-step extraction pipeline (Document Parser + Mindmap Generator as separate agents) with a single **.mm-first generation step** that produces a Freeplane-format mindmap as the **primary artifact** from which all other data structures (knowledge graph, concept registry, flashcard anchors, teaching roadmap) are derived.
@@ -208,7 +210,7 @@ The .mm XML is either:
 
 | Component | Current State | Change Required |
 |-----------|--------------|-----------------|
-| **Document Parser Agent** | Exists in both manual + mastra paths. Extracts flat concept list. | **REPLACED** by .mm Generator Agent. The file text extraction logic (pdf-parse, mammoth, etc.) stays — it's the LLM prompt and output schema that change. |
+| **Document Parser Agent** | Exists in manual path (deprecated, retained for testing). Extracted flat concept list. | **REPLACED** by .mm Generator Agent. The file text extraction logic (pdf-parse, mammoth, etc.) stays — it's the LLM prompt and output schema that changed. |
 | **Mindmap Generator Agent** | Exists in both paths. Takes Parser output, produces MindmapTreeOutput JSON. | **REMOVED.** Its job is now done by the .mm Generator in a single step. |
 | **.mm Generator Agent** | Does not exist. | **NEW.** Single agent that takes raw extracted text and produces Freeplane XML. Replaces both Document Parser and Mindmap Generator. |
 | **Concept Explainer Agent** | Exists and works. | **MINOR CHANGE.** Input now includes `leafContent` (richer teaching points from .mm) instead of `raw_content` (thin Parser output). The prompt may need slight adjustment to leverage the richer input. |
@@ -287,7 +289,7 @@ Upload --> Extract text --> .mm Generator Agent (LLM) --> .mm Parser (code)
 
 ### Learning Session Orchestration
 
-Both `src/manual/orchestration/learning-session.ts` and `src/mastra/workflows/learning-session.ts` need updating:
+`src/manual/orchestration/learning-session.ts` needs updating:
 
 **Current 4-phase flow:**
 1. Ingest: Parser Agent
@@ -398,36 +400,34 @@ This is deterministic code. The Orchestrator LLM is only called when:
 
 ## Migration Strategy
 
-### Phase 1: Build .mm Generator + Parser (no breaking changes)
+### Phase 1: Build .mm Generator + Parser ✓ DONE
 
-1. Create `src/agents/mm-generator/` with the new agent (both manual and mastra paths)
-2. Create `src/lib/mm-parser/` with the deterministic XML parser
-3. Create `src/prompts/base/mm-generator.md` prompt
-4. Add `fast-xml-parser` dependency
-5. Write tests: .mm XML --> DerivedConcept[] --> StudentGraphState --> MindmapTreeOutput
-6. Test against the three fixture files (normalization, transactions, ER modeling)
+1. ~~Create `src/agents/mm-generator/` with the new agent (both manual and mastra paths)~~ → Built in `src/manual/agents/mm-generator.ts`; Go version in `go-pipeline/mmgenerator.go`
+2. ~~Create `src/lib/mm-parser/`~~ → Built in `src/lib/mm-parser/` (TypeScript) and `go-pipeline/mmparser.go` (Go mirror)
+3. ~~Create `src/prompts/base/mm-generator.md`~~ → Built; Go version embedded in `go-pipeline/prompts/`
+4. ~~Add `fast-xml-parser`~~ → Added; three-pass XML repair added on top for malformed output handling
+5. Tests written against fixture files ✓
 
-### Phase 2: Wire into learning session (replaces current pipeline)
+### Phase 2: Wire into learning session ✓ DONE
 
-1. Update `learning-session.ts` (both paths) to use .mm Generator instead of Parser + Mindmap Generator
-2. Update `session-utils.ts`: `buildInitialGraphState()` now takes .mm XML input
-3. Update Flashcard Generator input to use .mm-derived concept content
-4. Update Orchestrator prompt to remove sequencing logic, add tree-walk awareness
-5. Run comparison tests: current pipeline vs .mm pipeline on same fixtures
+1. `learning-session.ts` uses .mm Generator ✓
+2. `buildInitialGraphState()` takes .mm XML input ✓
+3. Flashcard Generator uses .mm-derived concept content ✓
+4. Orchestrator prompt updated for tree-walk awareness ✓
+5. Domain overlays removed from mm-generator prompt (simplification) ✓
 
-### Phase 3: Clean up (remove deprecated code)
+### Phase 3: Clean up ✓ DONE
 
-1. Deprecate (don't delete yet) Document Parser and Mindmap Generator agents
-2. Update mock agents
-3. Update any API routes that reference Parser output directly
-4. Update documentation
+1. Document Parser and Mindmap Generator agents deprecated and removed ✓
+2. Mastra path removed entirely (2026-03-29) ✓
+3. API routes updated ✓
 
-### Phase 4: Prompt iteration (ongoing)
+### Phase 4: Prompt iteration ✓ ONGOING
 
-1. Run .mm Generator against all three fixture files
-2. Compare output quality: concept count, content richness, structure depth
-3. Track in eval log (see prompt iteration table below)
-4. Iterate on negative constraints and granularity rules
+1. .mm Generator runs in production against all document types ✓
+2. Gemini 2.5 Pro with 5000-token thinking budget for exhaustive concept enumeration ✓
+3. PDF always uses Gemini vision (text heuristic abandoned) ✓
+4. Negative constraints and granularity rules iterated through beta testing ✓
 
 ---
 
@@ -449,15 +449,16 @@ Track these metrics per iteration:
 
 ---
 
-## Risk Assessment
+## Risk Assessment (updated with outcomes)
 
-| Risk | Likelihood | Mitigation |
-|------|-----------|------------|
-| .mm XML generation is inconsistent (malformed XML) | Medium | Validate XML structure before parsing. Retry with stricter prompt on failure. Include complete worked example in prompt. |
-| Model produces flat trees (2 levels) instead of rich hierarchies | Medium | Negative constraint: "minimum 3 levels." Few-shot example shows 4-level depth. Temperature 0-0.1 for consistency. |
-| TRACKABLE attribution is inconsistent | Low-Medium | Explicit rules in prompt with positive and negative examples. Validate: every TRACKABLE node must have CONCEPT_ID. |
-| Large documents exceed context window | Low (for v0.1) | v0.1 targets individual chapters/units, not full textbooks. For v0.5, chunk large documents and generate .mm per chunk, then merge. |
-| Performance regression vs. current pipeline | Low | The .mm approach makes ONE LLM call instead of TWO. The .mm parsing is sub-millisecond code. Net performance should improve. |
+| Risk | Outcome | How It Was Resolved |
+|------|---------|---------------------|
+| .mm XML generation is inconsistent (malformed XML) | **Occurred** — especially unclosed `<node>` tags | Three-pass XML repair step added before parsing: pass 1 closes unclosed tags, pass 2 strips invalid attributes, pass 3 validates structural integrity. Retry path retained for complete failures. |
+| Model produces flat trees instead of rich hierarchies | **Partially occurred** — quality varies by document type | Negative constraints + few-shot example address this. Gemini 2.5 Pro thinking budget (5000 tokens) significantly improved depth vs. earlier models. |
+| TRACKABLE attribution is inconsistent | **Manageable** — occasional false trackables | Prompt rules enforce CONCEPT_ID requirement; parser skips TRACKABLE nodes without valid IDs. |
+| Large documents exceed context window | **Addressed proactively** — 175K char limit enforced | Text truncated at 175K characters before sending to generator. Sparse slide decks may lose tail content. Chunking deferred to v0.5. |
+| Performance regression vs. current pipeline | **Did not occur** — but latency is a concern | Pipeline takes 60-120s+ for large documents. This drove the Go service migration (Railway, no timeout). Next.js Vercel was the bottleneck, not the .mm approach itself. |
+| PDF hallucination (wrong text extracted) | **New risk discovered in production** | Heuristic PDF text extraction caused topic hallucinations (e.g., HCI → DC misidentification). Resolved by switching all PDFs to Gemini vision processing — no heuristic path. |
 
 ---
 

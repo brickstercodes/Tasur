@@ -1,5 +1,7 @@
 # Tasur — Feature Breakdown by Version
 
+> **Status — April 2026:** v0.1 is **COMPLETE**. All 10 planned features are built and deployed. Three additional features shipped beyond the original scope: session sharing (#11a), reCaptcha integration (#11b), and a Go pipeline microservice (#11c). Active beta is underway.
+
 ## Versioning Philosophy
 
 Each version must be **independently valuable** — a student should get real benefit from v0.1 even if we never build v0.5. We don't ship scaffolding; we ship usable learning experiences at every stage.
@@ -8,11 +10,13 @@ The guiding principle: **prove the core loop first, then expand modalities, then
 
 ---
 
-## v0.1 — "Prove the Thesis" (Solo build, ~6–8 weeks)
+## v0.1 — "Prove the Thesis" ✓ COMPLETE (shipped April 2026)
 
 **Goal:** A student uploads notes, gets a mindmap, has a concept-by-concept chat, and can practice with flashcards. Three phases of the five-phase flow, working end-to-end for theoretical engineering subjects.
 
 ### Core Features
+
+> All 10 features below are built and live. Additional shipped features appear after the main table.
 
 | # | Feature | Description | Why v0.1 |
 |---|---------|-------------|----------|
@@ -46,19 +50,28 @@ The guiding principle: **prove the core loop first, then expand modalities, then
 - Any social/community features
 - Payment/subscription system
 
-### Tech Stack (v0.1)
-- **Frontend:** Next.js (React) — fast to build, good ecosystem for interactive components
-- **Mindmap rendering:** react-flow, d3, or markmap for interactive mindmaps
-- **Backend:** Next.js API routes + server actions (keep it monorepo for solo speed)
-- **Database:** Supabase (PostgreSQL) for user data, understanding model state, and file storage
-- **Auth:** BetterAuth — handles auth independently of Supabase, avoids India-region access issues. Proxy-friendly deployment.
-- **Agent Framework:** Mastra (primary) + Vercel AI SDK (fallback). Dual-path architecture — one env var switches between them. All business logic is framework-agnostic behind a `TasurAgent` interface.
-- **LLM Orchestrator:** Claude / GPT-4 class model via API
-- **Specialist Agents:** Smaller, faster models (Claude Haiku / GPT-4o-mini class) with structured output
-- **File parsing:** Libraries for PDF, DOCX, image OCR extraction
-- **.mm parsing:** `fast-xml-parser` for deterministic Freeplane XML parsing — derives concepts, graph edges, and visual tree from the .mm single source of truth
-- **Hosting:** Vercel (frontend) + self-hosted or proxied Supabase instance for reliability in target regions
-- **Dev Tooling:** Prettier (formatting), ESLint + @typescript-eslint (linting), Divio documentation system, ADRs for architectural decisions
+### Tech Stack (v0.1 — as built)
+- **Frontend:** Next.js 16 (App Router, React 19, TypeScript, Tailwind v4)
+- **Mindmap rendering:** ReactFlow 11 — interactive, collapsible tree with custom node/edge types, balanced-tree layout algorithm, keyboard shortcuts
+- **Backend:** Next.js API routes (thin proxies for upload; full logic for chat/flashcards)
+- **Pipeline Microservice:** Go service on Railway — handles long-running document processing (text extraction → .mm generation → flashcard generation → DB writes). Bypasses Vercel's 60s hard timeout. Next.js proxies `/api/sessions/upload` and document addition routes to this service via `GO_SERVICE_URL` env var.
+- **Database:** Supabase (PostgreSQL + Storage) for all application data
+- **Auth:** BetterAuth 1.5 — manages auth independently of Supabase Auth, direct PostgreSQL connection via pg pool. Avoids India-region Supabase Auth reliability issues. Google OAuth optional.
+- **Agent Framework:** Vercel AI SDK 6 (Mastra was sunset on 2026-03-29 — 341 packages removed). `TasurAgent` interfaces retained for future framework pivots. `agent-provider.ts` now directly returns `createManualRegistry()`.
+- **LLM Orchestrator:** Gemini 2.5 Pro via Vertex AI (high-capability reasoning, tree-aware routing)
+- **Specialist Agents:** Gemini 2.5 Flash via Vertex AI (fast, cost-efficient structured generation). Provider configurable via `LLM_PROVIDER` env var — Anthropic and OpenAI also supported.
+- **File parsing:** pdf-parse (text PDFs), mammoth (DOCX), tesseract.js (OCR for images). PDFs and images always processed through Gemini vision for accuracy — heuristic text extraction abandoned after hallucination issues.
+- **.mm parsing:** `fast-xml-parser` for deterministic Freeplane XML parsing. Three-pass XML repair step handles malformed output before parsing.
+- **Hosting:** Railway — Next.js standalone container + Go pipeline service as separate Railway service. Supabase managed instance.
+- **Dev Tooling:** Prettier, ESLint + @typescript-eslint, Vitest, ADRs for architectural decisions
+
+### Additional Features Shipped (Beyond v0.1 Plan)
+
+| # | Feature | Description |
+|---|---------|-------------|
+| 11a | **Session Sharing** | Share a study session with other users via a share code. Owner generates link; recipient accepts and gets full access (chat, flashcards, mindmap). `share_links` + `session_shares` tables, `resolveSessionAccess()` for owner/shared-user verification. |
+| 11b | **reCaptcha Integration** | Optional reCaptcha v3 on uploads. User can toggle off. Prevents abuse without blocking legitimate users. `recaptcha.ts` verification with configurable threshold. |
+| 11c | **Live Processing Tiles** | Dashboard shows in-progress upload sessions as animated tiles with real-time status. `session_status` enum includes `processing` state; dashboard polls until `active`. Implemented via migration 6. |
 
 ---
 
@@ -127,11 +140,11 @@ These features are on the roadmap but intentionally unscheduled. They're capture
 
 ## Version Summary
 
-| Version | Timeline | Core Delivery | Key Metric |
-|---------|----------|---------------|------------|
-| **v0.1** | Weeks 1–8 | Upload → Mindmap → Chat → Flashcards | "Does a student learn better with Tasur than without?" |
-| **v0.5** | Weeks 9–14 | + Interactive visuals, exam sim, progress tracking | "Do students come back voluntarily?" |
-| **v1.0** | Weeks 15–22 | + Coding track, Excalidraw, payments, onboarding | "Will students pay for this?" |
+| Version | Status | Core Delivery | Key Metric |
+|---------|--------|---------------|------------|
+| **v0.1** | ✓ **COMPLETE** (April 2026) | Upload → Mindmap → Chat → Flashcards + Session Sharing | "Does a student learn better with Tasur than without?" |
+| **v0.5** | Planned | + Interactive visuals, exam sim, progress tracking | "Do students come back voluntarily?" |
+| **v1.0** | Planned | + Coding track, Excalidraw, payments, onboarding | "Will students pay for this?" |
 | **v2.0+** | TBD | Platform features, collaboration, mobile, integrations | "Can this scale beyond engineering students?" |
 
 ---
