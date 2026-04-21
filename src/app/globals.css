@@ -11,17 +11,9 @@
   color: var(--text);
 }
 
-/* Hide native cursor sitewide on pointer devices.
-   CustomCursor renders the Tasur nib SVG instead. */
-@media (hover: hover) and (pointer: fine) {
-  html,
-  body,
-  *,
-  *::before,
-  *::after {
-    cursor: none !important;
-  }
-}
+/* cursor:none is injected dynamically by CustomCursor.tsx only when the
+   custom cursor is enabled. Removing it from here so the native cursor
+   correctly reappears when the user switches to system cursor in Settings. */
 
 :root {
   zoom: 1.12;
