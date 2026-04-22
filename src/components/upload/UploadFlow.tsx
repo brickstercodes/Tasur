@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 import { SteadyIcon, FastIcon } from '@/components/ui/ModeIcons';
 import { saveDocToCache } from '@/lib/doc-cache';
 import { startBackgroundUpload } from '@/lib/upload-store';
+import { getDirectDocumentUploadTarget } from '@/lib/upload-direct';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -181,11 +182,14 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
     setProgressPercent(3);
     setProgressLabel('Starting…');
 
-    const endpoint = `/api/sessions/${existingSessionId}/documents`;
+    // Try direct-to-Go upload first to bypass Vercel's 4.5 MB payload limit.
+    const direct = await getDirectDocumentUploadTarget(existingSessionId);
+    const endpoint = direct?.url ?? `/api/sessions/${existingSessionId}/documents`;
+    const extraHeaders = direct?.headers ?? {};
 
     let response: Response;
     try {
-      response = await fetch(endpoint, { method: 'POST', body: formData });
+      response = await fetch(endpoint, { method: 'POST', body: formData, headers: extraHeaders });
     } catch {
       setUploadState('error');
       setErrorMessage('Network error — check your connection and try again.');

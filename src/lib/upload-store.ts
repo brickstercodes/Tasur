@@ -9,6 +9,8 @@
  * placeholder tiles with live progress.
  */
 
+import { getDirectUploadTarget } from '@/lib/upload-direct';
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface ActiveUpload {
@@ -60,10 +62,15 @@ export function removeUpload(sessionId: string) {
 
 // ── Background SSE reader ────────────────────────────────────────────────────
 
+// ── Background SSE reader ────────────────────────────────────────────────────
+
 /**
  * Starts a background upload. Fires the POST, reads SSE events, and updates
  * the store. Returns a promise that resolves with the sessionId on success,
  * or rejects on error.
+ *
+ * Tries direct-to-Go upload first (no Vercel payload limit). Falls back to
+ * the Next.js proxy if UPLOAD_TOKEN_SECRET is not configured.
  *
  * The caller can navigate away immediately — the reader keeps running.
  */
@@ -87,10 +94,17 @@ export function startBackgroundUpload(
     });
     notify();
 
-    fetch(endpoint, { method: 'POST', body: formData })
+    // Try direct upload first; fall back to Vercel proxy on failure/unavailability.
+    getDirectUploadTarget()
+      .then((direct) => {
+        const url = direct?.url ?? endpoint;
+        const extraHeaders = direct?.headers ?? {};
+        return fetch(url, { method: 'POST', body: formData, headers: extraHeaders });
+      })
       .then(async (response) => {
         if (!response.ok || !response.body) {
           const text = await response.text().catch(() => '');
+          // Vercel HTML error pages aren't useful to show the user.
           const isHtml = text.trimStart().startsWith('<');
           const msg = (!isHtml && text) || `Server error (${response.status})`;
           uploads.delete(tempId);
