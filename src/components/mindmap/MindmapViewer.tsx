@@ -1479,7 +1479,7 @@ function ExportNotesButton({ tree }: { tree: MindmapTreeOutput }) {
 
   const handlePdf = () => {
     setIsOpen(false);
-    exportAsPdf(tree);
+    void exportAsPdf(tree);
   };
 
   return (

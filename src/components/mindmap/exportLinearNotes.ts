@@ -518,22 +518,13 @@ const CSS_PRINT = `
   }
 
   .doc-brand-wordmark {
-    display: inline-flex;
-    align-items: center;
+    display: inline-block;
     font-family: 'Instrument Serif', Georgia, serif;
     font-size: 22px;
     font-weight: 400;
     color: #1c1917;
-    letter-spacing: -0.01em;
+    letter-spacing: 0.08em;
     line-height: 1;
-    gap: 1px;
-  }
-
-  .doc-brand-wordmark img {
-    display: inline-block;
-    vertical-align: middle;
-    position: relative;
-    top: -1px;
   }
 
   /* ── Page header ─────────────────────────────────────────────── */
@@ -750,26 +741,6 @@ const CSS_PRINT = `
 
   .study-cue-text { font-size: 12px; color: var(--text-muted); font-style: italic; line-height: 1.6; }
 
-  /* ── Footer ──────────────────────────────────────────────────── */
-  .page-footer {
-    padding: 20px 48px 32px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .footer-logo {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    color: var(--text-dim);
-  }
-
-  .footer-note { font-size: 10px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.03em; }
-
   /* ── Print-only: hide download hint ─────────────────────────── */
   @media print {
     .download-hint { display: none !important; }
@@ -801,12 +772,7 @@ function buildDocumentBody(tree: MindmapTreeOutput, dateStr: string): string {
 
   <main class="content">
     ${sectionsHtml}
-  </main>
-
-  <footer class="page-footer">
-    <span class="footer-logo">TASUR</span>
-    <span class="footer-note">${escape(tree.title)} · ${escape(tree.subject)}</span>
-  </footer>`;
+  </main>`;
 }
 
 // ── HTML export ───────────────────────────────────────────────────────────────
@@ -843,98 +809,133 @@ export function exportAsHtml(tree: MindmapTreeOutput): void {
 // Keep old name as alias so any other callers don't break.
 export const exportLinearNotes = exportAsHtml;
 
-// ── PDF export — browser print engine with CSS page-break rules ───────────────
-// Opens the formatted document in a popup window and calls print() immediately.
-// The browser's print engine respects CSS break-inside: avoid on .interior and
-// .leaf-list, so page breaks never happen mid-subsection. print-color-adjust:
-// exact ensures backgrounds (watermark, accent colors, tinted surfaces) render
-// fully — no washed-out text, no stripped backgrounds.
-//
-// To save as PDF: in the print dialog choose "Save as PDF" as the destination.
-export function exportAsPdf(tree: MindmapTreeOutput): void {
+// ── PDF export — html2canvas + jsPDF with DOM-measured clean cuts ─────────────
+// Renders the full document once into an off-screen container so we can:
+//   1. Measure the offsetTop of every .interior / .leaf-list / .branch element
+//      — these are safe cut points where the browser wouldn't split content.
+//   2. Capture the whole document as a single canvas via html2canvas.
+//   3. Slice the canvas only at those safe cut points while packing A4 pages.
+// This gives auto-download (pdf.save) with clean page breaks.
+export async function exportAsPdf(tree: MindmapTreeOutput): Promise<void> {
+  const [{ jsPDF }, html2canvas] = await Promise.all([
+    import('jspdf'),
+    import('html2canvas').then(m => m.default),
+  ]);
+
   const dateStr = new Date().toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
-  const logoUrl = `${window.location.origin}/logo.svg`;
-  const logoH = 23;
-  const logoW = Math.round(logoH * (534 / 908));
 
   const sectionsHtml = tree.children
-    .map((branch, i) => {
-      const color = BRANCH_PALETTE[i % BRANCH_PALETTE.length];
-      return renderNode(branch, 1, color, 'root');
-    })
+    .map((branch, i) => renderNode(branch, 1, BRANCH_PALETTE[i % BRANCH_PALETTE.length], 'root'))
     .join('\n');
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escape(tree.title)} — Tasur Notes</title>
-  <style>${CSS_PRINT}</style>
-</head>
-<body>
-  <p class="download-hint" style="background:#1c1917;color:#faf8f4;font-family:monospace;font-size:12px;text-align:center;padding:10px 16px;margin:0;letter-spacing:0.03em;">
-    In the print dialog → change Destination to <strong>Save as PDF</strong>
-  </p>
+  const innerHtml = `
+    <header class="doc-brand">
+      <span class="doc-brand-wordmark">Tasur</span>
+    </header>
+    <div class="page-header">
+      <div class="subject-badge">${escape(tree.subject)}</div>
+      <h1 class="doc-title">${escape(tree.title)}</h1>
+      <div class="doc-meta">Generated ${dateStr} · ${tree.metadata.total_nodes} concepts · ${tree.children.length} sections</div>
+    </div>
+    <div class="toc">
+      <div class="toc-heading">Contents</div>
+      ${renderToc(tree)}
+    </div>
+    <main class="content">${sectionsHtml}</main>`;
 
-  <header class="doc-brand">
-    <span class="doc-brand-wordmark">Tas<img src="${escape(logoUrl)}" width="${logoW}" height="${logoH}" alt="" /><span>r</span></span>
-  </header>
+  // ── Off-screen render ────────────────────────────────────────────────────────
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;width:820px;max-width:820px;overflow:hidden;pointer-events:none;z-index:-1;';
+  wrapper.innerHTML = `<style>${CSS_PRINT}</style>${innerHtml}`;
+  document.body.appendChild(wrapper);
 
-  <div class="page-header">
-    <div class="subject-badge">${escape(tree.subject)}</div>
-    <h1 class="doc-title">${escape(tree.title)}</h1>
-    <div class="doc-meta">Generated ${dateStr} · ${tree.metadata.total_nodes} concepts · ${tree.children.length} sections</div>
-  </div>
+  await document.fonts.ready;
+  await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
-  <div class="toc">
-    <div class="toc-heading">Contents</div>
-    ${renderToc(tree)}
-  </div>
-
-  <main class="content">
-    ${sectionsHtml}
-  </main>
-
-  <footer class="page-footer">
-    <span class="footer-logo">TASUR</span>
-    <span class="footer-note">${escape(tree.title)} · ${escape(tree.subject)}</span>
-  </footer>
-
-  <script>
-    // Wait for fonts + images then immediately open the print dialog.
-    document.fonts.ready.then(function() {
-      var imgs = document.querySelectorAll('img');
-      var pending = imgs.length;
-      if (pending === 0) { window.print(); return; }
-      function onLoad() { if (--pending === 0) window.print(); }
-      imgs.forEach(function(img) {
-        if (img.complete) { onLoad(); }
-        else { img.addEventListener('load', onLoad); img.addEventListener('error', onLoad); }
-      });
-    });
-  </script>
-</body>
-</html>`;
-
-  const popup = window.open('', '_blank', 'width=960,height=800,scrollbars=yes');
-  if (!popup) {
-    // Popup was blocked — fall back to same-tab blob download of the HTML
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${tree.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-notes.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    return;
+  // ── Measure safe cut points in DOM pixels ────────────────────────────────────
+  // We collect the top edge of every .branch, .interior, and .leaf-list element.
+  // These boundaries are where the content naturally "wants" to break — so we
+  // only ever cut the canvas at these positions, never mid-paragraph or mid-list.
+  function measureTop(el: HTMLElement): number {
+    let top = 0;
+    let cur: HTMLElement | null = el;
+    while (cur && cur !== wrapper) { top += cur.offsetTop; cur = cur.offsetParent as HTMLElement | null; }
+    return top;
   }
 
-  popup.document.open();
-  popup.document.write(html);
-  popup.document.close();
+  const safeBreaksDom = new Set<number>([0]);
+  for (const sel of ['.branch', '.interior']) {
+    for (const el of wrapper.querySelectorAll<HTMLElement>(sel)) {
+      safeBreaksDom.add(measureTop(el));
+    }
+  }
+  const domH = wrapper.scrollHeight;
+  safeBreaksDom.add(domH);
+  const sortedBreaksDom = [...safeBreaksDom].sort((a, b) => a - b);
+
+  // ── Capture full document ────────────────────────────────────────────────────
+  let canvas: HTMLCanvasElement;
+  try {
+    canvas = await html2canvas(wrapper, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#faf8f4',
+      width: 820,
+      windowWidth: 820,
+      logging: false,
+    });
+  } finally {
+    document.body.removeChild(wrapper);
+  }
+
+  // Scale DOM break points to canvas pixels (scale=2 → multiply by 2)
+  const px = (domY: number) => Math.round((domY / domH) * canvas.height);
+  const breaksPx = sortedBreaksDom.map(px);
+
+  // ── Slice canvas at safe cut points and pack onto A4 pages ───────────────────
+  const A4_W_MM = 210;
+  const A4_H_MM = 297;
+  const PAGE_H_PX = Math.floor((A4_H_MM / A4_W_MM) * canvas.width);
+
+  function sliceCanvas(fromPx: number, toPx: number): HTMLCanvasElement {
+    const dst = document.createElement('canvas');
+    dst.width = canvas.width;
+    dst.height = Math.max(1, toPx - fromPx);
+    dst.getContext('2d')!.drawImage(canvas, 0, -fromPx);
+    return dst;
+  }
+
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  let py = 0;  // canvas-px filled on current page
+  let sy = 0;  // read cursor in the big canvas
+
+  while (sy < canvas.height) {
+    const fits = breaksPx.filter(b => b > sy && b <= sy + (PAGE_H_PX - py));
+
+    let cut: number;
+    if (fits.length > 0) {
+      cut = fits[fits.length - 1];
+    } else if (py > 0) {
+      // Nothing fits in the leftover space — open a fresh page and retry
+      pdf.addPage(); py = 0; continue;
+    } else {
+      // Even one block overflows a full page — cut at the next break anyway
+      const nxt = breaksPx.find(b => b > sy);
+      cut = nxt ?? Math.min(sy + PAGE_H_PX, canvas.height);
+    }
+
+    const s = sliceCanvas(sy, cut);
+    pdf.addImage(
+      s.toDataURL('image/jpeg', 0.93), 'JPEG',
+      0, (py / canvas.width) * A4_W_MM,
+      A4_W_MM, (s.height / canvas.width) * A4_W_MM,
+    );
+    sy = cut;
+    py += s.height;
+    if (py >= PAGE_H_PX && sy < canvas.height) { pdf.addPage(); py = 0; }
+  }
+
+  pdf.save(`${tree.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-notes.pdf`);
 }
