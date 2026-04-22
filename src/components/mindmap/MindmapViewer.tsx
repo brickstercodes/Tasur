@@ -1459,7 +1459,6 @@ function ToolbarDivider() {
 
 function ExportNotesButton({ tree }: { tree: MindmapTreeOutput }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1478,21 +1477,15 @@ function ExportNotesButton({ tree }: { tree: MindmapTreeOutput }) {
     setIsOpen(false);
   };
 
-  const handlePdf = async () => {
-    setPdfLoading(true);
+  const handlePdf = () => {
     setIsOpen(false);
-    try {
-      await exportAsPdf(tree);
-    } finally {
-      setPdfLoading(false);
-    }
+    exportAsPdf(tree);
   };
 
   return (
     <div ref={popoverRef} style={{ position: 'relative', display: 'inline-flex' }}>
       <button
         onClick={() => setIsOpen((p) => !p)}
-        disabled={pdfLoading}
         title="Export as linear notes"
         style={{
           display: 'inline-flex',
@@ -1503,19 +1496,19 @@ function ExportNotesButton({ tree }: { tree: MindmapTreeOutput }) {
           background: isOpen
             ? 'color-mix(in srgb, var(--primary) 12%, var(--toolbar-bg))'
             : 'transparent',
-          color: pdfLoading ? 'var(--text-dim)' : 'var(--text-muted)',
+          color: 'var(--text-muted)',
           padding: '7px 12px',
           fontSize: 10,
           fontWeight: 700,
           letterSpacing: '0.04em',
           textTransform: 'uppercase' as const,
           whiteSpace: 'nowrap' as const,
-          cursor: pdfLoading ? 'wait' : 'pointer',
+          cursor: 'pointer',
           flexShrink: 0,
           transition: 'background 0.1s, border-color 0.1s, color 0.1s',
         }}
       >
-        {pdfLoading ? '…' : '↓'} Notes
+        ↓ Notes
       </button>
 
       {isOpen && (

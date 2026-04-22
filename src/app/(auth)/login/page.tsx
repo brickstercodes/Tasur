@@ -21,6 +21,8 @@ import { AuthInput } from '@/components/auth-input';
 import { signIn } from '@/lib/auth-client';
 import { getRecaptchaToken, verifyRecaptcha } from '@/lib/recaptcha';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -33,20 +35,22 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    // reCAPTCHA v3 verification (non-blocking on infra errors)
-    try {
-      const token = await getRecaptchaToken('login');
-      if (token) {
-        const result = await verifyRecaptcha(token, 'login');
-        if (!result.ok) {
-          setErrorMessage(result.message ?? 'Verification failed — please try again.');
-          setIsSubmitting(false);
-          return;
+    if (!isDev) {
+      // reCAPTCHA v3 verification (non-blocking on infra errors)
+      try {
+        const token = await getRecaptchaToken('login');
+        if (token) {
+          const result = await verifyRecaptcha(token, 'login');
+          if (!result.ok) {
+            setErrorMessage(result.message ?? 'Verification failed — please try again.');
+            setIsSubmitting(false);
+            return;
+          }
         }
+      } catch {
+        // reCAPTCHA failed to run — don't block the user
+        console.warn('reCAPTCHA verification skipped due to error');
       }
-    } catch {
-      // reCAPTCHA failed to run — don't block the user
-      console.warn('reCAPTCHA verification skipped due to error');
     }
 
     const { error } = await signIn.email({
@@ -62,13 +66,6 @@ export default function LoginPage() {
     }
 
     router.push('/dashboard');
-  }
-
-  async function handleGoogleSignIn() {
-    await signIn.social({
-      provider: 'google',
-      callbackURL: '/dashboard',
-    });
   }
 
   return (
@@ -125,24 +122,6 @@ export default function LoginPage() {
             {isSubmitting ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t" style={{ borderColor: 'var(--border)' }} />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="px-2" style={{ background: 'var(--bg)', color: 'var(--text-muted)' }}>or</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          className="w-full rounded-md px-4 py-2 text-sm font-medium"
-          style={{ border: '1px solid var(--border)', background: 'color-mix(in srgb, var(--surface) 88%, var(--bg))', color: 'var(--text)' }}
-        >
-          Continue with Google
-        </button>
       </div>
     </div>
   );

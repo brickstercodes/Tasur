@@ -19,6 +19,8 @@ import { AuthInput } from '@/components/auth-input';
 import { signUp } from '@/lib/auth-client';
 import { getRecaptchaToken, verifyRecaptcha } from '@/lib/recaptcha';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export default function SignupPage() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -32,20 +34,22 @@ export default function SignupPage() {
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    // reCAPTCHA v3 verification (non-blocking on infra errors)
-    try {
-      const token = await getRecaptchaToken('signup');
-      if (token) {
-        const result = await verifyRecaptcha(token, 'signup');
-        if (!result.ok) {
-          setErrorMessage(result.message ?? 'Verification failed — please try again.');
-          setIsSubmitting(false);
-          return;
+    if (!isDev) {
+      // reCAPTCHA v3 verification (non-blocking on infra errors)
+      try {
+        const token = await getRecaptchaToken('signup');
+        if (token) {
+          const result = await verifyRecaptcha(token, 'signup');
+          if (!result.ok) {
+            setErrorMessage(result.message ?? 'Verification failed — please try again.');
+            setIsSubmitting(false);
+            return;
+          }
         }
+      } catch {
+        // reCAPTCHA failed to run — don't block the user
+        console.warn('reCAPTCHA verification skipped due to error');
       }
-    } catch {
-      // reCAPTCHA failed to run — don't block the user
-      console.warn('reCAPTCHA verification skipped due to error');
     }
 
     const { error } = await signUp.email({

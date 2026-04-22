@@ -465,15 +465,15 @@ const CSS = `
   }
 `;
 
-// ── PDF-specific light theme CSS ──────────────────────────────────────────────
-// Used only for PDF rendering — warm paper tones, easier on printers.
-// The SVG background encodes a tiled diagonal "TASUR" watermark without any
-// extra DOM nodes, so html2canvas captures it automatically.
+// ── Print-engine CSS (popup window approach) ──────────────────────────────────
+// Light theme with print-color-adjust: exact so backgrounds and accent colors
+// survive the browser print pipeline. break-inside: avoid on interior elements
+// prevents page cuts mid-subsection without needing html2canvas.
 
 const WATERMARK_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><text x='130' y='130' font-family='monospace' font-size='22' font-weight='900' letter-spacing='6' fill='rgba(0,0,0,0.045)' text-anchor='middle' dominant-baseline='middle' transform='rotate(-45 130 130)'>TASUR</text></svg>`;
 const WATERMARK_URL = `url("data:image/svg+xml,${encodeURIComponent(WATERMARK_SVG)}")`;
 
-const CSS_PDF = `
+const CSS_PRINT = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Instrument+Serif&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -484,12 +484,15 @@ const CSS_PDF = `
     --surface2:  #ece6dd;
     --border:    rgba(0,0,0,0.09);
     --text:      #1c1917;
-    --text-muted:#5a4f48;
-    --text-dim:  #9a8f88;
+    --text-muted:#4a3f38;
+    --text-dim:  #7a6f68;
     --radius:    10px;
   }
 
-  html { scroll-behavior: smooth; }
+  html, body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 
   body {
     background: var(--bg);
@@ -497,17 +500,49 @@ const CSS_PDF = `
     background-repeat: repeat;
     color: var(--text);
     font-family: 'Inter', system-ui, sans-serif;
-    font-size: 15px;
+    font-size: 14px;
     line-height: 1.75;
     -webkit-font-smoothing: antialiased;
     padding: 0;
-    width: 820px;
   }
 
+  @page { size: A4; margin: 12mm 16mm; }
+
+  /* ── Brand header ───────────────────────────────────────────── */
+  .doc-brand {
+    padding: 14px 48px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .doc-brand-wordmark {
+    display: inline-flex;
+    align-items: center;
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: #1c1917;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    gap: 1px;
+  }
+
+  .doc-brand-wordmark img {
+    display: inline-block;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+  }
+
+  /* ── Page header ─────────────────────────────────────────────── */
   .page-header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 56px 48px 48px;
+    padding: 40px 48px 36px;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   .subject-badge {
@@ -521,30 +556,33 @@ const CSS_PDF = `
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 3px 8px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
 
   .doc-title {
     font-family: 'Playfair Display', Georgia, serif;
-    font-size: 40px;
+    font-size: 36px;
     font-weight: 700;
     line-height: 1.2;
     color: var(--text);
     letter-spacing: -0.02em;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
   .doc-meta {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-dim);
     font-family: 'JetBrains Mono', monospace;
     letter-spacing: 0.04em;
   }
 
+  /* ── Table of contents ───────────────────────────────────────── */
   .toc {
     background: var(--surface2);
     border-bottom: 1px solid var(--border);
-    padding: 32px 48px;
+    padding: 24px 48px;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   .toc-heading {
@@ -554,24 +592,24 @@ const CSS_PDF = `
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--text-dim);
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
 
-  .toc-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .toc-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
 
   .toc-link {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 10px;
-    border-radius: 6px;
+    padding: 6px 8px;
+    border-radius: 5px;
     text-decoration: none;
     color: var(--text-muted);
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 500;
   }
 
-  .toc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .toc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .toc-label { flex: 1; }
 
   .toc-count {
@@ -581,26 +619,33 @@ const CSS_PDF = `
     letter-spacing: 0.04em;
   }
 
-  .content { padding: 0 48px 80px; }
+  /* ── Content wrapper ────────────────────────────────────────── */
+  .content { padding: 0 48px 40px; }
 
-  .branch { padding: 48px 0 32px; border-bottom: 1px solid var(--border); }
+  /* ── Top-level branch sections ──────────────────────────────── */
+  .branch {
+    padding: 36px 0 24px;
+    border-bottom: 1px solid var(--border);
+  }
   .branch:last-child { border-bottom: none; }
 
-  .branch-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+  .branch-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 14px; }
 
   .branch-accent-bar {
     width: 3px;
-    min-height: 36px;
+    min-height: 32px;
     border-radius: 2px;
     background: var(--branch-color);
     flex-shrink: 0;
     margin-top: 4px;
     opacity: 0.85;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   .branch-title {
     font-family: 'Playfair Display', Georgia, serif;
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 600;
     color: var(--text);
     line-height: 1.3;
@@ -608,17 +653,23 @@ const CSS_PDF = `
   }
 
   .branch-content {
-    font-size: 14.5px;
+    font-size: 13.5px;
     color: var(--text-muted);
     line-height: 1.8;
-    margin-left: 19px;
-    margin-bottom: 20px;
-    max-width: 640px;
+    margin-left: 17px;
+    margin-bottom: 16px;
+    max-width: 620px;
   }
 
-  .branch-children { margin-left: 19px; margin-top: 24px; display: flex; flex-direction: column; }
+  .branch-children { margin-left: 17px; margin-top: 20px; display: flex; flex-direction: column; }
 
-  .interior { padding: 20px 0 8px; border-top: 1px solid var(--border); }
+  /* ── Interior nodes — never break mid-subsection ────────────── */
+  .interior {
+    padding: 16px 0 6px;
+    border-top: 1px solid var(--border);
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .interior:first-child { border-top: none; }
 
   .interior-heading {
@@ -626,59 +677,82 @@ const CSS_PDF = `
     font-weight: 600;
     color: var(--text);
     letter-spacing: -0.01em;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
   }
 
-  .depth-2 .interior-heading { font-size: 16px; }
-  .depth-3 .interior-heading { font-size: 14px; }
-  .depth-4 .interior-heading, .depth-5 .interior-heading { font-size: 13px; font-weight: 500; }
+  .depth-2 .interior-heading { font-size: 15px; }
+  .depth-3 .interior-heading { font-size: 13.5px; }
+  .depth-4 .interior-heading, .depth-5 .interior-heading { font-size: 12.5px; font-weight: 500; }
 
   .interior-content {
-    font-size: 13.5px;
+    font-size: 13px;
     color: var(--text-muted);
     line-height: 1.75;
-    margin-bottom: 10px;
-    max-width: 620px;
+    margin-bottom: 8px;
+    max-width: 600px;
   }
 
   .interior-children {
-    margin-left: 16px;
-    margin-top: 8px;
-    border-left: 2px solid var(--border);
-    padding-left: 18px;
+    margin-left: 14px;
+    margin-top: 6px;
+    border-left: 1px solid var(--border);
+    padding-left: 16px;
     display: flex;
     flex-direction: column;
   }
 
-  .leaf-list { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
+  /* ── Leaf items — keep lists together ───────────────────────── */
+  .leaf-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 6px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 
-  .leaf-item { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; }
+  .leaf-item { display: flex; align-items: baseline; gap: 7px; padding: 2px 0; }
 
-  .leaf-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; opacity: 0.7; margin-top: 2px; }
+  .leaf-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    opacity: 0.7;
+    margin-top: 2px;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 
-  .leaf-label { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+  .leaf-label { font-size: 12.5px; color: var(--text-muted); line-height: 1.6; }
 
-  .leaf-cue { font-size: 11px; color: var(--text-dim); font-style: italic; margin-left: 4px; }
+  .leaf-cue { font-size: 11px; color: var(--text-dim); font-style: italic; margin-left: 3px; }
 
+  /* ── Study cue ──────────────────────────────────────────────── */
   .study-cue {
     display: flex;
     align-items: flex-start;
     gap: 8px;
     background: rgba(var(--branch-rgb, 100,80,60), 0.07);
     border: 1px solid rgba(var(--branch-rgb, 100,80,60), 0.18);
-    border-radius: 7px;
-    padding: 10px 14px;
-    margin-top: 10px;
-    margin-bottom: 6px;
-    max-width: 600px;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    margin-bottom: 4px;
+    max-width: 580px;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
-  .study-cue-icon { color: var(--branch-color, var(--text-dim)); font-size: 12px; flex-shrink: 0; opacity: 0.8; line-height: 1.7; }
+  .study-cue-icon { color: var(--branch-color, var(--text-dim)); font-size: 11px; flex-shrink: 0; opacity: 0.8; line-height: 1.7; }
 
-  .study-cue-text { font-size: 12.5px; color: var(--text-muted); font-style: italic; line-height: 1.65; }
+  .study-cue-text { font-size: 12px; color: var(--text-muted); font-style: italic; line-height: 1.6; }
 
+  /* ── Footer ──────────────────────────────────────────────────── */
   .page-footer {
-    padding: 24px 48px 40px;
+    padding: 20px 48px 32px;
     border-top: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -688,43 +762,18 @@ const CSS_PDF = `
 
   .footer-logo {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
     letter-spacing: 0.08em;
     color: var(--text-dim);
   }
 
-  .footer-note { font-size: 11px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.03em; }
+  .footer-note { font-size: 10px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.03em; }
 
-  /* ── Brand header ───────────────────────────────────────────── */
-  .doc-brand {
-    padding: 16px 48px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-  }
-
-  /* Use a block flex container so every child (spans + img) is a flex item —
-     html2canvas renders block-flex reliably, unlike inline-flex + vertical-align. */
-  .doc-brand-wordmark {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0;
-    width: fit-content;
-  }
-
-  .doc-brand-letter {
-    font-family: 'Instrument Serif', Georgia, serif;
-    font-size: 22px;
-    font-weight: 400;
-    color: #1c1917;
-    letter-spacing: -0.01em;
-    line-height: 22px;
-    display: block;
-  }
-
-  .doc-brand-logo {
-    display: block;
+  /* ── Print-only: hide download hint ─────────────────────────── */
+  @media print {
+    .download-hint { display: none !important; }
+    body { background-image: ${WATERMARK_URL}; }
   }
 `;
 
@@ -794,130 +843,98 @@ export function exportAsHtml(tree: MindmapTreeOutput): void {
 // Keep old name as alias so any other callers don't break.
 export const exportLinearNotes = exportAsHtml;
 
-// ── PDF export — per-section canvas packing ───────────────────────────────────
-// Each logical chunk (cover + one branch per section + footer) is rendered as
-// its own html2canvas snapshot. Chunks are then packed onto A4 pages in jsPDF:
-// a chunk either fits on the current page or triggers a new one. This means
-// a page boundary NEVER falls inside a section — no slicing, no cutting.
-export async function exportAsPdf(tree: MindmapTreeOutput): Promise<void> {
-  const [{ jsPDF }, html2canvas] = await Promise.all([
-    import('jspdf'),
-    import('html2canvas').then(m => m.default),
-  ]);
-
+// ── PDF export — browser print engine with CSS page-break rules ───────────────
+// Opens the formatted document in a popup window and calls print() immediately.
+// The browser's print engine respects CSS break-inside: avoid on .interior and
+// .leaf-list, so page breaks never happen mid-subsection. print-color-adjust:
+// exact ensures backgrounds (watermark, accent colors, tinted surfaces) render
+// fully — no washed-out text, no stripped backgrounds.
+//
+// To save as PDF: in the print dialog choose "Save as PDF" as the destination.
+export function exportAsPdf(tree: MindmapTreeOutput): void {
   const dateStr = new Date().toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
   const logoUrl = `${window.location.origin}/logo.svg`;
   const logoH = 23;
-  const logoW = Math.round(logoH * 0.72);
+  const logoW = Math.round(logoH * (534 / 908));
 
-  // Renders any HTML string at exactly 820px wide, with the light theme CSS
-  // and watermark background applied to the wrapper element itself.
-  async function renderChunk(innerHtml: string): Promise<HTMLCanvasElement> {
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'fixed';
-    wrapper.style.left = '-9999px';
-    wrapper.style.top = '0';
-    wrapper.style.width = '820px';
-    wrapper.style.backgroundColor = '#faf8f4';
-    wrapper.style.backgroundImage = WATERMARK_URL;
-    wrapper.style.backgroundRepeat = 'repeat';
-    wrapper.style.pointerEvents = 'none';
-    wrapper.style.zIndex = '-1';
-    wrapper.innerHTML = `<style>${CSS_PDF}</style>${innerHtml}`;
-    document.body.appendChild(wrapper);
-    await document.fonts.ready;
-    // Two rAF ticks so fonts + images settle before capture
-    await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-    try {
-      return await html2canvas(wrapper, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#faf8f4',
-        width: 820,
-        windowWidth: 820,
-        logging: false,
+  const sectionsHtml = tree.children
+    .map((branch, i) => {
+      const color = BRANCH_PALETTE[i % BRANCH_PALETTE.length];
+      return renderNode(branch, 1, color, 'root');
+    })
+    .join('\n');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escape(tree.title)} — Tasur Notes</title>
+  <style>${CSS_PRINT}</style>
+</head>
+<body>
+  <p class="download-hint" style="background:#1c1917;color:#faf8f4;font-family:monospace;font-size:12px;text-align:center;padding:10px 16px;margin:0;letter-spacing:0.03em;">
+    In the print dialog → change Destination to <strong>Save as PDF</strong>
+  </p>
+
+  <header class="doc-brand">
+    <span class="doc-brand-wordmark">Tas<img src="${escape(logoUrl)}" width="${logoW}" height="${logoH}" alt="" /><span>r</span></span>
+  </header>
+
+  <div class="page-header">
+    <div class="subject-badge">${escape(tree.subject)}</div>
+    <h1 class="doc-title">${escape(tree.title)}</h1>
+    <div class="doc-meta">Generated ${dateStr} · ${tree.metadata.total_nodes} concepts · ${tree.children.length} sections</div>
+  </div>
+
+  <div class="toc">
+    <div class="toc-heading">Contents</div>
+    ${renderToc(tree)}
+  </div>
+
+  <main class="content">
+    ${sectionsHtml}
+  </main>
+
+  <footer class="page-footer">
+    <span class="footer-logo">TASUR</span>
+    <span class="footer-note">${escape(tree.title)} · ${escape(tree.subject)}</span>
+  </footer>
+
+  <script>
+    // Wait for fonts + images then immediately open the print dialog.
+    document.fonts.ready.then(function() {
+      var imgs = document.querySelectorAll('img');
+      var pending = imgs.length;
+      if (pending === 0) { window.print(); return; }
+      function onLoad() { if (--pending === 0) window.print(); }
+      imgs.forEach(function(img) {
+        if (img.complete) { onLoad(); }
+        else { img.addEventListener('load', onLoad); img.addEventListener('error', onLoad); }
       });
-    } finally {
-      document.body.removeChild(wrapper);
-    }
+    });
+  </script>
+</body>
+</html>`;
+
+  const popup = window.open('', '_blank', 'width=960,height=800,scrollbars=yes');
+  if (!popup) {
+    // Popup was blocked — fall back to same-tab blob download of the HTML
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${tree.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-notes.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return;
   }
 
-  // ── Build HTML chunks ────────────────────────────────────────────────────────
-
-  // Chunk 1: brand header + document title + table of contents
-  const coverChunk = `
-    <header class="doc-brand">
-      <span style="display:inline-flex;align-items:center;font-family:'Instrument Serif',Georgia,serif;font-size:22px;font-weight:400;color:#1c1917;letter-spacing:-0.01em;line-height:1;gap:1px;">
-        Tas<img src="${escape(logoUrl)}" width="${logoW}" height="${logoH}" alt="" crossorigin="anonymous" style="display:inline-block;vertical-align:middle;position:relative;top:-1px;"><span style="font-family:inherit;font-size:inherit;color:inherit;">r</span>
-      </span>
-    </header>
-    <div class="page-header">
-      <div class="subject-badge">${escape(tree.subject)}</div>
-      <h1 class="doc-title">${escape(tree.title)}</h1>
-      <div class="doc-meta">Generated ${dateStr} · ${tree.metadata.total_nodes} concepts · ${tree.children.length} sections</div>
-    </div>
-    <div class="toc">
-      <div class="toc-heading">Contents</div>
-      ${renderToc(tree)}
-    </div>`;
-
-  // Chunks 2…N: one per top-level branch (each rendered as an isolated atomic unit)
-  const sectionChunks = tree.children.map((branch, i) => {
-    const color = BRANCH_PALETTE[i % BRANCH_PALETTE.length];
-    return `<div class="content" style="padding-bottom:0;">${renderNode(branch, 1, color, 'root')}</div>`;
-  });
-
-  // Final chunk: footer
-  const footerChunk = `
-    <footer class="page-footer">
-      <span class="footer-logo">TASUR</span>
-      <span class="footer-note">${escape(tree.title)} · ${escape(tree.subject)}</span>
-    </footer>`;
-
-  // ── Render all chunks sequentially ───────────────────────────────────────────
-  const chunks = [coverChunk, ...sectionChunks, footerChunk];
-  const canvases: HTMLCanvasElement[] = [];
-  for (const chunk of chunks) {
-    canvases.push(await renderChunk(chunk));
-  }
-
-  // ── Pack canvases onto A4 pages ───────────────────────────────────────────────
-  const A4_W_MM = 210;
-  const A4_H_MM = 297;
-  const CANVAS_W = 820 * 2;                              // scale=2
-  const PAGE_H_PX = (A4_H_MM / A4_W_MM) * CANVAS_W;    // A4 height in canvas pixels
-
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  let pageYPx = 0;   // cursor: how many canvas-px have been placed on the current page
-
-  for (const canvas of canvases) {
-    const chunkHPx = canvas.height;
-    const chunkHMm = (chunkHPx / CANVAS_W) * A4_W_MM;
-
-    // If this chunk doesn't fit on the remaining page space, start a fresh page
-    if (pageYPx > 0 && pageYPx + chunkHPx > PAGE_H_PX) {
-      // White-fill the leftover space so no ghost bleed from the previous chunk
-      const usedMm = (pageYPx / CANVAS_W) * A4_W_MM;
-      pdf.setFillColor(250, 248, 244);
-      pdf.rect(0, usedMm, A4_W_MM, A4_H_MM - usedMm, 'F');
-      pdf.addPage();
-      pageYPx = 0;
-    }
-
-    const yMm = (pageYPx / CANVAS_W) * A4_W_MM;
-    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, yMm, A4_W_MM, chunkHMm);
-    pageYPx += chunkHPx;
-
-    // If a single chunk is taller than a full page (very long section),
-    // it overflows onto the next page naturally — start fresh for the next chunk.
-    if (pageYPx >= PAGE_H_PX) {
-      pdf.addPage();
-      pageYPx = 0;
-    }
-  }
-
-  const slug = tree.title.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-  pdf.save(`${slug}-notes.pdf`);
+  popup.document.open();
+  popup.document.write(html);
+  popup.document.close();
 }
