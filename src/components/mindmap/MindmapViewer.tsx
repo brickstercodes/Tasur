@@ -44,6 +44,7 @@ import {
 } from './layout/balanced-tree';
 import { BRANCH_PALETTE, getStableNodeId } from './color-utils';
 import { ShareButton } from './ShareButton';
+import { exportAsHtml, exportAsPdf } from './exportLinearNotes';
 import type { MindmapTreeOutput, MindmapNode as MindmapTreeNode } from '@/lib/schemas/mindmap-tree-output';
 
 // ── react-flow type registrations (defined outside component to prevent remount) ─
@@ -1157,6 +1158,11 @@ function MindmapViewerContent({
 
         <ToolbarDivider />
 
+        {/* Export as linear notes */}
+        <ExportNotesButton tree={tree} />
+
+        <ToolbarDivider />
+
         {/* Keyboard hint */}
         <button
           onClick={() => setIsShortcutPanelOpen((prev) => !prev)}
@@ -1448,6 +1454,153 @@ function ToolbarDivider() {
         flexShrink: 0,
       }}
     />
+  );
+}
+
+function ExportNotesButton({ tree }: { tree: MindmapTreeOutput }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (popoverRef.current && e.target instanceof Element && !popoverRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isOpen]);
+
+  const handleHtml = () => {
+    exportAsHtml(tree);
+    setIsOpen(false);
+  };
+
+  const handlePdf = async () => {
+    setPdfLoading(true);
+    setIsOpen(false);
+    try {
+      await exportAsPdf(tree);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  return (
+    <div ref={popoverRef} style={{ position: 'relative', display: 'inline-flex' }}>
+      <button
+        onClick={() => setIsOpen((p) => !p)}
+        disabled={pdfLoading}
+        title="Export as linear notes"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          borderRadius: 999,
+          border: isOpen ? '1px solid var(--primary)' : '1px solid var(--toolbar-border)',
+          background: isOpen
+            ? 'color-mix(in srgb, var(--primary) 12%, var(--toolbar-bg))'
+            : 'transparent',
+          color: pdfLoading ? 'var(--text-dim)' : 'var(--text-muted)',
+          padding: '7px 12px',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase' as const,
+          whiteSpace: 'nowrap' as const,
+          cursor: pdfLoading ? 'wait' : 'pointer',
+          flexShrink: 0,
+          transition: 'background 0.1s, border-color 0.1s, color 0.1s',
+        }}
+      >
+        {pdfLoading ? '…' : '↓'} Notes
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            right: 0,
+            background: 'var(--toolbar-bg)',
+            border: '1px solid var(--toolbar-border)',
+            borderRadius: 10,
+            padding: '8px',
+            zIndex: 100,
+            minWidth: 180,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            display: 'flex',
+            flexDirection: 'column' as const,
+            gap: 2,
+          }}
+        >
+          <ExportOption
+            icon="◎"
+            label="HTML"
+            description="Interactive, dark theme"
+            onClick={handleHtml}
+          />
+          <ExportOption
+            icon="⬡"
+            label="PDF"
+            description="Print-ready, with watermark"
+            onClick={handlePdf}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExportOption({
+  icon,
+  label,
+  description,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  description: string;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '9px 12px',
+        borderRadius: 7,
+        border: 'none',
+        background: hovered ? 'var(--tab-hover)' : 'transparent',
+        cursor: 'pointer',
+        textAlign: 'left' as const,
+        width: '100%',
+        transition: 'background 0.1s',
+      }}
+    >
+      <span style={{ fontSize: 14, color: 'var(--text-muted)', flexShrink: 0 }}>{icon}</span>
+      <span style={{ display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase' as const,
+            color: 'var(--text)',
+          }}
+        >
+          {label}
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{description}</span>
+      </span>
+    </button>
   );
 }
 
