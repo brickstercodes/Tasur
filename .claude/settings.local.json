@@ -61,7 +61,8 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(/usr/local/bin/node --input-type=module -e \":*)",
       "Bash(ls /Users/anugrahshetty/Documents/Tasur/src/app/\\\\\\(dashboard\\\\\\)/)",
-      "Bash(code-review-graph status *)"
+      "Bash(code-review-graph status *)",
+      "mcp__code-review-graph__semantic_search_nodes_tool"
     ]
   }
 }
