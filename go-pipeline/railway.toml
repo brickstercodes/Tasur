@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "go-pipeline/Dockerfile"
 
 [deploy]
 healthcheckPath = "/health"
