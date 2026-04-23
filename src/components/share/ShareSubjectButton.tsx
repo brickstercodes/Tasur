@@ -128,6 +128,8 @@ export function ShareSubjectButton({ subjectName, sessionCount }: ShareSubjectBu
             zIndex: 200,
             width: 340,
             boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+            whiteSpace: 'normal',
+            textTransform: 'none',
           }}
         >
           {loading ? (
