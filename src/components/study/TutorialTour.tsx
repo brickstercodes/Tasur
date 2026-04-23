@@ -24,6 +24,7 @@ export function TutorialTour() {
         prevBtnText: '← Back',
         doneBtnText: "Let's go!",
         onDestroyed: () => {
+          document.body.removeAttribute('data-tour-active');
           window.dispatchEvent(new Event('tasur-tour-end'));
         },
         steps: [
@@ -92,6 +93,7 @@ export function TutorialTour() {
       // Small delay so the mindmap has time to finish rendering before we highlight it.
       const t = window.setTimeout(() => {
         if (!destroyed) {
+          document.body.setAttribute('data-tour-active', 'true');
           window.dispatchEvent(new Event('tasur-tour-start'));
           driverObj.drive();
         }

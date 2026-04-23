@@ -1794,6 +1794,16 @@ body {
   }
 }
 
+/* ── Disable custom cursor during driver.js tour ─────────────────────────── */
+/* Hides the nib image and restores the native cursor synchronously when the
+   tour sets data-tour-active on <body> — avoids React batching delays. */
+body[data-tour-active] img[src="/cursor.svg"] {
+  display: none !important;
+}
+body[data-tour-active] [data-custom-cursor-lock] {
+  display: none !important;
+}
+
 /* ── Driver.js tour popover — Tasur manuscript theme ────────────────────── */
 
 .tasur-tour-popover.driver-popover {
