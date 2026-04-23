@@ -63,7 +63,7 @@ interface UploadFlowProps {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ACCEPTED_TYPES = '.pdf,.docx,.txt,.png,.jpg,.jpeg';
+const ACCEPTED_TYPES = '.pdf,.docx,.txt,.png,.jpg,.jpeg,.pptx';
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 
 const STEP_ORDER = ['extracting', 'generating_mm', 'analyzing', 'searching', 'flashcards', 'saving'];
@@ -108,9 +108,9 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
 
   const handleFileSelect = useCallback((file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-    if (ext === 'ppt' || ext === 'pptx') {
+    if (ext === 'ppt') {
       setUploadState('error');
-      setErrorMessage('PowerPoint files (.ppt, .pptx) are not supported. Please export your slides as PDF and upload that instead.');
+      setErrorMessage('Legacy .ppt files are not supported. Please save as .pptx (File → Save As in PowerPoint) and try again.');
       return;
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -366,7 +366,7 @@ export function UploadFlow({ existingSessionId, onCancel }: UploadFlowProps) {
               textTransform: 'uppercase',
               }}
             >
-              PDF (recommended) · DOCX, TXT, PNG, JPG
+              PDF (recommended) · PPTX, DOCX, TXT, PNG, JPG
             </p>
           </>
         )}

@@ -158,6 +158,7 @@ const (
 	FileTypeTXT  FileType = "txt"
 	FileTypePNG  FileType = "png"
 	FileTypeJPG  FileType = "jpg"
+	FileTypePPTX FileType = "pptx"
 )
 
 // PipelineInput holds the parsed form data received from the Next.js proxy.

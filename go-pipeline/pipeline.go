@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -419,6 +420,21 @@ func runUploadPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient, s
 		}
 	}()
 
+	// Phase 0: PPTX → PDF conversion (LibreOffice headless) if needed.
+	// Downstream code treats the file as a PDF from this point forward.
+	if input.FileType == FileTypePPTX {
+		sse.progress("converting", "Converting presentation to PDF…", 4)
+		pdfBytes, err := convertPptxToPdf(ctx, input.FileBytes)
+		if err != nil {
+			sse.error("Failed to convert presentation: " + err.Error())
+			return
+		}
+		input.FileBytes = pdfBytes
+		input.FileType = FileTypePDF
+		input.MimeType = "application/pdf"
+		input.Filename = strings.TrimSuffix(input.Filename, filepath.Ext(input.Filename)) + ".pdf"
+	}
+
 	// Phase 1a: Text extraction
 	sse.progress("extracting", "Extracting text…", 8)
 	extraction, err := extractText(input.FileBytes, input.FileType)
@@ -577,6 +593,20 @@ func runDocumentPipeline(ctx context.Context, sse *sseEmitter, vc *vertexClient,
 			Edges:        []ConceptEdge{},
 			LastSyncedAt: time.Now().UTC().Format(time.RFC3339),
 		}
+	}
+
+	// Phase 0: PPTX → PDF conversion (LibreOffice headless) if needed.
+	if input.FileType == FileTypePPTX {
+		sse.progress("converting", "Converting presentation to PDF…", 4)
+		pdfBytes, err := convertPptxToPdf(ctx, input.FileBytes)
+		if err != nil {
+			sse.error("Failed to convert presentation: " + err.Error())
+			return
+		}
+		input.FileBytes = pdfBytes
+		input.FileType = FileTypePDF
+		input.MimeType = "application/pdf"
+		input.Filename = strings.TrimSuffix(input.Filename, filepath.Ext(input.Filename)) + ".pdf"
 	}
 
 	// Phase 1a: Text extraction
@@ -744,6 +774,9 @@ func resolveFileType(mimeType, filename string) FileType {
 	}
 	if ext == "jpg" || ext == "jpeg" || strings.HasPrefix(mimeType, "image/jpeg") {
 		return FileTypeJPG
+	}
+	if ext == "pptx" || mimeType == "application/vnd.openxmlformats-officedocument.presentationml.presentation" {
+		return FileTypePPTX
 	}
 	return FileTypeTXT
 }
