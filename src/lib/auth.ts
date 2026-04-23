@@ -12,7 +12,10 @@
  */
 
 import { betterAuth } from 'better-auth';
+import { emailOTP } from 'better-auth/plugins';
 import { Pool } from 'pg';
+
+import { otpEmail, sendMail, verificationEmail } from './mailer';
 
 // Session timing constants — named so their intent is obvious at a glance.
 const SESSION_EXPIRY_SECONDS = 60 * 60 * 24 * 7; // 7 days before full re-login
@@ -52,9 +55,39 @@ export const auth = betterAuth({
 
   emailAndPassword: {
     enabled: true,
+    // Block sign-in until the user clicks the verification link.
+    // Existing accounts must be marked emailVerified=true via SQL (see notes)
+    // so only genuinely new signups are gated.
+    requireEmailVerification: true,
+  },
+
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      const { subject, html, text } = verificationEmail(url);
+      await sendMail({ to: user.email, subject, html, text });
+    },
   },
 
   socialProviders: googleOAuthProviders,
+
+  plugins: [
+    emailOTP({
+      otpLength: 6,
+      expiresIn: 5 * 60, // 5 minutes
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        // type is 'sign-in' | 'email-verification' | 'forget-password'
+        const { subject, html, text } = otpEmail(otp);
+        await sendMail({
+          to: email,
+          subject: type === 'sign-in' ? subject : `Tasur code: ${otp}`,
+          html,
+          text,
+        });
+      },
+    }),
+  ],
 
   session: {
     expiresIn: SESSION_EXPIRY_SECONDS,

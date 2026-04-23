@@ -65,7 +65,9 @@ export default function SignupPage() {
       return;
     }
 
-    router.push('/dashboard');
+    // Email verification is required before sign-in. BetterAuth does not
+    // create a session on signup in this mode — route to a check-email screen.
+    router.push(`/verify-email?email=${encodeURIComponent(email)}`);
   }
 
   return (
