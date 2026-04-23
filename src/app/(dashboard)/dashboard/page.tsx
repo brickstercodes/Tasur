@@ -48,18 +48,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const appUserId = await resolveAppUserId(authSession.user);
 
-  // Ensure every user gets the tutorial session, regardless of when they signed up.
-  // Awaited before fetching sessions so it appears on the same page load.
-  // provisionTutorialSession is idempotent (upsert) — safe on every dashboard visit.
-  await provisionTutorialSession(appUserId).catch(() => {});
+  let allSessions = await getSessionsForUser(appUserId);
 
-  const allSessions = await getSessionsForUser(appUserId);
+  // Provision tutorial if the user doesn't have it yet, then refetch so it appears.
+  const tutorialId = process.env.TUTORIAL_SESSION_ID;
+  const hasTutorial = tutorialId ? allSessions.some((s) => s.id === tutorialId) : true;
+  if (!hasTutorial) {
+    await provisionTutorialSession(appUserId).catch(() => {});
+    allSessions = await getSessionsForUser(appUserId);
+  }
   // Filter out 'processing' sessions — they're shown live by ProcessingSessionTiles
   const sessions = allSessions.filter((s) => s.status !== 'processing');
   const groupedSessions = groupSessionsByDomain(sessions);
 
   const isUploadMode = upload === '1';
-  const tutorialSessionId = process.env.TUTORIAL_SESSION_ID;
 
   return (
     <div className="app-fade-up" style={{ maxWidth: 860, margin: '0 auto' }}>
@@ -176,7 +178,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   <div className="session-group-content">
                     <div className="session-group-content-inner stagger-list">
                       {group.sessions.map((session) => (
-                        <SessionCard key={session.id} session={session} isTutorial={session.id === tutorialSessionId} />
+                        <SessionCard key={session.id} session={session} isTutorial={session.id === tutorialId} />
                       ))}
                     </div>
                   </div>
