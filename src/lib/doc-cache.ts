@@ -27,6 +27,21 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 export async function saveDocToCache(sessionId: string, file: File): Promise<void> {
+  // Only cache formats the browser can render natively in an iframe. Office
+  // formats (pptx/docx) would trigger a download instead of an inline preview —
+  // for those we rely on the server-side preview route, which serves the
+  // converted PDF (pptx) or a styled HTML reader (docx/txt fallback).
+  const type = file.type || '';
+  const name = file.name.toLowerCase();
+  const isPreviewable =
+    type === 'application/pdf' ||
+    type.startsWith('image/') ||
+    name.endsWith('.pdf') ||
+    name.endsWith('.png') ||
+    name.endsWith('.jpg') ||
+    name.endsWith('.jpeg');
+  if (!isPreviewable) return;
+
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const entry: CachedDoc = { name: file.name, type: file.type || 'application/octet-stream', data: file };
