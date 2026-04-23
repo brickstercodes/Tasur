@@ -29,7 +29,7 @@ import { StudyTabs } from '@/components/study/StudyTabs';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 /** Height in px — must match the hardcoded offset in mindmap/page.tsx */
-export const SESSION_NAV_HEIGHT = 48;
+const SESSION_NAV_HEIGHT = 48;
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 

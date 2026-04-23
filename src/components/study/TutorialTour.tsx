@@ -2,12 +2,9 @@
 
 import { useEffect } from 'react';
 
-const STORAGE_KEY = 'tasur_tour_v1_done';
-
 export function TutorialTour() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (localStorage.getItem(STORAGE_KEY)) return;
 
     let destroyed = false;
 
@@ -26,9 +23,7 @@ export function TutorialTour() {
         nextBtnText: 'Next →',
         prevBtnText: '← Back',
         doneBtnText: "Let's go!",
-        onDestroyed: () => {
-          localStorage.setItem(STORAGE_KEY, '1');
-        },
+        onDestroyed: () => {},
         steps: [
           {
             // No element — centered welcome popover.
