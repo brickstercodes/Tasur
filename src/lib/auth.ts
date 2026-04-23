@@ -16,6 +16,7 @@ import { emailOTP } from 'better-auth/plugins';
 import { Pool } from 'pg';
 
 import { otpEmail, sendMail, verificationEmail } from './mailer';
+import { provisionTutorialSession } from './tutorial';
 
 // Session timing constants — named so their intent is obvious at a glance.
 const SESSION_EXPIRY_SECONDS = 60 * 60 * 24 * 7; // 7 days before full re-login
@@ -100,4 +101,17 @@ export const auth = betterAuth({
 
   // trustedOrigins prevents CSRF: requests must originate from these URLs.
   trustedOrigins: [process.env.BETTER_AUTH_URL ?? 'http://localhost:3000'],
+
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          // Fire-and-forget — don't block signup if this fails.
+          provisionTutorialSession(user.id).catch((err) =>
+            console.error('[tutorial] provision failed for', user.id, err),
+          );
+        },
+      },
+    },
+  },
 });

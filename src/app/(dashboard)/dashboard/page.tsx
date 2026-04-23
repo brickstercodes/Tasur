@@ -52,6 +52,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const groupedSessions = groupSessionsByDomain(sessions);
 
   const isUploadMode = upload === '1';
+  const tutorialSessionId = process.env.TUTORIAL_SESSION_ID;
 
   return (
     <div className="app-fade-up" style={{ maxWidth: 860, margin: '0 auto' }}>
@@ -168,7 +169,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   <div className="session-group-content">
                     <div className="session-group-content-inner stagger-list">
                       {group.sessions.map((session) => (
-                        <SessionCard key={session.id} session={session} />
+                        <SessionCard key={session.id} session={session} isTutorial={session.id === tutorialSessionId} />
                       ))}
                     </div>
                   </div>
@@ -184,7 +185,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
 // ── Session card ──────────────────────────────────────────────────────────────
 
-function SessionCard({ session }: { session: SessionListItem }) {
+function SessionCard({ session, isTutorial }: { session: SessionListItem; isTutorial?: boolean }) {
   const masteryPercent =
     session.totalConcepts > 0
       ? Math.round((session.masteredConcepts / session.totalConcepts) * 100)
@@ -204,7 +205,7 @@ function SessionCard({ session }: { session: SessionListItem }) {
       }}
     >
       {/* Main content row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+      <div className="session-card-content-row" style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
         {/* Left: session info */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <Link
@@ -225,6 +226,30 @@ function SessionCard({ session }: { session: SessionListItem }) {
           >
             {session.title}
           </Link>
+
+          {/* Tutorial badge */}
+          {isTutorial && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: 'var(--primary)',
+                background: 'color-mix(in srgb, var(--primary) 10%, var(--surface))',
+                border: '1px solid color-mix(in srgb, var(--primary) 28%, var(--border))',
+                borderRadius: 999,
+                padding: '2px 8px',
+                marginBottom: 6,
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
+            >
+              ★ Start here
+            </span>
+          )}
 
           {/* Domain · mode tags */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -284,7 +309,7 @@ function SessionCard({ session }: { session: SessionListItem }) {
         </div>
 
         {/* Right: action links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <div className="session-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           {!session.isShared && (
             <Link
               href={`/dashboard?upload=1&sessionId=${session.id}`}

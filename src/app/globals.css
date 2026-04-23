@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'driver.js/dist/driver.css';
 
 /* Hide reCAPTCHA v3 badge — Google ToS allows this if attribution text is shown */
 .grecaptcha-badge { visibility: hidden !important; }
@@ -15,9 +16,11 @@
    custom cursor is enabled. Removing it from here so the native cursor
    correctly reappears when the user switches to system cursor in Settings. */
 
-:root {
-  zoom: 1.12;
+@media (min-width: 1024px) {
+  :root { zoom: 1.12; }
+}
 
+:root {
   /* Default: light theme */
   --bg: #f9f9f6;
   --surface: #fdfaf6;
@@ -1788,5 +1791,196 @@ body {
   .study-tab-link,
   .study-route-veil {
     transition: none;
+  }
+}
+
+/* ── Driver.js tour popover — Tasur manuscript theme ────────────────────── */
+
+.tasur-tour-popover.driver-popover {
+  background: var(--surface-elevated);
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  border-radius: 14px;
+  box-shadow:
+    0 8px 32px rgba(28, 25, 23, 0.18),
+    0 0 0 1px color-mix(in srgb, var(--primary) 8%, transparent) inset;
+  padding: 20px 22px 16px;
+  max-width: 320px;
+  font-family: 'Inter', sans-serif;
+}
+
+.tasur-tour-popover .driver-popover-title {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 19px;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.tasur-tour-popover .driver-popover-description {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.tasur-tour-popover .driver-popover-footer {
+  margin-top: 16px;
+  gap: 8px;
+}
+
+.tasur-tour-popover .driver-popover-next-btn,
+.tasur-tour-popover .driver-popover-done-btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.tasur-tour-popover .driver-popover-next-btn:hover,
+.tasur-tour-popover .driver-popover-done-btn:hover {
+  background: var(--primary-hover);
+}
+
+.tasur-tour-popover .driver-popover-prev-btn {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.tasur-tour-popover .driver-popover-prev-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+.tasur-tour-popover .driver-popover-close-btn {
+  color: var(--text-muted);
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+.tasur-tour-popover .driver-popover-progress-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: "'JetBrains Mono', monospace";
+}
+
+/* ── Study nav mobile ────────────────────────────────────────────────────── */
+
+@media (max-width: 1023px) {
+  /* Hide domain label and mode badge — not enough room, info is redundant */
+  .study-nav-domain,
+  .study-nav-mode-wrapper {
+    display: none !important;
+  }
+
+  /* Let the title breathe a bit more now that domain is gone */
+  .study-nav-title {
+    max-width: 160px !important;
+  }
+
+  /* Shrink tab pills so they fit in the remaining space */
+  .study-tab-link {
+    min-width: 88px;
+    padding: 7px 14px;
+    font-size: 12px;
+  }
+}
+
+/* ── Session card mobile ─────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .session-card-content-row {
+    flex-direction: column !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+  }
+
+  .session-card-actions {
+    flex-shrink: unset !important;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Resume button fills remaining space on mobile */
+  .session-card-resume-link {
+    flex: 1;
+    min-width: 0 !important;
+  }
+}
+
+/* ── Chat page mobile tab layout ─────────────────────────────────────────── */
+
+/* Tab toggle bar — only shown below 1024px */
+.chat-mobile-tab-bar {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .chat-mobile-tab-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 16px 0;
+    flex-shrink: 0;
+  }
+
+  .chat-mobile-tab-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .chat-mobile-tab-btn.active {
+    background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* Hide the inactive panel — both stay mounted so the iframe never reloads */
+  .chat-col-inactive {
+    display: none !important;
+  }
+
+  /* On mobile, each column takes full width and loses the fixed height */
+  .chat-page-outer {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: calc(100vh - 112px);
+  }
+
+  .chat-page-col-chat {
+    width: 100% !important;
+    flex: none !important;
+    height: calc(100vh - 160px);
+  }
+
+  .chat-page-col-focus {
+    width: 100% !important;
+    flex: none !important;
+    /* Remove the left border on mobile — looks odd stacked */
+    border-left: none !important;
+    border-top: 1px solid var(--focus-border);
+    /* Remove the resize handle cursor on mobile */
+    cursor: default;
   }
 }

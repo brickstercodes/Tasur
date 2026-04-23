@@ -17,6 +17,7 @@ interface FocusZoneProps {
   documentFileName?: string;
   documentUrl?: string;
   documentFileType?: string;
+  className?: string;
 }
 
 const SECTION_HEADING_STYLE: React.CSSProperties = {
@@ -40,6 +41,7 @@ export function FocusZone({
   documentFileName,
   documentUrl,
   documentFileType,
+  className,
 }: FocusZoneProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [panelWidth, setPanelWidth] = useState<number | null>(null);
@@ -118,6 +120,7 @@ export function FocusZone({
   if (isCollapsed) {
     return (
       <aside
+        className={className}
         style={{
           width: 44,
           flexShrink: 0,
@@ -161,7 +164,7 @@ export function FocusZone({
       `}</style>
       <aside
         ref={panelRef}
-        className="focus-zone-scroll focus-zone-shell"
+        className={`focus-zone-scroll focus-zone-shell${className ? ` ${className}` : ''}`}
         style={{
           position: 'relative',
           width: panelWidth === null ? '50%' : `${panelWidth}px`,

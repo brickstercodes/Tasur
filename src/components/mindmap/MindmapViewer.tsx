@@ -846,6 +846,7 @@ function MindmapViewerContent({
 
       {/* ── Pill-shaped floating toolbar ──────────────────────────────────────── */}
       <div
+        id="mindmap-toolbar"
         style={{
           // Viewport-anchored and horizontally centered.
           position: 'fixed',
@@ -1367,6 +1368,7 @@ function MindmapViewerContent({
 
       {/* ── react-flow canvas ─────────────────────────────────────────────────── */}
       <ReactFlow
+        id="mindmap-canvas"
         nodes={focusedNodes}
         edges={focusedEdges}
         nodeTypes={NODE_TYPES}

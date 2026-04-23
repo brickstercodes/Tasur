@@ -89,6 +89,7 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
           />
 
           <span
+            className="study-nav-title"
             style={{
               fontSize: 13,
               fontWeight: 500,
@@ -105,6 +106,7 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
 
           {domain && (
             <span
+              className="study-nav-domain"
               style={{
                 fontSize: 11,
                 fontWeight: 600,
@@ -124,7 +126,7 @@ export default async function StudySessionLayout({ children, params }: LayoutPro
         <StudyTabs sessionId={sessionId} />
 
         {/* Right: mode badge */}
-        <div style={{ flexShrink: 0, flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+        <div className="study-nav-mode-wrapper" style={{ flexShrink: 0, flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
           <span
             style={{
               fontSize: 11,

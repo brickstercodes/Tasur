@@ -23,7 +23,7 @@ import { resolveAppUserId } from '@/lib/app-user';
 import { resolveSessionAccess } from '@/lib/session-access';
 import { createServerClient } from '@/lib/supabase';
 import { ChatInterface } from '@/components/chat/ChatInterface';
-import { FocusZone } from '@/components/chat/FocusZone';
+import { ChatPageLayout } from '@/components/chat/ChatPageLayout';
 
 // ── Page props ────────────────────────────────────────────────────────────────
 
@@ -168,127 +168,105 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
     }
   }
 
-  return (
-    /*
-     * Two-column layout: left column is the chat conversation,
-     * right column is the FocusZone sidebar.
-     * Negative margins escape the dashboard layout's horizontal padding
-     * so the sidebar can reach the edge.
-     */
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'row',
-        height: 'calc(100vh - 112px)',
-        gap: 0,
-        marginLeft: -24,
-        marginRight: -24,
-      }}
-    >
-      {/* ── Left column: chat conversation ──────────────────────────────────── */}
-      <div
+  const chatSlot = (
+    <>
+      {/* Breadcrumb */}
+      <nav
+        key={`crumb-${conceptId}`}
+        className="chat-concept-breadcrumb"
         style={{
-          flex: 1,
-          minWidth: 0,
           display: 'flex',
-          flexDirection: 'column',
-          padding: '0 24px',
-          overflow: 'hidden',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 12,
+          color: 'var(--text-muted)',
+          marginBottom: 16,
+          flexShrink: 0,
+          paddingTop: 8,
         }}
       >
-        {/* Breadcrumb */}
-        <nav
-          key={`crumb-${conceptId}`}
-          className="chat-concept-breadcrumb"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            fontSize: 12,
-            color: 'var(--text-muted)',
-            marginBottom: 16,
-            flexShrink: 0,
-            paddingTop: 8,
-          }}
+        <Link
+          href={`/study/${sessionId}/mindmap`}
+          style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
         >
-          <Link
-            href={`/study/${sessionId}/mindmap`}
-            style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
-          >
-            Mindmap
-          </Link>
-          <span>›</span>
-          <span className="chat-concept-name" style={{ color: 'var(--text)', fontWeight: 500 }}>
-            {conceptName}
-          </span>
-        </nav>
+          Mindmap
+        </Link>
+        <span>›</span>
+        <span className="chat-concept-name" style={{ color: 'var(--text)', fontWeight: 500 }}>
+          {conceptName}
+        </span>
+      </nav>
 
-        {/* Concept header — simplified */}
-        <div
-          key={`header-${conceptId}`}
-          className="chat-concept-header"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 12,
-            flexShrink: 0,
-            paddingBottom: 12,
-            borderBottom: '1px solid var(--border)',
-          }}
-        >
-          <div className="chat-concept-meta" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Concept header */}
+      <div
+        key={`header-${conceptId}`}
+        className="chat-concept-header"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 12,
+          flexShrink: 0,
+          paddingBottom: 12,
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
+        <div className="chat-concept-meta" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: learningMode === 'fast' ? '#C2692A' : '#3D7A5E',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {learningMode === 'fast' ? '⚡ Fast' : '◎ Steady'}
+          </span>
+          {subject_domain && (
             <span
               style={{
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: 600,
-                color: learningMode === 'fast' ? '#C2692A' : '#3D7A5E',
+                color: 'var(--text-muted)',
                 textTransform: 'uppercase',
-                letterSpacing: '0.04em',
+                letterSpacing: '0.08em',
               }}
             >
-              {learningMode === 'fast' ? '⚡ Fast' : '◎ Steady'}
+              {domain}
             </span>
-            {subject_domain && (
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                }}
-              >
-                {domain}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* ChatInterface */}
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <ChatInterface
-            sessionId={sessionId}
-            conceptId={conceptId}
-            conceptName={conceptName}
-            domain={domain}
-            learningMode={learningMode}
-            userInitial={userInitial}
-          />
+          )}
         </div>
       </div>
 
-      {/* ── Right column: Focus Zone ─────────────────────────────────────────── */}
-      <FocusZone
-        sessionId={sessionId}
-        conceptName={conceptName}
-        prerequisites={prerequisites}
-        studyCue={studyCue}
-        documentText={documentText}
-        documentFileName={documentFileName}
-        documentUrl={documentUrl}
-        documentFileType={documentFileType}
-      />
-    </div>
+      {/* ChatInterface */}
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <ChatInterface
+          sessionId={sessionId}
+          conceptId={conceptId}
+          conceptName={conceptName}
+          domain={domain}
+          learningMode={learningMode}
+          userInitial={userInitial}
+        />
+      </div>
+    </>
+  );
+
+  return (
+    <ChatPageLayout
+      chatSlot={chatSlot}
+      focusZoneProps={{
+        sessionId,
+        conceptName,
+        prerequisites,
+        studyCue,
+        documentText,
+        documentFileName,
+        documentUrl,
+        documentFileType,
+      }}
+      hasDocument={!!(documentUrl || documentText)}
+    />
   );
 }
