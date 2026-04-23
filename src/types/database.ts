@@ -441,6 +441,44 @@ export type Database = {
           },
         ]
       }
+      subject_share_links: {
+        Row: {
+          id: string
+          created_by: string
+          code: string
+          subject_name: string
+          session_ids: string[]
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          created_by: string
+          code: string
+          subject_name: string
+          session_ids: string[]
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          created_by?: string
+          code?: string
+          subject_name?: string
+          session_ids?: string[]
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       share_links: {
         Row: {
           id: string

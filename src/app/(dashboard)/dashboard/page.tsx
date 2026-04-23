@@ -29,6 +29,7 @@ import { getSessionsForUser, type SessionListItem } from '@/lib/session-persiste
 import { UploadFlow } from '@/components/upload/UploadFlow';
 import { DeleteSessionButton } from '@/components/dashboard/DeleteSessionButton';
 import { ProcessingSessionTiles } from '@/components/dashboard/ProcessingSessionTiles';
+import { ShareSubjectButton } from '@/components/share/ShareSubjectButton';
 
 // ── Page props ────────────────────────────────────────────────────────────────
 
@@ -153,7 +154,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                       </span>
                     </span>
 
-                    <span className="session-group-summary-right">
+                    <span className="session-group-summary-right" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {(() => {
+                        const ownedCount = group.sessions.filter((s) => !s.isShared).length;
+                        return ownedCount > 0 ? (
+                          <ShareSubjectButton subjectName={group.label} sessionCount={ownedCount} />
+                        ) : null;
+                      })()}
                       {masteryPercent === null ? 'In progress' : `${masteryPercent}% mastered`}
                     </span>
                   </summary>
