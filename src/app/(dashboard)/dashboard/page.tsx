@@ -26,6 +26,7 @@ import Link from 'next/link';
 import { auth } from '@/lib/auth';
 import { resolveAppUserId } from '@/lib/app-user';
 import { getSessionsForUser, type SessionListItem } from '@/lib/session-persistence';
+import { provisionTutorialSession } from '@/lib/tutorial';
 import { UploadFlow } from '@/components/upload/UploadFlow';
 import { DeleteSessionButton } from '@/components/dashboard/DeleteSessionButton';
 import { ProcessingSessionTiles } from '@/components/dashboard/ProcessingSessionTiles';
@@ -46,6 +47,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   if (!authSession) redirect('/login');
 
   const appUserId = await resolveAppUserId(authSession.user);
+
+  // Ensure every user gets the tutorial session, regardless of when they signed up.
+  // Awaited before fetching sessions so it appears on the same page load.
+  // provisionTutorialSession is idempotent (upsert) — safe on every dashboard visit.
+  await provisionTutorialSession(appUserId).catch(() => {});
+
   const allSessions = await getSessionsForUser(appUserId);
   // Filter out 'processing' sessions — they're shown live by ProcessingSessionTiles
   const sessions = allSessions.filter((s) => s.status !== 'processing');
