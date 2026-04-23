@@ -126,7 +126,7 @@ export function ShareSubjectButton({ subjectName, sessionCount }: ShareSubjectBu
             borderRadius: 10,
             padding: '14px 16px',
             zIndex: 200,
-            width: 300,
+            width: 340,
             boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
           }}
         >
