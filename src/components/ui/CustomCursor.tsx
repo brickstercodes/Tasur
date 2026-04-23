@@ -62,9 +62,21 @@ export function CustomCursor() {
     }
     window.addEventListener('cursor-preference-changed', onCustom);
 
+    // Temporarily disable during driver.js tour so the cursor doesn't hide
+    // behind the tour overlay. Restores from localStorage when tour ends.
+    function onTourStart() { setEnabled(false); }
+    function onTourEnd() {
+      const val = localStorage.getItem(STORAGE_KEY);
+      setEnabled(val !== 'system');
+    }
+    window.addEventListener('tasur-tour-start', onTourStart);
+    window.addEventListener('tasur-tour-end', onTourEnd);
+
     return () => {
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('cursor-preference-changed', onCustom);
+      window.removeEventListener('tasur-tour-start', onTourStart);
+      window.removeEventListener('tasur-tour-end', onTourEnd);
     };
   }, []);
 
