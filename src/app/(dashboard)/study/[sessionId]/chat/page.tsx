@@ -24,6 +24,8 @@ import { resolveSessionAccess } from '@/lib/session-access';
 import { createServerClient } from '@/lib/supabase';
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { ChatPageLayout } from '@/components/chat/ChatPageLayout';
+import { TutorialTour } from '@/components/study/TutorialTour';
+import { chatTourSteps } from '@/components/study/tourSteps';
 
 // ── Page props ────────────────────────────────────────────────────────────────
 
@@ -253,9 +255,11 @@ export default async function ChatPage({ params, searchParams }: PageProps) {
     </>
   );
 
+  const isTutorial = sessionId === process.env.NEXT_PUBLIC_TUTORIAL_SESSION_ID;
+
   return (
     <ChatPageLayout
-      chatSlot={chatSlot}
+      chatSlot={<>{isTutorial && <TutorialTour steps={chatTourSteps} delayMs={800} />}{chatSlot}</>}
       focusZoneProps={{
         sessionId,
         conceptName,

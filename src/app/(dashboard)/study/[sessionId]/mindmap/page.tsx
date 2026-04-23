@@ -29,6 +29,7 @@ import { loadFromSupabase } from '@/lib/graph/sync';
 import type { MindmapTreeOutput } from '@/lib/schemas/mindmap-tree-output';
 import { MindmapViewer } from '@/components/mindmap/MindmapViewer';
 import { TutorialTour } from '@/components/study/TutorialTour';
+import { mindmapTourSteps } from '@/components/study/tourSteps';
 
 // ── Page component ────────────────────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ export default async function MindmapPage({ params }: PageProps) {
         overflow: 'hidden',
       }}
     >
-      {sessionId === process.env.NEXT_PUBLIC_TUTORIAL_SESSION_ID && <TutorialTour />}
+      {sessionId === process.env.NEXT_PUBLIC_TUTORIAL_SESSION_ID && <TutorialTour steps={mindmapTourSteps} />}
       <MindmapViewer
         tree={tree}
         confidenceData={confidenceData}
