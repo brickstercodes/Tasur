@@ -218,17 +218,39 @@ export async function POST(req: Request) {
   }
 
   // Fetch the file from the partner. We trust the host whitelist + size cap.
+  // 30-second timeout: prevents a slow/hung partner server from holding the
+  // SSE connection open indefinitely and making the client show a misleading
+  // "Processing timed out" instead of a real error.
+  const fileAbort = new AbortController();
+  const fileTimeout = setTimeout(() => fileAbort.abort(), 30_000);
+
   let fileResp: Response;
   try {
-    fileResp = await fetch(fileUrl, { redirect: 'follow' });
+    fileResp = await fetch(fileUrl, {
+      redirect: 'follow',
+      signal: fileAbort.signal,
+      headers: {
+        // Some CDNs/servers reject headless fetches without a User-Agent.
+        // Identify ourselves honestly rather than spoofing a browser.
+        'User-Agent': 'Tasur-Import/1.0 (+https://tasur.app)',
+        'Accept': 'application/pdf,*/*',
+      },
+    });
   } catch (err) {
     const detail = err instanceof Error ? err.message : 'unknown error';
-    return sseErrorResponse(`Could not fetch the file from ${fileUrl}: ${detail}`);
+    const isTimeout = err instanceof Error && err.name === 'AbortError';
+    return sseErrorResponse(
+      isTimeout
+        ? `Timed out fetching the file from ${fileUrl} (30s). The partner server may be slow or the URL may require authentication.`
+        : `Could not fetch the file from ${fileUrl}: ${detail}`,
+    );
+  } finally {
+    clearTimeout(fileTimeout);
   }
 
   if (!fileResp.ok) {
     return sseErrorResponse(
-      `Source returned ${fileResp.status} for the file URL. The note may have been removed.`,
+      `Source returned ${fileResp.status} for the file URL. The note may have been removed or may require authentication.`,
     );
   }
 
