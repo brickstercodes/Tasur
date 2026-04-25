@@ -20,9 +20,18 @@ export type ImportSource = 'notesportal';
 
 export const ALLOWED_SOURCES: readonly ImportSource[] = ['notesportal'] as const;
 
-/** Hostnames we accept for `fileUrl` per source. */
+/** Hostnames we accept for `fileUrl` per source.
+ *  Notesportal serves files from both `.tech` (main app) and `.live`
+ *  (file CDN). Keep both — we accept either. */
 export const ALLOWED_FILE_HOSTS: Record<ImportSource, string[]> = {
-  notesportal: ['notesportal.tech', 'www.notesportal.tech', 'note.notesportal.tech'],
+  notesportal: [
+    'notesportal.tech',
+    'www.notesportal.tech',
+    'note.notesportal.tech',
+    'notesportal.live',
+    'www.notesportal.live',
+    'note.notesportal.live',
+  ],
 };
 
 // ── Lookup ─────────────────────────────────────────────────────────────────
