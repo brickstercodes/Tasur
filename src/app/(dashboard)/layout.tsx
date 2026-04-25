@@ -23,6 +23,7 @@ import { redirect } from 'next/navigation';
 import { TasurWordmark } from '@/components/ui/TasurWordmark';
 import { ProfileMenu } from '@/components/ui/ProfileMenu';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { PendingImportRedirect } from '@/components/import/PendingImportRedirect';
 import { auth } from '@/lib/auth';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -38,6 +39,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="app-parchment-shell" style={{ minHeight: '100vh' }}>
+      {/* One-shot client effect: bounce back to /import if a partner-button
+          flow was interrupted by signup. Renders nothing. */}
+      <PendingImportRedirect />
       <header
         style={{
           position: 'sticky',

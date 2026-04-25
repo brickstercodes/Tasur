@@ -441,6 +441,35 @@ export type Database = {
           },
         ]
       }
+      imported_sources: {
+        Row: {
+          source: string
+          source_id: string
+          session_id: string
+          imported_at: string
+        }
+        Insert: {
+          source: string
+          source_id: string
+          session_id: string
+          imported_at?: string
+        }
+        Update: {
+          source?: string
+          source_id?: string
+          session_id?: string
+          imported_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imported_sources_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "study_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subject_share_links: {
         Row: {
           id: string
