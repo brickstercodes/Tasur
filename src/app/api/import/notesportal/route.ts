@@ -287,9 +287,18 @@ export async function POST(req: Request) {
     );
   }
 
-  // ── 5. Stream SSE back, intercepting session_created for dedup record ──
-  // Closure variables (not `this`) keep TS happy without custom Transformer typing.
+  // ── 5. Stream SSE back, recording dedup mapping ONLY on `done` ──────────
+  //
+  // We capture the sessionId from `session_created` (so we have it ready) but
+  // we DO NOT write to imported_sources until the pipeline emits `done`.
+  //
+  // Why: if the Go container is killed mid-pipeline (e.g. Railway redeploy),
+  // we'd otherwise leave imported_sources pointing at a broken session that
+  // has no mindmap row. The next import would dedup-hit the dead session and
+  // every user would 404 on /study/[id]/mindmap forever. Recording on `done`
+  // means the dedup entry only ever points at fully-processed sessions.
   let scanBuffer = '';
+  let capturedSessionId: string | null = null;
   let recorded = false;
   const decoder = new TextDecoder();
 
@@ -301,8 +310,6 @@ export async function POST(req: Request) {
       if (recorded) return;
       scanBuffer += decoder.decode(chunk, { stream: true });
 
-      // Scan complete events ("data: ...\n\n"). One-shot — once we see
-      // session_created, stop scanning to keep the stream cheap.
       let idx;
       while ((idx = scanBuffer.indexOf('\n\n')) !== -1) {
         const raw = scanBuffer.slice(0, idx).trim();
@@ -311,11 +318,20 @@ export async function POST(req: Request) {
         try {
           const evt = JSON.parse(raw.slice(6)) as { type?: string; sessionId?: string };
           if (evt.type === 'session_created' && evt.sessionId) {
-            recorded = true;
-            // Fire-and-forget; don't block the byte stream.
-            recordImportedSession(importSource, sourceId, evt.sessionId).catch((err) =>
-              console.error('[import/notesportal] recordImportedSession failed', err),
-            );
+            // Just remember the id — don't write yet.
+            capturedSessionId = evt.sessionId;
+          } else if (evt.type === 'done') {
+            // Pipeline finished cleanly. Now it's safe to record the
+            // dedup mapping. Prefer the sessionId on the done event,
+            // fall back to the one captured earlier.
+            const finalId = evt.sessionId ?? capturedSessionId;
+            if (finalId) {
+              recorded = true;
+              // Fire-and-forget; don't block the byte stream.
+              recordImportedSession(importSource, sourceId, finalId).catch((err) =>
+                console.error('[import/notesportal] recordImportedSession failed', err),
+              );
+            }
             break;
           }
         } catch {

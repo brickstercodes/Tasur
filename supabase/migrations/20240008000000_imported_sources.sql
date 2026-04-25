@@ -38,3 +38,30 @@ CREATE INDEX idx_imported_sources_session ON imported_sources(session_id);
 -- RLS: read-only via service role (server-side lookups only). No direct
 -- client access — partner endpoints are the only consumers.
 ALTER TABLE imported_sources ENABLE ROW LEVEL SECURITY;
+
+-- ── TODO: GC sweep for stuck sessions ────────────────────────────────────
+--
+-- When the Go pipeline container is killed mid-flight (e.g. a Railway
+-- redeploy during a long PDF run), the study_sessions row is left in
+-- status='processing' with no mindmap/concepts written. The row is
+-- never reachable from the user's dashboard (only 'ready' sessions are
+-- listed) and will sit orphaned indefinitely.
+--
+-- The import-route fix (recording imported_sources only on `done`, not
+-- on `session_created`) prevents poisoning this dedup table with broken
+-- sessions, but orphan study_sessions rows still accumulate.
+--
+-- Fix: a scheduled cron (pg_cron or an external scheduler) that GC's
+-- sessions stuck in processing for longer than a reasonable pipeline
+-- timeout (e.g. 30 minutes). Applies to ALL upload paths, not just
+-- partner imports — so run it at the study_sessions level, not here.
+--
+-- Suggested query (run every hour via pg_cron or Railway cron):
+--
+--   DELETE FROM study_sessions
+--   WHERE status = 'processing'
+--     AND created_at < now() - interval '30 minutes';
+--
+-- Cascades automatically clean concepts, mindmaps, flashcards,
+-- understanding_state, session_shares, and imported_sources.
+-- ─────────────────────────────────────────────────────────────────────────
