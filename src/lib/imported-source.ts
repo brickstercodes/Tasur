@@ -87,6 +87,31 @@ export async function recordImportedSession(
   }
 }
 
+// ── Record import for metrics/analytics ──────────────────────────────────────
+
+export async function recordImportMetric(
+  userId: string,
+  sourceId: string,
+  sessionId: string,
+  isDedup: boolean,
+): Promise<void> {
+  const supabase = createServerClient();
+
+  const { error } = await supabase
+    .from('notesportal_imports')
+    .insert({
+      user_id: userId,
+      source_id: sourceId,
+      session_id: sessionId,
+      is_dedup: isDedup,
+    });
+
+  if (error) {
+    // Non-fatal: don't block the import if metrics recording fails.
+    console.error('[import-metrics] failed to record', { userId, sourceId, sessionId, error });
+  }
+}
+
 // ── Attach a (different) user to an existing imported session ──────────────
 
 /**

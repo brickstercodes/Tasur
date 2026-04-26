@@ -36,6 +36,7 @@ import {
   isAllowedSource,
   lookupImportedSession,
   recordImportedSession,
+  recordImportMetric,
   type ImportSource,
 } from '@/lib/imported-source';
 
@@ -205,6 +206,10 @@ export async function POST(req: Request) {
         );
       }
     }
+    // Record dedup metric (fire-and-forget).
+    recordImportMetric(appUserId, sourceId, existing.sessionId, true).catch((err) =>
+      console.error('[import/notesportal] recordImportMetric failed (dedup)', err),
+    );
     return Response.json({
       sessionId: existing.sessionId,
       dedup: true,
@@ -352,6 +357,9 @@ export async function POST(req: Request) {
               // Fire-and-forget; don't block the byte stream.
               recordImportedSession(importSource, sourceId, finalId).catch((err) =>
                 console.error('[import/notesportal] recordImportedSession failed', err),
+              );
+              recordImportMetric(appUserId, sourceId, finalId, false).catch((err) =>
+                console.error('[import/notesportal] recordImportMetric failed (new)', err),
               );
             }
             break;
