@@ -97,7 +97,8 @@ export async function recordImportMetric(
 ): Promise<void> {
   const supabase = createServerClient();
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from('notesportal_imports')
     .insert({
       user_id: userId,

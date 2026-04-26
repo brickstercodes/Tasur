@@ -27,25 +27,25 @@ CREATE POLICY "users_can_view_own_imports" ON notesportal_imports
   FOR SELECT
   USING (auth.uid() = user_id);
 
-
-To monitor notesportal converts,
-Traffic by day:                                                                                                                                                                                           
-  SELECT DATE(created_at) as day, COUNT(*) as total                                                                                                                                                         
-  FROM notesportal_imports                         
-  GROUP BY DATE(created_at)
-  ORDER BY day DESC;
-                                                                                                                                                                                                            
-  First-time vs shared:
-  SELECT is_dedup, COUNT(*) as count                                                                                                                                                                        
-  FROM notesportal_imports
-  GROUP BY is_dedup;
-
-  Weekly trends:
-  SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as imports
-  FROM notesportal_imports                                          
-  GROUP BY week                                                                                                                                                                                             
-  ORDER BY week DESC;
-                                                                                                                                                                                                            
-  Unique users joining from notesportal:
-  SELECT COUNT(DISTINCT user_id) as unique_users                                                                                                                                                            
-  FROM notesportal_imports
+-- ── Analytics queries ──────────────────────────────────────────────────────
+--
+-- Traffic by day:
+--   SELECT DATE(created_at) as day, COUNT(*) as total
+--   FROM notesportal_imports
+--   GROUP BY DATE(created_at)
+--   ORDER BY day DESC;
+--
+-- First-time vs shared:
+--   SELECT is_dedup, COUNT(*) as count
+--   FROM notesportal_imports
+--   GROUP BY is_dedup;
+--
+-- Weekly trends:
+--   SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as imports
+--   FROM notesportal_imports
+--   GROUP BY week
+--   ORDER BY week DESC;
+--
+-- Unique users joining from notesportal:
+--   SELECT COUNT(DISTINCT user_id) as unique_users
+--   FROM notesportal_imports;
