@@ -44,7 +44,7 @@ export async function lookupImportedSession(
 
   const { data } = await supabase
     .from('imported_sources')
-    .select('session_id, study_sessions!inner(user_id)')
+    .select('session_id, study_sessions!inner(user_id, status)')
     .eq('source', source)
     .eq('source_id', sourceId)
     .maybeSingle();
@@ -54,14 +54,21 @@ export async function lookupImportedSession(
   // study_sessions!inner returns nested object; defensive in case shape varies.
   const studySession = (data as unknown as {
     session_id: string;
-    study_sessions: { user_id: string } | { user_id: string }[];
+    study_sessions: { user_id: string; status: string } | { user_id: string; status: string }[];
   });
 
-  const ownerId = Array.isArray(studySession.study_sessions)
-    ? studySession.study_sessions[0]?.user_id
-    : studySession.study_sessions?.user_id;
+  const session = Array.isArray(studySession.study_sessions)
+    ? studySession.study_sessions[0]
+    : studySession.study_sessions;
 
+  const ownerId = session?.user_id;
   if (!ownerId) return null;
+
+  // If the pipeline crashed mid-flight, the session will be stuck in
+  // 'processing'. Treat it as a miss so the next import re-processes
+  // rather than returning a session with no mindmap.
+  if (session?.status !== 'ready') return null;
+
   return { sessionId: studySession.session_id, ownerId };
 }
 

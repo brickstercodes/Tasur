@@ -317,15 +317,13 @@ export async function POST(req: Request) {
   // ── 5. Stream SSE back, recording dedup mapping ONLY on `done` ──────────
   //
   // We capture the sessionId from `session_created` (so we have it ready) but
-  // we DO NOT write to imported_sources until the pipeline emits `done`.
-  //
-  // Why: if the Go container is killed mid-pipeline (e.g. Railway redeploy),
-  // we'd otherwise leave imported_sources pointing at a broken session that
-  // has no mindmap row. The next import would dedup-hit the dead session and
-  // every user would 404 on /study/[id]/mindmap forever. Recording on `done`
-  // means the dedup entry only ever points at fully-processed sessions.
+  // Record dedup mapping on `session_created` — early in the pipeline, well
+  // before the client receives `done` and navigates away (which closes the
+  // SSE connection and kills any fire-and-forget promises started after that
+  // point). Broken sessions from mid-flight container crashes are handled at
+  // lookup time: lookupImportedSession checks study_sessions.status = 'ready'
+  // and returns null (miss) for stuck 'processing' rows.
   let scanBuffer = '';
-  let capturedSessionId: string | null = null;
   let recorded = false;
   const decoder = new TextDecoder();
 
@@ -345,23 +343,14 @@ export async function POST(req: Request) {
         try {
           const evt = JSON.parse(raw.slice(6)) as { type?: string; sessionId?: string };
           if (evt.type === 'session_created' && evt.sessionId) {
-            // Just remember the id — don't write yet.
-            capturedSessionId = evt.sessionId;
-          } else if (evt.type === 'done') {
-            // Pipeline finished cleanly. Now it's safe to record the
-            // dedup mapping. Prefer the sessionId on the done event,
-            // fall back to the one captured earlier.
-            const finalId = evt.sessionId ?? capturedSessionId;
-            if (finalId) {
-              recorded = true;
-              // Fire-and-forget; don't block the byte stream.
-              recordImportedSession(importSource, sourceId, finalId).catch((err) =>
-                console.error('[import/notesportal] recordImportedSession failed', err),
-              );
-              recordImportMetric(appUserId, sourceId, finalId, false).catch((err) =>
-                console.error('[import/notesportal] recordImportMetric failed (new)', err),
-              );
-            }
+            recorded = true;
+            // Fire-and-forget — happens early, long before done/navigate.
+            recordImportedSession(importSource, sourceId, evt.sessionId).catch((err) =>
+              console.error('[import/notesportal] recordImportedSession failed', err),
+            );
+            recordImportMetric(appUserId, sourceId, evt.sessionId, false).catch((err) =>
+              console.error('[import/notesportal] recordImportMetric failed (new)', err),
+            );
             break;
           }
         } catch {

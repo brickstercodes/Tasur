@@ -1,7 +1,7 @@
 -- Track notesportal imports for traffic analytics
 CREATE TABLE notesportal_imports (
   id BIGSERIAL PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   source_id TEXT NOT NULL,
   session_id UUID NOT NULL REFERENCES study_sessions(id) ON DELETE CASCADE,
   is_dedup BOOLEAN NOT NULL,
