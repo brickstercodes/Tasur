@@ -31,7 +31,7 @@ This includes:
 - Worked examples (describe them as bullet points)
 - Common mistakes or counterexamples
 - Comparison points between related concepts
-- Wherever the source references a diagram, chart, or figure → add a `[DIAGRAM TO STUDY:]` leaf node
+- Wherever the source references a diagram, chart, or figure → add a `[DIAGRAM TO STUDY: p.N: description]` leaf node with the correct page number
 
 ---
 
@@ -101,12 +101,18 @@ Use snake_case with a subject prefix. Examples:
 
 Wherever the source material contains a diagram, figure, chart, table, or visual:
 
-- Add a leaf node with the format: `[DIAGRAM TO STUDY: brief description of what the diagram shows]`
+- Add a leaf node with the format: `[DIAGRAM TO STUDY: p.N: brief description of what the diagram shows]`
+- `N` is the **page number** in the document where the diagram appears (1-indexed)
 - Keep the description to 10 words or fewer
-- Example: `[DIAGRAM TO STUDY: Clock skew vs clock drift timeline comparison]`
-- Example: `[DIAGRAM TO STUDY: ER diagram showing Student-Course many-to-many relationship]`
+- Example: `[DIAGRAM TO STUDY: p.5: Clock skew vs clock drift timeline comparison]`
+- Example: `[DIAGRAM TO STUDY: p.12: ER diagram showing Student-Course many-to-many relationship]`
 
-This alerts the student to refer to their original material for visual content that cannot be captured in text.
+**CRITICAL: You must always include the page number** (`p.N:`). The student's app uses this number to render the actual PDF page as a clickable thumbnail inside the mindmap. Without it, the feature is broken.
+
+- If the document is a PDF you can see directly, count pages from 1 and use the page the diagram physically appears on.
+- If you genuinely cannot determine the page, use `p.0` as a last resort (indicates unknown).
+
+This allows the student to view the exact diagram page directly inside the mindmap without leaving the study interface.
 
 ---
 
