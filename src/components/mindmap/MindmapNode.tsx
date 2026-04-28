@@ -16,10 +16,12 @@
  *   - Resume target pulse: amber ring animation.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import type { FlowNodeData } from './layout/balanced-tree';
 import { getConfidenceColor } from './color-utils';
+import { getDocFromCache } from '@/lib/doc-cache';
+import { getDiagramPage, saveDiagramPage } from '@/lib/diagram-cache';
 
 // ── Handle styles ─────────────────────────────────────────────────────────────
 
@@ -80,6 +82,265 @@ function getNodeBackground(branchColor: string, depth: number): {
     border: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-border-l3), var(--mindmap-node-border))`,
     borderHover: `color-mix(in srgb, ${branchColor} var(--mindmap-branch-border-hover-l3), var(--mindmap-node-border-hover))`,
   };
+}
+
+// ── Diagram node ──────────────────────────────────────────────────────────────
+
+/**
+ * Renders a [DIAGRAM TO STUDY: p.N: description] leaf as a camera-icon button.
+ * On click it shows the rendered PDF page full-screen with a blurred backdrop.
+ * The rendered page image is cached in IndexedDB after the first load.
+ */
+function DiagramNodeContent({
+  sessionId,
+  pageNumber,
+  description,
+  branchColor,
+}: {
+  sessionId: string;
+  pageNumber: number;
+  description: string;
+  branchColor: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const renderRef = useRef(false);
+
+  const loadPage = useCallback(async () => {
+    if (imgSrc || renderRef.current) return;
+    renderRef.current = true;
+    setLoading(true);
+    setError(false);
+
+    try {
+      // Check IndexedDB cache first
+      const cached = await getDiagramPage(sessionId, pageNumber);
+      if (cached) {
+        setImgSrc(cached.dataUrl);
+        setLoading(false);
+        return;
+      }
+
+      // Load PDF from doc cache
+      const doc = await getDocFromCache(sessionId);
+      if (!doc) {
+        setError(true);
+        setLoading(false);
+        return;
+      }
+
+      // Lazy-load pdfjs-dist — it's large and only needed when a diagram is clicked
+      const pdfjs = await import('pdfjs-dist');
+      // Use a CDN worker to avoid bundling the heavy worker JS in the main chunk
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+      const arrayBuffer = await doc.data.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+
+      const targetPage = Math.max(1, Math.min(pageNumber, pdf.numPages));
+      const page = await pdf.getPage(targetPage);
+
+      const scale = 2.0; // 2× for retina sharpness
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      await page.render({ canvas, viewport }).promise;
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      await saveDiagramPage(sessionId, pageNumber, dataUrl, viewport.width, viewport.height);
+      setImgSrc(dataUrl);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId, pageNumber, imgSrc]);
+
+  const handleOpen = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setOpen(true);
+      loadPage();
+    },
+    [loadPage],
+  );
+
+  const handleClose = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen(false);
+  }, []);
+
+  return (
+    <>
+      {/* Diagram node chip */}
+      <div
+        className="nopan"
+        onClick={handleOpen}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 10px',
+          width: 180,
+          background: `color-mix(in srgb, ${branchColor} 12%, var(--mindmap-node-1))`,
+          border: `1.5px dashed color-mix(in srgb, ${branchColor} 55%, var(--mindmap-node-border))`,
+          borderRadius: 8,
+          cursor: 'pointer',
+          boxSizing: 'border-box',
+          userSelect: 'none',
+        }}
+        title="Click to view diagram"
+      >
+        <span style={{ fontSize: 13, flexShrink: 0, lineHeight: 1 }}>📷</span>
+        <span
+          style={{
+            fontSize: 11,
+            color: `color-mix(in srgb, ${branchColor} 70%, var(--mindmap-node-text))`,
+            lineHeight: 1.3,
+            fontFamily: "'Instrument Serif', Georgia, serif",
+            wordBreak: 'break-word',
+            flex: 1,
+          }}
+        >
+          {description}
+          {pageNumber > 0 && (
+            <span
+              style={{
+                display: 'block',
+                fontSize: 9,
+                fontFamily: "'JetBrains Mono', monospace",
+                color: 'var(--text-muted)',
+                marginTop: 1,
+              }}
+            >
+              p.{pageNumber} · tap to view
+            </span>
+          )}
+        </span>
+      </div>
+
+      {/* Full-screen lightbox */}
+      {open && (
+        <div
+          onClick={handleClose}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(12px) brightness(0.45)',
+            WebkitBackdropFilter: 'blur(12px) brightness(0.45)',
+            cursor: 'zoom-out',
+          }}
+        >
+          {/* Stop propagation so clicks inside the image don't close */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              maxWidth: '88vw',
+              maxHeight: '88vh',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            {/* Header bar */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                padding: '8px 12px',
+                background: 'rgba(0,0,0,0.55)',
+                borderRadius: '10px 10px 0 0',
+                color: '#fff',
+              }}
+            >
+              <span style={{ fontSize: 12, opacity: 0.9, maxWidth: '80%', lineHeight: 1.4 }}>
+                {description}
+                {pageNumber > 0 && (
+                  <span style={{ opacity: 0.6, marginLeft: 8, fontFamily: 'monospace', fontSize: 11 }}>
+                    p.{pageNumber}
+                  </span>
+                )}
+              </span>
+              <button
+                onClick={handleClose}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 20,
+                  cursor: 'pointer',
+                  padding: '0 4px',
+                  lineHeight: 1,
+                  opacity: 0.75,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Image / loading / error */}
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: '0 0 10px 10px',
+                overflow: 'hidden',
+                maxWidth: '88vw',
+                maxHeight: 'calc(88vh - 50px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 320,
+                minHeight: 200,
+              }}
+            >
+              {loading && (
+                <span style={{ color: '#888', fontSize: 13, padding: 32 }}>Rendering page…</span>
+              )}
+              {error && !loading && (
+                <span style={{ color: '#c0392b', fontSize: 13, padding: 32 }}>
+                  Could not render page — PDF may not be cached locally.
+                </span>
+              )}
+              {imgSrc && !loading && (
+                <img
+                  src={imgSrc}
+                  alt={description}
+                  style={{
+                    maxWidth: '88vw',
+                    maxHeight: 'calc(88vh - 50px)',
+                    display: 'block',
+                    objectFit: 'contain',
+                  }}
+                />
+              )}
+            </div>
+
+            <span
+              style={{
+                fontSize: 11,
+                color: 'rgba(255,255,255,0.5)',
+                fontFamily: 'monospace',
+              }}
+            >
+              Click outside or ✕ to close
+            </span>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -215,6 +476,24 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
           isConnectable={false}
           style={HIDDEN_HANDLE_STYLE}
         />
+      </div>
+    );
+  }
+
+  // ── Diagram leaf nodes ──────────────────────────────────────────────────────
+  if (data.isDiagramNode && data.sessionId && data.diagramDescription !== undefined) {
+    return (
+      <div className="nodrag nopan" style={{ opacity, transition: 'opacity 0.2s ease' }}>
+        <Handle id="left" type="source" position={Position.Left} isConnectable={false} style={HIDDEN_HANDLE_STYLE} />
+        <Handle id="left" type="target" position={Position.Left} isConnectable={false} style={HIDDEN_HANDLE_STYLE} />
+        <DiagramNodeContent
+          sessionId={data.sessionId}
+          pageNumber={data.diagramPageNumber ?? 0}
+          description={data.diagramDescription}
+          branchColor={branchColor}
+        />
+        <Handle id="right" type="source" position={Position.Right} isConnectable={false} style={HIDDEN_HANDLE_STYLE} />
+        <Handle id="right" type="target" position={Position.Right} isConnectable={false} style={HIDDEN_HANDLE_STYLE} />
       </div>
     );
   }

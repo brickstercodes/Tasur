@@ -63,7 +63,8 @@
       "Bash(ls /Users/anugrahshetty/Documents/Tasur/src/app/\\\\\\(dashboard\\\\\\)/)",
       "Bash(code-review-graph status *)",
       "mcp__code-review-graph__semantic_search_nodes_tool",
-      "mcp__code-review-graph__get_architecture_overview_tool"
+      "mcp__code-review-graph__get_architecture_overview_tool",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(list\\(d.get\\('exports', {}\\).keys\\(\\)\\)[:20]\\)\")"
     ]
   },
   "enabledMcpjsonServers": [

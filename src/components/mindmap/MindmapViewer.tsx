@@ -217,8 +217,9 @@ function MindmapViewerContent({
         collapsedNodes,
         handleToggleCollapse,
         handleConceptClick,
+        sessionId,
       ),
-    [tree, confidenceMap, collapsedNodes, handleToggleCollapse, handleConceptClick],
+    [tree, confidenceMap, collapsedNodes, handleToggleCollapse, handleConceptClick, sessionId],
   );
 
   // Flag the single node the graph recommends next. Done as a post-process so

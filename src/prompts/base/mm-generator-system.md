@@ -31,7 +31,7 @@ This includes:
 - Worked examples (describe them as bullet points)
 - Common mistakes or counterexamples
 - Comparison points between related concepts
-- Wherever the source references a diagram, chart, or figure → add a `[DIAGRAM TO STUDY:]` leaf node
+- Wherever the source references a diagram, chart, or figure → add a `[DIAGRAM TO STUDY: p.N: description]` leaf node
 
 ---
 
@@ -101,12 +101,14 @@ Use snake_case with a subject prefix. Examples:
 
 Wherever the source material contains a diagram, figure, chart, table, or visual:
 
-- Add a leaf node with the format: `[DIAGRAM TO STUDY: brief description of what the diagram shows]`
+- Add a leaf node with the format: `[DIAGRAM TO STUDY: p.N: brief description of what the diagram shows]`
+- `N` is the page number where the diagram appears in the source material (use the `[PAGE N]` markers in the input text)
 - Keep the description to 10 words or fewer
-- Example: `[DIAGRAM TO STUDY: Clock skew vs clock drift timeline comparison]`
-- Example: `[DIAGRAM TO STUDY: ER diagram showing Student-Course many-to-many relationship]`
+- Example: `[DIAGRAM TO STUDY: p.5: Clock skew vs clock drift timeline comparison]`
+- Example: `[DIAGRAM TO STUDY: p.12: ER diagram showing Student-Course many-to-many relationship]`
+- If the source has no `[PAGE N]` markers or the page cannot be determined, use `p.0`
 
-This alerts the student to refer to their original material for visual content that cannot be captured in text.
+This node renders as a clickable visual thumbnail in the student's mindmap.
 
 ---
 

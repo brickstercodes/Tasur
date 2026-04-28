@@ -137,6 +137,12 @@ export interface DerivedConcept {
    */
   hasDiagram: boolean;
 
+  /**
+   * Parsed diagram references extracted from [DIAGRAM TO STUDY: p.N: description] callouts.
+   * Empty when hasDiagram is false or when page numbers are absent (legacy format).
+   */
+  diagramRefs: { pageNumber: number; description: string }[];
+
   /** Position of this node among its siblings (0-based, preserves teaching sequence). */
   position: number;
 }

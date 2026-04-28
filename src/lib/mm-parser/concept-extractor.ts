@@ -16,6 +16,11 @@ import type { MmNode, ParsedMindmap, DerivedConcept } from './types';
 
 const DIAGRAM_CALLOUT_PREFIX = '[DIAGRAM TO STUDY:';
 
+// Matches both formats:
+//   [DIAGRAM TO STUDY: p.14: description]   ← new format with page number
+//   [DIAGRAM TO STUDY: description]          ← legacy format without page number
+const DIAGRAM_PARSE_RE = /^\[DIAGRAM TO STUDY:\s*(?:p\.(\d+):\s*)?(.+?)\]$/;
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -78,6 +83,11 @@ function buildDerivedConcept(node: MmNode, parentConceptId: string | null): Deri
   const leafContent = collectDirectLeafContent(node);
   const childConceptIds = collectDirectChildConceptIds(node);
   const hasDiagram = leafContent.some((text) => text.startsWith(DIAGRAM_CALLOUT_PREFIX));
+  const diagramRefs = leafContent.flatMap((text) => {
+    const m = text.match(DIAGRAM_PARSE_RE);
+    if (!m) return [];
+    return [{ pageNumber: m[1] ? parseInt(m[1], 10) : 0, description: m[2].trim() }];
+  });
 
   return {
     id: node.CONCEPT_ID!,
@@ -87,6 +97,7 @@ function buildDerivedConcept(node: MmNode, parentConceptId: string | null): Deri
     childConceptIds,
     leafContent,
     hasDiagram,
+    diagramRefs,
     position: 0, // resolved in resolvePositions() post-pass
   };
 }

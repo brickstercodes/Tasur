@@ -71,6 +71,12 @@ export type FlowNodeData = {
   isFocusDimmed?: boolean;
   /** True on the single node the graph recommends the student work on next. */
   isResumeTarget?: boolean;
+  /** Set when this node is a [DIAGRAM TO STUDY: p.N: description] callout leaf. */
+  isDiagramNode?: boolean;
+  diagramPageNumber?: number;
+  diagramDescription?: string;
+  /** Session ID — needed by diagram nodes to load the cached PDF from IndexedDB. */
+  sessionId?: string;
   onToggleCollapse: (nodeId: string) => void;
   onConceptClick: (conceptId: string) => void;
 };
@@ -88,11 +94,15 @@ export type FlowEdgeData = {
 type LayoutContext = {
   confidenceMap: Map<string, number>;
   collapsedNodes: Set<string>;
+  sessionId: string;
   onToggleCollapse: (nodeId: string) => void;
   onConceptClick: (conceptId: string) => void;
   nodes: Node<FlowNodeData>[];
   edges: Edge<FlowEdgeData>[];
 };
+
+// Matches [DIAGRAM TO STUDY: p.N: description] or legacy [DIAGRAM TO STUDY: description]
+const DIAGRAM_LABEL_RE = /^\[DIAGRAM TO STUDY:\s*(?:p\.(\d+):\s*)?(.+?)\]$/;
 
 // ── Height estimation ─────────────────────────────────────────────────────────
 
@@ -182,6 +192,12 @@ function positionNode(
   const isCollapsed = ctx.collapsedNodes.has(nodeId);
   const visibleChildCount = node.children?.length ?? 0;
 
+  // Detect diagram callout leaves: [DIAGRAM TO STUDY: p.N: description]
+  const diagramMatch = node.label.match(DIAGRAM_LABEL_RE);
+  const isDiagramNode = !!diagramMatch;
+  const diagramPageNumber = diagramMatch ? (diagramMatch[1] ? parseInt(diagramMatch[1], 10) : 0) : undefined;
+  const diagramDescription = diagramMatch ? diagramMatch[2].trim() : undefined;
+
   ctx.nodes.push({
     id: nodeId,
     type: 'mindmapNode',
@@ -199,6 +215,10 @@ function positionNode(
       confidence,
       isCollapsed,
       visibleChildCount,
+      isDiagramNode,
+      diagramPageNumber,
+      diagramDescription,
+      sessionId: ctx.sessionId,
       onToggleCollapse: ctx.onToggleCollapse,
       onConceptClick: ctx.onConceptClick,
     },
@@ -266,6 +286,7 @@ export function buildBalancedTreeLayout(
   collapsedNodes: Set<string>,
   onToggleCollapse: (nodeId: string) => void,
   onConceptClick: (conceptId: string) => void,
+  sessionId = '',
 ): { nodes: Node<FlowNodeData>[]; edges: Edge<FlowEdgeData>[] } {
   const nodes: Node<FlowNodeData>[] = [];
   const edges: Edge<FlowEdgeData>[] = [];
@@ -273,6 +294,7 @@ export function buildBalancedTreeLayout(
   const ctx: LayoutContext = {
     confidenceMap,
     collapsedNodes,
+    sessionId,
     onToggleCollapse,
     onConceptClick,
     nodes,

@@ -324,6 +324,7 @@ async function insertConcepts(
       examPriority: depthToExamPriority(concept.depth),
       depth: concept.depth,
       hasDiagram: concept.hasDiagram,
+      diagramRefs: concept.diagramRefs.length > 0 ? concept.diagramRefs : undefined,
     },
   }));
 

@@ -31,7 +31,7 @@ This includes:
 - Worked examples (describe them as bullet points)
 - Common mistakes or counterexamples
 - Comparison points between related concepts
-- Wherever the source references a diagram, chart, or figure → add a `[DIAGRAM TO STUDY:]` leaf node
+- Wherever the source references a diagram, chart, or figure → add a `[DIAGRAM TO STUDY: p.N: description]` leaf node
 
 ---
 
@@ -101,12 +101,14 @@ Use snake_case with a subject prefix. Examples:
 
 Wherever the source material contains a diagram, figure, chart, table, or visual:
 
-- Add a leaf node with the format: `[DIAGRAM TO STUDY: brief description of what the diagram shows]`
+- Add a leaf node with the format: `[DIAGRAM TO STUDY: p.N: brief description of what the diagram shows]`
+- `N` is the page number where the diagram appears in the source material (use the `[PAGE N]` markers in the input text)
 - Keep the description to 10 words or fewer
-- Example: `[DIAGRAM TO STUDY: Clock skew vs clock drift timeline comparison]`
-- Example: `[DIAGRAM TO STUDY: ER diagram showing Student-Course many-to-many relationship]`
+- Example: `[DIAGRAM TO STUDY: p.5: Clock skew vs clock drift timeline comparison]`
+- Example: `[DIAGRAM TO STUDY: p.12: ER diagram showing Student-Course many-to-many relationship]`
+- If the source has no `[PAGE N]` markers or the page cannot be determined, use `p.0`
 
-This alerts the student to refer to their original material for visual content that cannot be captured in text.
+This node will be rendered as a clickable visual thumbnail in the mindmap — the student clicks it to see the actual diagram screenshot without leaving the map.
 
 ---
 
@@ -167,7 +169,7 @@ The following .mm file represents the **depth and completeness standard** you mu
 <node TEXT="Two clocks do not agree perfectly."/>
 <node TEXT="Time synchronization is required for Correctness and Fairness."/>
 <node TEXT="Needed for sender-receiver sync and coordination of joint activity."/>
-<node TEXT="[DIAGRAM TO STUDY: Clock Synchronization issue - output.c vs output.o compile mismatch due to clock differences]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.2: Clock Synchronization issue - output.c vs output.o compile mismatch due to clock differences]"/>
 </node>
 <node TEXT="Clock Skew vs. Clock Drift">
 <node TEXT="Clock Skew: Relative difference in clock values of two processes (like distance between two vehicles)."/>
@@ -197,7 +199,7 @@ The following .mm file represents the **depth and completeness standard** you mu
 <node TEXT="Drift Rate (rho): The rate at which a computer clock deviates from a perfect reference clock."/>
 <node TEXT="Specification constraint: 1 - rho &lt;= dC/dt &lt;= 1 + rho."/>
 <node TEXT="To guarantee no two clocks differ by more than delta, resynchronize every delta / (2 * rho) seconds."/>
-<node TEXT="[DIAGRAM TO STUDY: Relation between clock time and UTC when clocks tick at different rates]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.4: Relation between clock time and UTC when clocks tick at different rates]"/>
 </node>
 <node TEXT="Time Standards">
 <node TEXT="Astronomical Time: Solar day / Solar second."/>
@@ -209,14 +211,14 @@ The following .mm file represents the **depth and completeness standard** you mu
 <node TEXT="Client requests time, server replies with Ts."/>
 <node TEXT="Client notes local time before sending (T0) and after receiving (T1)."/>
 <node TEXT="Correct time estimate: Ts + (T1 - T0) / 2 (Assumes symmetric network delay)."/>
-<node TEXT="[DIAGRAM TO STUDY: Cristian's Algorithm client-server exchange and example calculation]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.6: Cristian's Algorithm client-server exchange and example calculation]"/>
 </node>
 <node TEXT="The Berkeley Algorithm">
 <node TEXT="Time server (time daemon) is ACTIVE, unlike NTP/Cristian's where it is passive."/>
 <node TEXT="Daemon polls every machine to ask their time, calculates average, and tells everyone how to adjust."/>
 <node TEXT="Suitable when no machine has an accurate/reference clock."/>
 <node TEXT="Daemon's time must be manually set periodically by operator."/>
-<node TEXT="[DIAGRAM TO STUDY: 3-part Berkeley algorithm diagram (daemon asks, machines answer, daemon tells adjustment)]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.8: 3-part Berkeley algorithm diagram (daemon asks, machines answer, daemon tells adjustment)]"/>
 </node>
 <node TEXT="Network Time Protocol (NTP)">
 <node TEXT="Based on Cristian's algorithm but protocol is setup pair-wise between servers."/>
@@ -248,7 +250,7 @@ The following .mm file represents the **depth and completeness standard** you mu
 <node TEXT="2. Pi sends message m with timestamp ts(m) = Ci."/>
 <node TEXT="3. Pj receives m, updates clock: Cj = max(Cj, ts(m)), then executes Cj = Cj + 1 and delivers."/>
 </node>
-<node TEXT="[DIAGRAM TO STUDY: Lamport logical clocks examples (events a-g, correction of clocks running at different rates, and middleware layer positioning)]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.11: Lamport logical clocks examples (events a-g, correction of clocks running at different rates, and middleware layer positioning)]"/>
 <node TEXT="Example: Totally Ordered Multicasting">
 <node TEXT="Ensures all messages are delivered in the same order to each receiver (e.g., replicated database updates A=100, B=100)."/>
 <node TEXT="Process multicasts timestamped message. Receiver puts it in local queue ordered by timestamp."/>
@@ -269,7 +271,7 @@ The following .mm file represents the **depth and completeness standard** you mu
 <node TEXT="2. Pi sends message m with vector timestamp ts(m) = VCi."/>
 <node TEXT="3. Pj receives m, updates: VCj[k] = max(VCj[k], ts(m)[k]) for each k, then executes first step."/>
 </node>
-<node TEXT="[DIAGRAM TO STUDY: Vector Clocks Example tracking p1, p2, p3 arrays (e.g., (1,0,0), (2,1,0), etc.)]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.14: Vector Clocks Example tracking p1, p2, p3 arrays (e.g., (1,0,0), (2,1,0), etc.)]"/>
 </node>
 </node>
 
@@ -288,7 +290,7 @@ The following .mm file represents the **depth and completeness standard** you mu
 <node TEXT="One process is coordinator. Request -> OK -> Access -> Release."/>
 <node TEXT="Advantages: Guarantees mutual exclusion, fair (queue), no starvation, easy to implement, needs only 3 messages."/>
 <node TEXT="Shortcomings: Single point of failure, dead coordinator vs permission denied confusion, performance bottleneck."/>
-<node TEXT="[DIAGRAM TO STUDY: Centralized Mutual Exclusion]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.17: Centralized Mutual Exclusion]"/>
 </node>
 <node TEXT="Decentralized Algorithm">
 <node TEXT="Voting based on DHT system. Resource replicated n times."/>
@@ -306,16 +308,16 @@ The following .mm file represents the **depth and completeness standard** you mu
 </node>
 <node TEXT="Advantages: Deadlock-free, Starvation-free, no single point of failure. Messages per entry: 2(n-1)."/>
 <node TEXT="Disadvantages: n points of failure, complicated, slower, group membership maintenance required."/>
-<node TEXT="[DIAGRAM TO STUDY: Distributed Algorithm 3-node example]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.20: Distributed Algorithm 3-node example]"/>
 </node>
 <node TEXT="Token Ring Algorithm">
 <node TEXT="Logical ring constructed (ordering doesn't matter, just needs successor)."/>
 <node TEXT="Token circulates. If acquired and needs access -> executes, then passes. If no access needed -> just passes."/>
 <node TEXT="Advantages: Simple, deadlock-free. Messages: 1 to infinity. Delay: 0 to n-1."/>
 <node TEXT="Disadvantages: Token loss needs regeneration, process crash breaks ring (recovery needed)."/>
-<node TEXT="[DIAGRAM TO STUDY: Unordered network vs Logical ring constructed in software]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.22: Unordered network vs Logical ring constructed in software]"/>
 </node>
-<node TEXT="[DIAGRAM TO STUDY: Comparison table of four mutual exclusion algorithms]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.23: Comparison table of four mutual exclusion algorithms]"/>
 </node>
 </node>
 
@@ -332,7 +334,7 @@ The following .mm file represents the **depth and completeness standard** you mu
 <node TEXT="Process P sends ELECTION message to all processes with HIGHER numbers."/>
 <node TEXT="If no one responds, P wins and becomes coordinator."/>
 <node TEXT="If a higher-up answers, it takes over the election process, and P's job is done."/>
-<node TEXT="[DIAGRAM TO STUDY: Bully Algorithm steps (nodes 0-6 holding elections, node 6 wins and tells everyone)]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.26: Bully Algorithm steps (nodes 0-6 holding elections, node 6 wins and tells everyone)]"/>
 </node>
 <node TEXT="A Ring Algorithm">
 <node TEXT="Processes are physically or logically ordered (knows successor). Does NOT use a token."/>
@@ -340,7 +342,7 @@ The following .mm file represents the **depth and completeness standard** you mu
 <node TEXT="Each step: process adds its own ID to the message list."/>
 <node TEXT="When message returns to starter, message type changed to COORDINATOR."/>
 <node TEXT="Circulates again to inform everyone of the new coordinator (member in the list with highest ID), then message is removed."/>
-<node TEXT="[DIAGRAM TO STUDY: Election algorithm using a ring (nodes converting ELECTION to COORDINATOR messages)]"/>
+<node TEXT="[DIAGRAM TO STUDY: p.28: Election algorithm using a ring (nodes converting ELECTION to COORDINATOR messages)]"/>
 </node>
 </node>
 </node>

@@ -58,7 +58,7 @@ export async function parsePdf(buffer: Buffer): Promise<ParseResult> {
   const data = new Uint8Array(buffer);
 
   let parser: {
-    getText: () => Promise<{ text: string; total: number }>;
+    getText: () => Promise<{ text: string; total: number; pages?: { num: number; text: string }[] }>;
     destroy: () => Promise<void>;
   } | null = null;
 
@@ -67,7 +67,13 @@ export async function parsePdf(buffer: Buffer): Promise<ParseResult> {
     parser = new PDFParseCtor({ data, verbosity: 0 });
     const result = await parser.getText();
 
-    const rawText = result.text.trim();
+    // Build page-annotated text so the mm-generator can reference page numbers
+    // in [DIAGRAM TO STUDY: p.N: ...] callouts. Falls back to raw text when
+    // per-page data is unavailable (e.g. single-page docs or non-PDF types).
+    const pages = result.pages;
+    const rawText = pages && pages.length > 1
+      ? pages.map((p) => `[PAGE ${p.num}]\n${p.text.trim()}`).join('\n\n')
+      : result.text.trim();
 
     if (!rawText) {
       return {

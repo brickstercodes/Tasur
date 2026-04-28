@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tasur Button Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* Mirror notesportal dark bg */
+        background: radial-gradient(
+          ellipse 80% 60% at 60% 10%,
+          #5c3018 0%,
+          #1e1510 40%,
+          #141210 100%
+        );
+      }
+
+      .card {
+        padding: 40px;
+        width: 480px;
+      }
+
+      .card-title {
+        font-size: 11px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.25);
+        margin-bottom: 20px;
+        text-align: center;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+      }
+
+      #tasur-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        padding: 14px 24px;
+        border-radius: 10px;
+        cursor: pointer;
+        text-decoration: none;
+
+        /* Dark card with warm amber radial glow */
+        background:
+          radial-gradient(
+            ellipse 70% 120% at 50% -10%,
+            rgba(180, 90, 20, 0.35) 0%,
+            transparent 70%
+          ),
+          linear-gradient(180deg, #2a1f15 0%, #1c1510 100%);
+
+        border: 1px solid rgba(200, 120, 40, 0.2);
+        box-shadow:
+          0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+          0 4px 20px rgba(0, 0, 0, 0.5);
+
+        transition:
+          transform 120ms ease,
+          box-shadow 120ms ease,
+          border-color 120ms ease;
+      }
+
+      #tasur-btn:hover {
+        transform: translateY(-2px);
+        border-color: rgba(200, 120, 40, 0.45);
+        box-shadow:
+          0 1px 0 0 rgba(255, 255, 255, 0.07) inset,
+          0 8px 28px rgba(0, 0, 0, 0.55),
+          0 0 20px rgba(160, 80, 20, 0.2);
+      }
+
+      #tasur-btn:active {
+        transform: translateY(0px);
+        box-shadow:
+          0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+          0 2px 8px rgba(0, 0, 0, 0.4);
+      }
+
+      .tasur-label {
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+        font-size: 15px;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.65);
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+      }
+
+      .tasur-wordmark {
+        display: inline-flex;
+        align-items: center;
+        font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+        font-size: 26px;
+        color: rgba(255, 255, 255, 0.92);
+        font-weight: 400;
+        letter-spacing: -0.01em;
+        line-height: 1;
+        gap: 1px;
+      }
+
+      .tasur-wordmark img {
+        display: inline-block;
+        vertical-align: middle;
+        position: relative;
+        top: -1px;
+        /* Lighten the dark logo for use on dark bg */
+        filter: invert(0) brightness(0.85);
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <p class="card-title">Button preview</p>
+      <a
+        id="tasur-btn"
+        href="https://tasur.anugrahshetty.dev/import?source=notesportal&sourceId=DC_UNIT_4_M2&fileUrl=https%3A%2F%2Fnote.notesportal.tech%2FDC_UNIT_4_M2.pdf&title=DC+Unit+4+M2&subject=dc"
+        target="_blank"
+        rel="noopener"
+      >
+        <span class="tasur-label">Study this with</span>
+        <span class="tasur-wordmark">
+          Tas
+          <img
+            src="https://tasur.anugrahshetty.dev/logo.svg"
+            alt=""
+            aria-hidden="true"
+            width="16"
+            height="27"
+          />
+          r
+        </span>
+      </a>
+    </div>
+  </body>
+</html>
