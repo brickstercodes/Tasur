@@ -68,13 +68,33 @@ export async function parsePdf(buffer: Buffer): Promise<ParseResult> {
     const result = await parser.getText();
 
     // Build page-annotated text so the mm-generator can reference page numbers
-    // in [DIAGRAM TO STUDY: p.N: ...] callouts. Falls back to raw text when
-    // per-page data is unavailable (e.g. single-page docs or non-PDF types).
+    // in [DIAGRAM TO STUDY: p.N: ...] callouts.
+    //
+    // Format per page:
+    //   ===== PAGE N of TOTAL =====
+    //   <text>                          ← or [IMAGE-HEAVY PAGE] when sparse
+    //   ===== /PAGE N =====
+    //
+    // The [IMAGE-HEAVY PAGE] hint signals to Gemini that this slide is
+    // predominantly a diagram/figure with little extractable text — it should
+    // emit a DIAGRAM TO STUDY callout pointing at this page number.
     const pages = result.pages;
+    const pageCount = result.total;
     const rawText = pages && pages.length > 1
-      ? pages.map((p) => `[PAGE ${p.num}]\n${p.text.trim()}`).join('\n\n')
+      ? pages
+          .map((p) => {
+            const text = p.text.trim();
+            const wordCount = text ? text.split(/\s+/).length : 0;
+            // Lecture slides with <15 words are almost certainly image/diagram slides
+            const body = wordCount < 15 && wordCount > 0
+              ? `${text}\n[IMAGE-HEAVY PAGE — likely contains a diagram, figure, or chart]`
+              : wordCount === 0
+                ? '[EMPTY PAGE — image-only or blank]'
+                : text;
+            return `===== PAGE ${p.num} of ${pageCount} =====\n${body}\n===== /PAGE ${p.num} =====`;
+          })
+          .join('\n\n')
       : result.text.trim();
-
     if (!rawText) {
       return {
         success: false,
@@ -83,7 +103,6 @@ export async function parsePdf(buffer: Buffer): Promise<ParseResult> {
       };
     }
 
-    const pageCount = result.total;
     const isChunked = pageCount > LARGE_PDF_PAGE_THRESHOLD;
     const chunks = isChunked ? splitIntoPageChunks(rawText, pageCount) : undefined;
 

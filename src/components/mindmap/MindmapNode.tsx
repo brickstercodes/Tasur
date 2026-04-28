@@ -17,6 +17,7 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import type { FlowNodeData } from './layout/balanced-tree';
 import { getConfidenceColor } from './color-utils';
@@ -87,9 +88,11 @@ function getNodeBackground(branchColor: string, depth: number): {
 // ── Diagram node ──────────────────────────────────────────────────────────────
 
 /**
- * Renders a [DIAGRAM TO STUDY: p.N: description] leaf as a camera-icon button.
- * On click it shows the rendered PDF page full-screen with a blurred backdrop.
- * The rendered page image is cached in IndexedDB after the first load.
+ * Renders a [DIAGRAM TO STUDY: p.N: description] leaf as a camera-icon chip.
+ * Clicking opens a full-screen lightbox portalled to document.body so it
+ * escapes React Flow's CSS transform context (position:fixed breaks inside transforms).
+ * pageNumber=0 means the source map was generated without page markers — we show
+ * a "no page data" message rather than rendering the wrong page.
  */
 function DiagramNodeContent({
   sessionId,
@@ -108,14 +111,15 @@ function DiagramNodeContent({
   const [error, setError] = useState(false);
   const renderRef = useRef(false);
 
+  const hasPageNumber = pageNumber > 0;
+
   const loadPage = useCallback(async () => {
-    if (imgSrc || renderRef.current) return;
+    if (!hasPageNumber || imgSrc || renderRef.current) return;
     renderRef.current = true;
     setLoading(true);
     setError(false);
 
     try {
-      // Check IndexedDB cache first
       const cached = await getDiagramPage(sessionId, pageNumber);
       if (cached) {
         setImgSrc(cached.dataUrl);
@@ -123,7 +127,6 @@ function DiagramNodeContent({
         return;
       }
 
-      // Load PDF from doc cache
       const doc = await getDocFromCache(sessionId);
       if (!doc) {
         setError(true);
@@ -131,18 +134,18 @@ function DiagramNodeContent({
         return;
       }
 
-      // Lazy-load pdfjs-dist — it's large and only needed when a diagram is clicked
+      // Lazy-load pdfjs-dist — large, only needed on first diagram open
       const pdfjs = await import('pdfjs-dist');
-      // Use a CDN worker to avoid bundling the heavy worker JS in the main chunk
-      pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+      pdfjs.GlobalWorkerOptions.workerSrc =
+        `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
       const arrayBuffer = await doc.data.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
-      const targetPage = Math.max(1, Math.min(pageNumber, pdf.numPages));
+      const targetPage = Math.min(pageNumber, pdf.numPages);
       const page = await pdf.getPage(targetPage);
 
-      const scale = 2.0; // 2× for retina sharpness
+      const scale = 2.0;
       const viewport = page.getViewport({ scale });
       const canvas = document.createElement('canvas');
       canvas.width = viewport.width;
@@ -158,7 +161,7 @@ function DiagramNodeContent({
     } finally {
       setLoading(false);
     }
-  }, [sessionId, pageNumber, imgSrc]);
+  }, [sessionId, pageNumber, hasPageNumber, imgSrc]);
 
   const handleOpen = useCallback(
     (e: React.MouseEvent) => {
@@ -174,9 +177,124 @@ function DiagramNodeContent({
     setOpen(false);
   }, []);
 
+  // ── Lightbox — portalled to document.body to escape React Flow's transform ──
+  const lightbox = open
+    ? createPortal(
+        <div
+          onClick={handleClose}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(14px) brightness(0.4)',
+            WebkitBackdropFilter: 'blur(14px) brightness(0.4)',
+            cursor: 'zoom-out',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              maxWidth: '88vw',
+              maxHeight: '88vh',
+              borderRadius: 12,
+              overflow: 'hidden',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
+              cursor: 'default',
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 16px',
+                background: 'rgba(20,16,12,0.92)',
+                color: '#fff',
+                gap: 16,
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.4, flex: 1 }}>
+                {description}
+                {hasPageNumber && (
+                  <span style={{ opacity: 0.5, marginLeft: 8, fontFamily: 'monospace', fontSize: 11 }}>
+                    p.{pageNumber}
+                  </span>
+                )}
+              </span>
+              <button
+                onClick={handleClose}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 16,
+                  cursor: 'pointer',
+                  borderRadius: 6,
+                  width: 28,
+                  height: 28,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div
+              style={{
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 320,
+                minHeight: 200,
+                maxWidth: '88vw',
+                maxHeight: 'calc(88vh - 48px)',
+                overflow: 'auto',
+              }}
+            >
+              {!hasPageNumber && (
+                <span style={{ color: '#888', fontSize: 13, padding: 40, textAlign: 'center', lineHeight: 1.6 }}>
+                  This diagram was added before page tracking was introduced.<br />
+                  Re-upload your document to get clickable diagram previews.
+                </span>
+              )}
+              {hasPageNumber && loading && (
+                <span style={{ color: '#888', fontSize: 13, padding: 40 }}>Rendering page…</span>
+              )}
+              {hasPageNumber && error && !loading && (
+                <span style={{ color: '#c0392b', fontSize: 13, padding: 40, textAlign: 'center', lineHeight: 1.6 }}>
+                  Could not render — open the document in the study view first<br />
+                  so it gets cached locally, then try again.
+                </span>
+              )}
+              {hasPageNumber && imgSrc && !loading && (
+                <img
+                  src={imgSrc}
+                  alt={description}
+                  style={{ display: 'block', maxWidth: '88vw', maxHeight: 'calc(88vh - 48px)', objectFit: 'contain' }}
+                />
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )
+    : null;
+
   return (
     <>
-      {/* Diagram node chip */}
+      {/* Chip visible in the mindmap */}
       <div
         className="nopan"
         onClick={handleOpen}
@@ -207,138 +325,21 @@ function DiagramNodeContent({
           }}
         >
           {description}
-          {pageNumber > 0 && (
-            <span
-              style={{
-                display: 'block',
-                fontSize: 9,
-                fontFamily: "'JetBrains Mono', monospace",
-                color: 'var(--text-muted)',
-                marginTop: 1,
-              }}
-            >
-              p.{pageNumber} · tap to view
-            </span>
-          )}
+          <span
+            style={{
+              display: 'block',
+              fontSize: 9,
+              fontFamily: "'JetBrains Mono', monospace",
+              color: 'var(--text-muted)',
+              marginTop: 1,
+            }}
+          >
+            {hasPageNumber ? `p.${pageNumber} · click to view` : 'click to view'}
+          </span>
         </span>
       </div>
 
-      {/* Full-screen lightbox */}
-      {open && (
-        <div
-          onClick={handleClose}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backdropFilter: 'blur(12px) brightness(0.45)',
-            WebkitBackdropFilter: 'blur(12px) brightness(0.45)',
-            cursor: 'zoom-out',
-          }}
-        >
-          {/* Stop propagation so clicks inside the image don't close */}
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'relative',
-              maxWidth: '88vw',
-              maxHeight: '88vh',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            {/* Header bar */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                width: '100%',
-                padding: '8px 12px',
-                background: 'rgba(0,0,0,0.55)',
-                borderRadius: '10px 10px 0 0',
-                color: '#fff',
-              }}
-            >
-              <span style={{ fontSize: 12, opacity: 0.9, maxWidth: '80%', lineHeight: 1.4 }}>
-                {description}
-                {pageNumber > 0 && (
-                  <span style={{ opacity: 0.6, marginLeft: 8, fontFamily: 'monospace', fontSize: 11 }}>
-                    p.{pageNumber}
-                  </span>
-                )}
-              </span>
-              <button
-                onClick={handleClose}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#fff',
-                  fontSize: 20,
-                  cursor: 'pointer',
-                  padding: '0 4px',
-                  lineHeight: 1,
-                  opacity: 0.75,
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Image / loading / error */}
-            <div
-              style={{
-                background: '#fff',
-                borderRadius: '0 0 10px 10px',
-                overflow: 'hidden',
-                maxWidth: '88vw',
-                maxHeight: 'calc(88vh - 50px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: 320,
-                minHeight: 200,
-              }}
-            >
-              {loading && (
-                <span style={{ color: '#888', fontSize: 13, padding: 32 }}>Rendering page…</span>
-              )}
-              {error && !loading && (
-                <span style={{ color: '#c0392b', fontSize: 13, padding: 32 }}>
-                  Could not render page — PDF may not be cached locally.
-                </span>
-              )}
-              {imgSrc && !loading && (
-                <img
-                  src={imgSrc}
-                  alt={description}
-                  style={{
-                    maxWidth: '88vw',
-                    maxHeight: 'calc(88vh - 50px)',
-                    display: 'block',
-                    objectFit: 'contain',
-                  }}
-                />
-              )}
-            </div>
-
-            <span
-              style={{
-                fontSize: 11,
-                color: 'rgba(255,255,255,0.5)',
-                fontFamily: 'monospace',
-              }}
-            >
-              Click outside or ✕ to close
-            </span>
-          </div>
-        </div>
-      )}
+      {lightbox}
     </>
   );
 }

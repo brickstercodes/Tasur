@@ -99,16 +99,30 @@ Use snake_case with a subject prefix. Examples:
 
 ## Diagram Callout Convention
 
-Wherever the source material contains a diagram, figure, chart, table, or visual:
+The source text is paginated with markers in this format:
 
-- Add a leaf node with the format: `[DIAGRAM TO STUDY: p.N: brief description of what the diagram shows]`
-- `N` is the page number where the diagram appears in the source material (use the `[PAGE N]` markers in the input text)
+```
+===== PAGE N of TOTAL =====
+<text content of the page>
+===== /PAGE N =====
+```
+
+Pages tagged `[IMAGE-HEAVY PAGE]` have fewer than 15 extractable words — they are almost certainly slides that contain a diagram, chart, figure, or table as their main content. Pages tagged `[EMPTY PAGE]` contain no text at all (image-only).
+
+**How to assign page numbers to diagrams:**
+
+1. When the source explicitly mentions a figure, diagram, chart, table, or visual, identify which page it appears on or is described on.
+2. If a nearby page is tagged `[IMAGE-HEAVY PAGE]` or `[EMPTY PAGE]`, it is very likely the actual diagram slide — use THAT page number.
+3. Use the page number from `===== PAGE N of TOTAL =====` markers — `N` is the exact number to put in the callout.
+
+**Callout format:**
+- `[DIAGRAM TO STUDY: p.N: brief description of what the diagram shows]`
 - Keep the description to 10 words or fewer
 - Example: `[DIAGRAM TO STUDY: p.5: Clock skew vs clock drift timeline comparison]`
 - Example: `[DIAGRAM TO STUDY: p.12: ER diagram showing Student-Course many-to-many relationship]`
-- If the source has no `[PAGE N]` markers or the page cannot be determined, use `p.0`
+- Use `p.0` only when there are no `===== PAGE N =====` markers at all in the input
 
-This node will be rendered as a clickable visual thumbnail in the mindmap — the student clicks it to see the actual diagram screenshot without leaving the map.
+This node renders as a clickable visual thumbnail in the student's mindmap.
 
 ---
 
