@@ -16,12 +16,12 @@
  *   - Resume target pulse: amber ring animation.
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import type { FlowNodeData } from './layout/balanced-tree';
 import { getConfidenceColor } from './color-utils';
-import { getDocFromCache } from '@/lib/doc-cache';
+import { getDocFromCache, saveDocBlobToCache } from '@/lib/doc-cache';
 import { getDiagramPage, saveDiagramPage } from '@/lib/diagram-cache';
 
 // ── Handle styles ─────────────────────────────────────────────────────────────
@@ -99,25 +99,39 @@ function DiagramNodeContent({
   pageNumber,
   description,
   branchColor,
+  documentUrl,
+  documentFileName,
 }: {
   sessionId: string;
   pageNumber: number;
   description: string;
   branchColor: string;
+  documentUrl?: string;
+  documentFileName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [resolvedDocumentUrl, setResolvedDocumentUrl] = useState<string | undefined>(documentUrl);
+  const [resolvedDocumentFileName, setResolvedDocumentFileName] = useState<string | undefined>(documentFileName);
+  const [isRefreshingUrl, setIsRefreshingUrl] = useState(false);
   const renderRef = useRef(false);
 
   const hasPageNumber = pageNumber > 0;
 
-  const loadPage = useCallback(async () => {
+  useEffect(() => {
+    setResolvedDocumentUrl(documentUrl);
+    setResolvedDocumentFileName(documentFileName);
+  }, [documentUrl, documentFileName]);
+
+  const loadPage = useCallback(async (overrideUrl?: string, overrideFileName?: string) => {
     if (!hasPageNumber || imgSrc || renderRef.current) return;
     renderRef.current = true;
     setLoading(true);
     setError(false);
+    setErrorMessage(null);
 
     try {
       const cached = await getDiagramPage(sessionId, pageNumber);
@@ -127,9 +141,25 @@ function DiagramNodeContent({
         return;
       }
 
+      let sourceBlob: Blob | null = null;
       const doc = await getDocFromCache(sessionId);
-      if (!doc) {
+      if (doc?.data) {
+        sourceBlob = doc.data;
+      } else if (overrideUrl || resolvedDocumentUrl) {
+        const activeUrl = overrideUrl ?? resolvedDocumentUrl;
+        if (!activeUrl) throw new Error('Missing document URL');
+        const response = await fetch(activeUrl);
+        if (!response.ok) throw new Error('Failed to fetch document');
+        const blob = await response.blob();
+        if (!blob.size) throw new Error('Empty document');
+        sourceBlob = blob;
+        const cacheName = overrideFileName ?? resolvedDocumentFileName ?? 'document.pdf';
+        await saveDocBlobToCache(sessionId, blob, cacheName);
+      }
+
+      if (!sourceBlob) {
         setError(true);
+        setErrorMessage('Could not render — this preview requires a PDF source. Non-PDF uploads cannot render page previews.');
         setLoading(false);
         return;
       }
@@ -139,7 +169,7 @@ function DiagramNodeContent({
       pdfjs.GlobalWorkerOptions.workerSrc =
         `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-      const arrayBuffer = await doc.data.arrayBuffer();
+      const arrayBuffer = await sourceBlob.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
       const targetPage = Math.min(pageNumber, pdf.numPages);
@@ -158,10 +188,35 @@ function DiagramNodeContent({
       setImgSrc(dataUrl);
     } catch {
       setError(true);
+      setErrorMessage('Could not render — the source PDF could not be loaded. This can happen for non-PDF uploads or expired links.');
     } finally {
       setLoading(false);
     }
-  }, [sessionId, pageNumber, hasPageNumber, imgSrc]);
+  }, [sessionId, pageNumber, hasPageNumber, imgSrc, resolvedDocumentUrl, resolvedDocumentFileName]);
+
+  const handleRetry = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setError(false);
+    setErrorMessage(null);
+    setImgSrc(null);
+    renderRef.current = false;
+    setIsRefreshingUrl(true);
+
+    try {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/documents/signed-url`);
+      if (!response.ok) throw new Error('Failed to refresh URL');
+      const data = await response.json() as { signedUrl?: string; fileName?: string };
+      if (!data.signedUrl) throw new Error('Missing signed URL');
+      setResolvedDocumentUrl(data.signedUrl);
+      setResolvedDocumentFileName(data.fileName || resolvedDocumentFileName);
+      await loadPage(data.signedUrl, data.fileName || resolvedDocumentFileName);
+    } catch {
+      setError(true);
+      setErrorMessage('Could not refresh the document link. Please try again later.');
+    } finally {
+      setIsRefreshingUrl(false);
+    }
+  }, [sessionId, loadPage, resolvedDocumentFileName]);
 
   const handleOpen = useCallback(
     (e: React.MouseEvent) => {
@@ -273,10 +328,26 @@ function DiagramNodeContent({
                 <span style={{ color: '#888', fontSize: 13, padding: 40 }}>Rendering page…</span>
               )}
               {hasPageNumber && error && !loading && (
-                <span style={{ color: '#c0392b', fontSize: 13, padding: 40, textAlign: 'center', lineHeight: 1.6 }}>
-                  Could not render — open the document in the study view first<br />
-                  so it gets cached locally, then try again.
-                </span>
+                <div style={{ color: '#c0392b', fontSize: 13, padding: 40, textAlign: 'center', lineHeight: 1.6 }}>
+                  <div>{errorMessage ?? 'Could not render — the source PDF is not available for this session yet.'}</div>
+                  <button
+                    onClick={handleRetry}
+                    type="button"
+                    disabled={isRefreshingUrl}
+                    style={{
+                      marginTop: 12,
+                      background: 'rgba(192,57,43,0.08)',
+                      border: '1px solid rgba(192,57,43,0.35)',
+                      color: '#c0392b',
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      cursor: isRefreshingUrl ? 'default' : 'pointer',
+                    }}
+                  >
+                    {isRefreshingUrl ? 'Refreshing…' : 'Retry'}
+                  </button>
+                </div>
               )}
               {hasPageNumber && imgSrc && !loading && (
                 <img
@@ -492,6 +563,8 @@ export function MindmapNode({ id, data }: NodeProps<FlowNodeData>) {
           pageNumber={data.diagramPageNumber ?? 0}
           description={data.diagramDescription}
           branchColor={branchColor}
+          documentUrl={data.diagramDocumentUrl}
+          documentFileName={data.diagramDocumentFileName}
         />
         <Handle id="right" type="source" position={Position.Right} isConnectable={false} style={HIDDEN_HANDLE_STYLE} />
         <Handle id="right" type="target" position={Position.Right} isConnectable={false} style={HIDDEN_HANDLE_STYLE} />

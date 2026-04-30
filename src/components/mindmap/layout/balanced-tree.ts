@@ -77,6 +77,10 @@ export type FlowNodeData = {
   diagramDescription?: string;
   /** Session ID — needed by diagram nodes to load the cached PDF from IndexedDB. */
   sessionId?: string;
+  /** Signed URL for shared viewers to fetch the source PDF when cache is empty. */
+  diagramDocumentUrl?: string;
+  /** File name for caching shared viewer documents. */
+  diagramDocumentFileName?: string;
   onToggleCollapse: (nodeId: string) => void;
   onConceptClick: (conceptId: string) => void;
 };
@@ -95,6 +99,8 @@ type LayoutContext = {
   confidenceMap: Map<string, number>;
   collapsedNodes: Set<string>;
   sessionId: string;
+  diagramDocumentUrl?: string;
+  diagramDocumentFileName?: string;
   onToggleCollapse: (nodeId: string) => void;
   onConceptClick: (conceptId: string) => void;
   nodes: Node<FlowNodeData>[];
@@ -219,6 +225,8 @@ function positionNode(
       diagramPageNumber,
       diagramDescription,
       sessionId: ctx.sessionId,
+      diagramDocumentUrl: ctx.diagramDocumentUrl,
+      diagramDocumentFileName: ctx.diagramDocumentFileName,
       onToggleCollapse: ctx.onToggleCollapse,
       onConceptClick: ctx.onConceptClick,
     },
@@ -287,6 +295,8 @@ export function buildBalancedTreeLayout(
   onToggleCollapse: (nodeId: string) => void,
   onConceptClick: (conceptId: string) => void,
   sessionId = '',
+  diagramDocumentUrl?: string,
+  diagramDocumentFileName?: string,
 ): { nodes: Node<FlowNodeData>[]; edges: Edge<FlowEdgeData>[] } {
   const nodes: Node<FlowNodeData>[] = [];
   const edges: Edge<FlowEdgeData>[] = [];
@@ -295,6 +305,8 @@ export function buildBalancedTreeLayout(
     confidenceMap,
     collapsedNodes,
     sessionId,
+    diagramDocumentUrl,
+    diagramDocumentFileName,
     onToggleCollapse,
     onConceptClick,
     nodes,

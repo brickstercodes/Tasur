@@ -62,6 +62,8 @@ export type MindmapViewerProps = {
   sessionId: string;
   learningMode: 'fast' | 'steady';
   sessionTitle: string;
+  diagramDocumentUrl?: string;
+  diagramDocumentFileName?: string;
   /**
    * The concept_id the graph recommends the student work on next.
    * Null when all concepts are mastered or the graph hasn't been built yet.
@@ -149,6 +151,8 @@ function MindmapViewerContent({
   learningMode,
   resumeConceptId,
   isOwner,
+  diagramDocumentUrl,
+  diagramDocumentFileName,
 }: MindmapViewerProps) {
   const router = useRouter();
   const { fitView, zoomIn, zoomOut } = useReactFlow();
@@ -218,8 +222,19 @@ function MindmapViewerContent({
         handleToggleCollapse,
         handleConceptClick,
         sessionId,
+        diagramDocumentUrl,
+        diagramDocumentFileName,
       ),
-    [tree, confidenceMap, collapsedNodes, handleToggleCollapse, handleConceptClick, sessionId],
+    [
+      tree,
+      confidenceMap,
+      collapsedNodes,
+      handleToggleCollapse,
+      handleConceptClick,
+      sessionId,
+      diagramDocumentUrl,
+      diagramDocumentFileName,
+    ],
   );
 
   // Flag the single node the graph recommends next. Done as a post-process so

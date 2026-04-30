@@ -52,6 +52,32 @@ export async function saveDocToCache(sessionId: string, file: File): Promise<voi
   });
 }
 
+export async function saveDocBlobToCache(
+  sessionId: string,
+  blob: Blob,
+  fileName = 'document.pdf',
+): Promise<void> {
+  const type = blob.type || '';
+  const name = fileName.toLowerCase();
+  const isPreviewable =
+    type === 'application/pdf' ||
+    type.startsWith('image/') ||
+    name.endsWith('.pdf') ||
+    name.endsWith('.png') ||
+    name.endsWith('.jpg') ||
+    name.endsWith('.jpeg');
+  if (!isPreviewable) return;
+
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const entry: CachedDoc = { name: fileName, type: blob.type || 'application/octet-stream', data: blob };
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put(entry, sessionId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function getDocFromCache(sessionId: string): Promise<CachedDoc | undefined> {
   const db = await openDB();
   return new Promise((resolve, reject) => {

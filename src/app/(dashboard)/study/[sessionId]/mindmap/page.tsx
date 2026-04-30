@@ -50,7 +50,7 @@ export default async function MindmapPage({ params }: PageProps) {
   const supabase = createServerClient();
 
   // Fetch in parallel — all three queries are independent.
-  const [mindmapResult, understandingResult, sessionResult] = await Promise.all([
+  const [mindmapResult, understandingResult, sessionResult, docResult] = await Promise.all([
     supabase
       .from('mindmaps')
       .select('mindmap_data')
@@ -70,6 +70,13 @@ export default async function MindmapPage({ params }: PageProps) {
       .select('learning_mode, title')
       .eq('id', sessionId)
       .single(),
+
+    supabase
+      .from('documents')
+      .select('file_path, file_type')
+      .eq('session_id', sessionId)
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (mindmapResult.error || !mindmapResult.data) {
@@ -87,6 +94,27 @@ export default async function MindmapPage({ params }: PageProps) {
 
   const learningMode = sessionResult.data?.learning_mode ?? 'steady';
   const sessionTitle = sessionResult.data?.title ?? '';
+
+  const docFilePath = docResult.data?.file_path ?? undefined;
+  const docFileType = docResult.data?.file_type ?? '';
+  const isPdf = docFileType === 'application/pdf' || (docFilePath ? docFilePath.toLowerCase().endsWith('.pdf') : false);
+  const diagramDocumentFileName = docFilePath
+    ? (docFilePath.includes('/') ? docFilePath.split('/').pop() : docFilePath)
+    : undefined;
+
+  let diagramDocumentUrl: string | undefined;
+  if (isPdf && docFilePath && docFilePath.includes('/')) {
+    try {
+      const { data: signedUrlData } = await supabase.storage
+        .from('tasur-documents')
+        .createSignedUrl(docFilePath, 3600);
+      if (signedUrlData?.signedUrl) {
+        diagramDocumentUrl = signedUrlData.signedUrl;
+      }
+    } catch {
+      // Fall through without a signed URL
+    }
+  }
 
   // Determine the recommended next concept without an LLM call — the StudentGraph
   // already encodes all the logic needed (priority, prerequisites, confidence).
@@ -128,6 +156,8 @@ export default async function MindmapPage({ params }: PageProps) {
         sessionId={sessionId}
         learningMode={learningMode}
         sessionTitle={sessionTitle}
+        diagramDocumentUrl={diagramDocumentUrl}
+        diagramDocumentFileName={diagramDocumentFileName}
         resumeConceptId={resumeConceptId}
         isOwner={access.isOwner}
       />
