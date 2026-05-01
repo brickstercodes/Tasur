@@ -42,8 +42,8 @@ export function CustomCursor() {
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    // Default is 'custom' — only disable if explicitly set to 'system'
-    setEnabled(saved !== 'system');
+    // Default is OFF for new users — only enable if explicitly set to 'custom'
+    setEnabled(saved === 'custom');
   }, []);
 
   // Listen for changes from the settings page (same tab or other tabs)
@@ -58,7 +58,7 @@ export function CustomCursor() {
     // Also listen for custom event (same-tab changes)
     function onCustom() {
       const val = localStorage.getItem(STORAGE_KEY);
-      setEnabled(val !== 'system');
+      setEnabled(val === 'custom');
     }
     window.addEventListener('cursor-preference-changed', onCustom);
 
@@ -67,7 +67,7 @@ export function CustomCursor() {
     function onTourStart() { setEnabled(false); }
     function onTourEnd() {
       const val = localStorage.getItem(STORAGE_KEY);
-      setEnabled(val !== 'system');
+      setEnabled(val === 'custom');
     }
     window.addEventListener('tasur-tour-start', onTourStart);
     window.addEventListener('tasur-tour-end', onTourEnd);
