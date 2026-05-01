@@ -30,7 +30,6 @@ import ReactFlow, {
   type Edge,
   type Node,
 } from 'reactflow';
-import 'reactflow/dist/style.css';
 import { useRouter } from 'next/navigation';
 
 import { MindmapNode } from './MindmapNode';

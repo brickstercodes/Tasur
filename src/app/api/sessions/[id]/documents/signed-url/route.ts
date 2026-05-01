@@ -43,7 +43,7 @@ export async function GET(req: Request, { params }: RouteParams) {
 
   const filePath = doc.file_path ?? '';
   const fileType = doc.file_type ?? '';
-  const isPdf = fileType === 'application/pdf' || filePath.toLowerCase().endsWith('.pdf');
+  const isPdf = fileType === 'pdf' || filePath.toLowerCase().endsWith('.pdf');
 
   if (!isPdf || !filePath || !filePath.includes('/')) {
     return new Response('Document is not a PDF', { status: 422 });

@@ -97,7 +97,7 @@ export default async function MindmapPage({ params }: PageProps) {
 
   const docFilePath = docResult.data?.file_path ?? undefined;
   const docFileType = docResult.data?.file_type ?? '';
-  const isPdf = docFileType === 'application/pdf' || (docFilePath ? docFilePath.toLowerCase().endsWith('.pdf') : false);
+  const isPdf = docFileType === 'pdf' || (docFilePath ? docFilePath.toLowerCase().endsWith('.pdf') : false);
   const diagramDocumentFileName = docFilePath
     ? (docFilePath.includes('/') ? docFilePath.split('/').pop() : docFilePath)
     : undefined;
