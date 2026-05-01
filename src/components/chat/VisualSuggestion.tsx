@@ -231,9 +231,10 @@ function buildComparisonItems(
 // ── Diagram visual ────────────────────────────────────────────────────────────
 
 /**
- * Renders a text-based diagram description. Actual graph rendering is out of
- * scope for the explainer — the description + nodes/edges give the student a
- * clear structural picture.
+ * Renders a diagram. Auto-upgrades to Mermaid whenever the structure is
+ * non-linear (any node has more than one outgoing or incoming edge, i.e.
+ * branching or merging). Only falls back to the text chain renderer for a
+ * strictly linear A→B→C path with no forks.
  */
 function DiagramVisual({ data }: { data: Record<string, unknown> }) {
   const description = typeof data.description === 'string' ? data.description : '';
@@ -241,6 +242,42 @@ function DiagramVisual({ data }: { data: Record<string, unknown> }) {
   const edges = Array.isArray(data.edges)
     ? (data.edges as Array<{ from: string; to: string; label?: string }>)
     : [];
+
+  // Count out-degree and in-degree per node
+  const outDegree = new Map<string, number>();
+  const inDegree = new Map<string, number>();
+  for (const e of edges) {
+    outDegree.set(e.from, (outDegree.get(e.from) ?? 0) + 1);
+    inDegree.set(e.to, (inDegree.get(e.to) ?? 0) + 1);
+  }
+  const isBranching =
+    edges.length > 0 &&
+    ([...outDegree.values()].some(d => d > 1) || [...inDegree.values()].some(d => d > 1));
+
+  // Auto-upgrade to Mermaid for any non-linear structure
+  if (isBranching) {
+    const sanitize = (s: string) => s.replace(/["\[\](){}|]/g, '');
+    const nodeId = (s: string) => s.replace(/\W+/g, '_');
+    const lines = [
+      'graph TD',
+      // Declare all nodes with labels
+      ...nodes.map(n => `  ${nodeId(n)}["${sanitize(n)}"]`),
+      // Then edges
+      ...edges.map(e =>
+        e.label
+          ? `  ${nodeId(e.from)} -->|"${sanitize(e.label)}"| ${nodeId(e.to)}`
+          : `  ${nodeId(e.from)} --> ${nodeId(e.to)}`
+      ),
+    ];
+    return (
+      <div>
+        {description && (
+          <p style={{ margin: '0 0 10px', color: 'var(--text-muted)', fontSize: 12 }}>{description}</p>
+        )}
+        <MermaidDiagram chart={lines.join('\n')} />
+      </div>
+    );
+  }
 
   // Build chains: sequences of nodes connected by edges
   const chains: Array<Array<{ label: string; edgeLabel?: string }>> = [];

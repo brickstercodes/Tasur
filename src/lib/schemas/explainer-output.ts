@@ -34,7 +34,7 @@ export const explainerOutputSchema = z.object({
    */
   visual_suggestion: z
     .object({
-      type: z.enum(['diagram', 'table', 'comparison']),
+      type: z.enum(['diagram', 'table', 'comparison', 'mermaid']),
       data: z.object({
         // table fields
         headers: z.array(z.string()).optional(),
@@ -63,6 +63,8 @@ export const explainerOutputSchema = z.object({
             }),
           )
           .optional(),
+        // mermaid fields
+        chart: z.string().optional(),
       }),
     })
     .nullable()
