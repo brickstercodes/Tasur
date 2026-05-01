@@ -1,26 +1,29 @@
 'use client';
 
 import React from 'react';
+import { MermaidDiagram } from './MermaidDiagram';
 
 /**
  * WHY: Renders inline visual aids that the Concept Explainer agent produces
  * alongside its text response.
  *
  * The explainer's `visual_suggestion` field carries a `type` ('table',
- * 'comparison', 'diagram') and a `data` record. This component translates
- * those structured payloads into readable UI elements without requiring any
- * additional LLM calls — the data is already produced by the explainer.
+ * 'comparison', 'diagram', 'mermaid') and a `data` record. This component
+ * translates those structured payloads into readable UI elements without
+ * requiring any additional LLM calls — the data is already produced by the
+ * explainer.
  *
- * All three visual types render purely from the `data` record:
+ * All four visual types render purely from the `data` record:
  *   table      → rows/columns extracted from { headers, rows }
  *   comparison → two-column card from { left, right, attributes[] }
  *   diagram    → fallback text representation from { description, nodes, edges }
+ *   mermaid    → rendered mermaid chart from { chart: string }
  */
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface VisualSuggestionProps {
-  type: 'diagram' | 'table' | 'comparison';
+  type: 'diagram' | 'table' | 'comparison' | 'mermaid';
   data: Record<string, unknown>;
 }
 
@@ -54,10 +57,11 @@ export function VisualSuggestion({ type, data }: VisualSuggestionProps) {
         {type === 'table' ? 'Table' : type === 'comparison' ? 'Comparison' : 'Diagram'}
       </div>
 
-      <div style={{ padding: '12px 16px', background: 'var(--surface-elevated)' }}>
+      <div style={{ padding: type === 'mermaid' ? '12px' : '12px 16px', background: 'var(--surface-elevated)' }}>
         {type === 'table' && <TableVisual data={data} />}
         {type === 'comparison' && <ComparisonVisual data={data} />}
         {type === 'diagram' && <DiagramVisual data={data} />}
+        {type === 'mermaid' && <MermaidVisual data={data} />}
       </div>
     </div>
   );
@@ -343,6 +347,14 @@ function DiagramVisual({ data }: { data: Record<string, unknown> }) {
       )}
     </div>
   );
+}
+
+// ── Mermaid visual ────────────────────────────────────────────────────────────
+
+function MermaidVisual({ data }: { data: Record<string, unknown> }) {
+  const chart = typeof data.chart === 'string' ? data.chart : '';
+  if (!chart) return <KeyValueFallback data={data} />;
+  return <MermaidDiagram chart={chart} />;
 }
 
 // ── Shared fallback ───────────────────────────────────────────────────────────

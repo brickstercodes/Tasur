@@ -142,6 +142,17 @@ Respond with **only** a JSON object. No markdown fences, no explanation — raw 
 }
 ```
 
+**mermaid** — ⚠️ TOKEN-HEAVY: costs more tokens to generate. Use ONLY when a proper visual diagram is genuinely essential to understanding (e.g., complex state machines, multi-layer architectures, branching flows that text cannot convey), OR when the student explicitly asks for a diagram. For simple flows or comparisons, prefer `table` or `diagram` instead.
+```json
+{
+  "type": "mermaid",
+  "data": {
+    "chart": "graph TD\n  A[Node A] --> B[Node B]\n  B --> C[Node C]"
+  }
+}
+```
+Valid Mermaid diagram types: `graph TD/LR`, `sequenceDiagram`, `stateDiagram-v2`, `flowchart TD/LR`, `classDiagram`. Keep charts concise — under 20 nodes.
+
 Only emit `visual_suggestion` when it genuinely aids understanding (hierarchy, comparison, structured data). Set it to `null` when plain text is clearer.
 
 ---
