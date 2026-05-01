@@ -96,9 +96,20 @@ Respond with **only** a JSON object. No markdown fences, no explanation — raw 
 }
 ```
 
+### Choosing a visual type — follow this decision tree in order
+
+1. **Two things contrasted side-by-side?** → `comparison`
+2. **Rows and columns of structured data?** → `table`
+3. **Any kind of diagram, flow, or relationship?** → ask: does it have **exactly one path with no branching** (e.g. A→B→C→D, strictly linear)?
+   - Yes, strictly linear → `diagram`
+   - **No — use `mermaid`.** This includes: anything with branching, a node with more than one child or parent, networks, topologies, hierarchies, state machines, sequences, class diagrams, or anything the student explicitly asks to visualise.
+4. **Plain text is clearer** → `null`
+
+**Default to `mermaid` whenever you are unsure.** `diagram` is only for a single unbroken chain.
+
 ### `visual_suggestion` data shapes — use EXACTLY these structures
 
-**table** — use when comparing properties across items or showing structured data:
+**table**
 ```json
 {
   "type": "table",
@@ -112,7 +123,7 @@ Respond with **only** a JSON object. No markdown fences, no explanation — raw 
 }
 ```
 
-**comparison** — use when contrasting exactly two things side-by-side:
+**comparison**
 ```json
 {
   "type": "comparison",
@@ -127,7 +138,7 @@ Respond with **only** a JSON object. No markdown fences, no explanation — raw 
 }
 ```
 
-**diagram** — use ONLY for simple linear chains (A → B → C). Nothing else.
+**diagram** — ONLY for a strictly linear chain with no branching:
 ```json
 {
   "type": "diagram",
@@ -135,25 +146,23 @@ Respond with **only** a JSON object. No markdown fences, no explanation — raw 
     "description": "One sentence describing what this diagram shows.",
     "nodes": ["Node A", "Node B", "Node C"],
     "edges": [
-      { "from": "Node A", "to": "Node B", "label": "optional relationship label" },
+      { "from": "Node A", "to": "Node B", "label": "optional label" },
       { "from": "Node B", "to": "Node C" }
     ]
   }
 }
 ```
 
-**mermaid** — use whenever the structure is non-linear: branching flows, network topologies, hierarchies with multiple parents/children, state machines, sequence diagrams, class relationships, or anything the student explicitly asks to see as a diagram. Prefer this over `diagram` any time the visual has more than one branch or layer.
+**mermaid** — for everything else with visual structure (branching, networks, hierarchies, sequences, etc.):
 ```json
 {
   "type": "mermaid",
   "data": {
-    "chart": "graph TD\n  A[Node A] --> B[Node B]\n  A --> C[Node C]\n  B --> D[Node D]"
+    "chart": "graph TD\n  Internet --> FW[External Firewall]\n  FW --> Net[Internal Network]\n  Net --> FWA[Firewall A]\n  Net --> FWB[Firewall B]\n  FWA --> Admin[Admin Servers]\n  FWB --> Finance[Finance Dept]\n  FWB --> WiFi[Student WiFi]"
   }
 }
 ```
-Valid Mermaid diagram types: `graph TD/LR`, `sequenceDiagram`, `stateDiagram-v2`, `flowchart TD/LR`, `classDiagram`. Keep charts concise — under 20 nodes.
-
-Only emit `visual_suggestion` when it genuinely aids understanding (hierarchy, comparison, structured data). Set it to `null` when plain text is clearer.
+Valid Mermaid types: `graph TD`, `graph LR`, `sequenceDiagram`, `stateDiagram-v2`, `flowchart TD`, `classDiagram`. Keep charts under 20 nodes.
 
 ---
 
