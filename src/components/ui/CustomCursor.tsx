@@ -104,7 +104,20 @@ export function CustomCursor() {
     styleEl.textContent = '*, *::before, *::after { cursor: none !important; }';
     document.body.appendChild(styleEl);
 
+    let zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+    let frameId: number | null = null;
+    let lastX = -100;
+    let lastY = -100;
+
+    function updateCursorPosition() {
+      if (elRef.current) {
+        elRef.current.style.transform = `translate(${lastX - TIP_OFFSET_X}px, ${lastY - TIP_OFFSET_Y}px)`;
+      }
+      frameId = null;
+    }
+
     function hideCursor() {
+      if (frameId) cancelAnimationFrame(frameId);
       if (elRef.current) {
         elRef.current.style.opacity = '0';
         elRef.current.style.transform = `translate(${-100 - TIP_OFFSET_X}px, ${-100 - TIP_OFFSET_Y}px)`;
@@ -113,11 +126,12 @@ export function CustomCursor() {
 
     function onMouseMove(e: MouseEvent) {
       if (elRef.current) {
-        const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-        const x = e.clientX / zoom;
-        const y = e.clientY / zoom;
         elRef.current.style.opacity = '1';
-        elRef.current.style.transform = `translate(${x - TIP_OFFSET_X}px, ${y - TIP_OFFSET_Y}px)`;
+        lastX = e.clientX / zoom;
+        lastY = e.clientY / zoom;
+        if (!frameId) {
+          frameId = requestAnimationFrame(updateCursorPosition);
+        }
       }
     }
 
@@ -127,16 +141,23 @@ export function CustomCursor() {
       }
     }
 
+    function updateZoom() {
+      zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+    }
+
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseout', onMouseOut);
     window.addEventListener('blur', hideCursor);
     document.addEventListener('visibilitychange', hideCursor);
+    window.addEventListener('resize', updateZoom);
 
     return () => {
+      if (frameId) cancelAnimationFrame(frameId);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseout', onMouseOut);
       window.removeEventListener('blur', hideCursor);
       document.removeEventListener('visibilitychange', hideCursor);
+      window.removeEventListener('resize', updateZoom);
       styleEl.remove();
     };
   }, [enabled]);
